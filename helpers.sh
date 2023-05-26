@@ -232,7 +232,7 @@ function setup_build_env(){
 	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT -eq 1 ]]; then
 		export COLOR_MINOR='\e[2;33m' COLOR_MINOR2='\e[2;36m' COLOR_MAJOR='\e[1;32m' COLOR_NONE='\e[0m'
 	fi
-	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$LD_ADDL ${LDFLAGS}" CFLAGS="${CFLAGS} -nologo" LIBS="-lBcrypt -lWs2_32 -lShell32 -luser32 ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="LINK.exe";
+	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$LD_ADDL ${LDFLAGS}" CFLAGS="${CFLAGS} -nologo" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="LINK.exe";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
 }
 function log_make() {
