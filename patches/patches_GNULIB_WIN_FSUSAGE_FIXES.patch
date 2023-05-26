@@ -1,0 +1,261 @@
+diff --git a/lib/fsusage.c b/lib/fsusage.c
+index f6f4b1c35f..d30dd3f9fb 100644
+--- a/lib/fsusage.c
++++ b/lib/fsusage.c
+@@ -22,8 +22,7 @@
+ 
+ #include <limits.h>
+ #include <sys/types.h>
+-
+-#if STAT_STATVFS || STAT_STATVFS64 /* POSIX 1003.1-2001 (and later) with XSI */
++#if (STAT_STATVFS || STAT_STATVFS64) && ! _WIN32 /* POSIX 1003.1-2001 (and later) with XSI */
+ # include <sys/statvfs.h>
+ #else
+ /* Don't include backward-compatibility files unless they're needed.
+@@ -111,6 +110,22 @@ statvfs_works (void)
+ int
+ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+ {
++#ifdef _WIN32
++    char root[MAX_PATH+1];
++    
++    DWORD bytes_per_sector,free_clusters,total_clusters, flags, sectors_per_cluster, volume_serial_number;
++    GetVolumePathName (file, root, MAX_PATH+1);
++    GetVolumeInformation(root, NULL, 0, &volume_serial_number, NULL, NULL, fsp->fsu_fs_type, _MAX_PATH+1);
++    GetDiskFreeSpace(root, &sectors_per_cluster, &bytes_per_sector, &free_clusters, &total_clusters);
++    fsp->fsu_blocksize = bytes_per_sector;
++    fsp->fsu_blocks = sectors_per_cluster * total_clusters;
++    fsp->fsu_bfree = fsp->fsu_bavail = sectors_per_cluster * free_clusters;
++    fsp->fsu_bavail_top_bit_set = false;
++    fsp->fsu_files = fsp->fsu_ffree = 0;
++    fsp->fsu_namemax = MAX_PATH+1;
++    fsp->fsu_fsid = volume_serial_number;
++#else
++
+ #ifdef STAT_STATVFS     /* POSIX, except pre-2.6.36 glibc/Linux */
+ 
+   if (statvfs_works ())
+@@ -131,6 +146,8 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+       fsp->fsu_bavail_top_bit_set = EXTRACT_TOP_BIT (vfsd.f_bavail) != 0;
+       fsp->fsu_files = PROPAGATE_ALL_ONES (vfsd.f_files);
+       fsp->fsu_ffree = PROPAGATE_ALL_ONES (vfsd.f_ffree);
++      fsp->fsu_namemax = vfsd.f_namelen;
++      fsp->fsu_fsid = vfsd.f_fsid;
+       return 0;
+     }
+ 
+@@ -144,6 +161,8 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+     return -1;
+ 
+   /* f_frsize isn't guaranteed to be supported.  */
++  fsp->fsu_namemax = fsd.f_namemax;
++  fsp->fsu_fsid = fsd.f_fsid;
+   fsp->fsu_blocksize = (fsd.f_frsize
+                         ? PROPAGATE_ALL_ONES (fsd.f_frsize)
+                         : PROPAGATE_ALL_ONES (fsd.f_bsize));
+@@ -156,6 +175,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+     return -1;
+ 
+   fsp->fsu_blocksize = PROPAGATE_ALL_ONES (fsd.f_fsize);
++  fsp->fsu_fs_type = fsd.f_type;
+ 
+ #elif defined STAT_STATFS2_FRSIZE        /* 2.6 < glibc/Linux < 2.6.36 */
+ 
+@@ -165,6 +185,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+     return -1;
+ 
+   fsp->fsu_blocksize = PROPAGATE_ALL_ONES (fsd.f_frsize);
++  fsp->fsu_fs_type = fsd.f_type;
+ 
+ #elif defined STAT_STATFS2_BSIZE        /* glibc/Linux < 2.6, 4.3BSD, SunOS 4, \
+                                            Mac OS X < 10.4, FreeBSD < 5.0, \
+@@ -176,6 +197,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+     return -1;
+ 
+   fsp->fsu_blocksize = PROPAGATE_ALL_ONES (fsd.f_bsize);
++  fsp->fsu_fs_type = fsd.f_type;
+ 
+ # ifdef STATFS_TRUNCATES_BLOCK_COUNTS
+ 
+@@ -198,7 +220,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+ 
+   if (statfs (file, &fsd) < 0)
+     return -1;
+-
++  fsp->fsu_fs_type = fsd.f_type;
+   fsp->fsu_blocksize = PROPAGATE_ALL_ONES (fsd.f_fsize);
+ 
+ #elif defined STAT_STATFS4              /* SVR3, old Irix */
+@@ -207,7 +229,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+ 
+   if (statfs (file, &fsd, sizeof fsd, 0) < 0)
+     return -1;
+-
++  fsp->fsu_fs_type = fsd.f_type;
+   /* Empirically, the block counts on most SVR3 and SVR3-derived
+      systems seem to always be in terms of 512-byte blocks,
+      no matter what value f_bsize has.  */
+@@ -227,7 +249,7 @@ get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp)
+   fsp->fsu_ffree = PROPAGATE_ALL_ONES (fsd.f_ffree);
+ 
+ #endif
+-
++#endif
+   (void) disk;  /* avoid argument-unused warning */
+   return 0;
+ }
+diff --git a/lib/fsusage.h b/lib/fsusage.h
+index 9630b04e00..24cddb7e76 100644
+--- a/lib/fsusage.h
++++ b/lib/fsusage.h
+@@ -22,6 +22,17 @@
+ # define FSUSAGE_H_
+ 
+ # include <stdint.h>
++# include <stdbool.h>
++#ifdef _WIN32
++# include <stdlib.h>
++#endif
++#ifndef fsword
++# ifdef HAVE___FSWORD_T
++typedef __fsword_t fsword;
++# else
++typedef long int fsword;
++# endif
++#endif
+ 
+ struct fs_usage
+ {
+@@ -32,8 +43,14 @@ struct fs_usage
+   bool fsu_bavail_top_bit_set;  /* 1 if fsu_bavail represents a value < 0.  */
+   uintmax_t fsu_files;          /* Total file nodes. */
+   uintmax_t fsu_ffree;          /* Free file nodes. */
++  uintmax_t fsu_namemax;
++  uintmax_t fsu_fsid;
++#ifdef _WIN32
++  char fsu_fs_type[_MAX_PATH	+1];
++#else
++  fsword fsu_fs_type;
++#endif
+ };
+-
+ int get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp);
+ 
+ #endif
+diff --git a/lib/mountlist.c b/lib/mountlist.c
+index 6d38481284..6925e1e9d7 100644
+--- a/lib/mountlist.c
++++ b/lib/mountlist.c
+@@ -180,6 +180,10 @@
+    /* for Irix 6.5 */                           \
+    || strcmp (Fs_type, "ignore") == 0)
+ 
++#ifdef _WIN32
++#undef MOUNTED_GETFSSTAT
++#endif
++
+ /* Historically, we have marked as "dummy" any file system of type "none",
+    but now that programs like du need to know about bind-mounted directories,
+    we grant an exception to any with "bind" in its list of mount options.
+@@ -459,6 +463,101 @@ read_file_system_list (bool need_fs_type)
+   struct mount_entry *me;
+   struct mount_entry **mtail = &mount_list;
+   (void) need_fs_type;
++  #ifdef _WIN32
++    DWORD  CharCount            = 0;
++    char  DeviceName[MAX_PATH] = "";
++    DWORD  Error                = ERROR_SUCCESS;
++    HANDLE FindHandle           = INVALID_HANDLE_VALUE;
++    BOOL   Found                = FALSE;
++    size_t Index                = 0;
++    BOOL   Success              = FALSE;
++    char  VolumeName[MAX_PATH] = "";
++    char  MountPoint[MAX_PATH] = "";
++    FindHandle = FindFirstVolumeA(VolumeName, MAX_PATH);
++ if (FindHandle == INVALID_HANDLE_VALUE)
++    {
++        Error = GetLastError();
++        printf("FindFirstVolumeW failed with error code %d\n", Error);
++        return NULL;
++    }
++  int fakedevNum=3;
++    for (;;)
++    {
++        //
++        //  Skip the \\?\ prefix and remove the trailing backslash.
++        Index = strlen(VolumeName) - 1;
++
++        if (VolumeName[0]     != L'\\' ||
++            VolumeName[1]     != L'\\' ||
++            VolumeName[2]     != L'?'  ||
++            VolumeName[3]     != L'\\' ||
++            VolumeName[Index] != L'\\') 
++        {
++            Error = ERROR_BAD_PATHNAME;
++            printf("FindFirstVolumeW/FindNextVolumeW returned a bad path: %s\n", VolumeName);
++            break;
++        }
++
++        //
++        //  QueryDosDeviceW does not allow a trailing backslash,
++        //  so temporarily remove it.
++        VolumeName[Index] = L'\0';
++
++        CharCount = QueryDosDeviceA(&VolumeName[4], DeviceName, MAX_PATH); 
++
++        VolumeName[Index] = L'\\';
++
++        if ( CharCount == 0 ) 
++        {
++            Error = GetLastError();
++            printf("QueryDosDeviceW failed with error code %d\n", Error);
++            break;
++        }
++        Success = GetVolumePathNamesForVolumeNameA(
++            VolumeName, MountPoint, MAX_PATH, &CharCount
++        );
++        
++        if (Success && strlen(MountPoint) > 0){
++        me = xmalloc (sizeof *me);
++        me->me_type = "-";
++        me->me_type_malloced=0;
++        me->me_devname = xstrdup (DeviceName);
++        me->me_mountdir = xstrdup (MountPoint);//MountPoint contains all the names but each null teriminated
++        me->me_mntroot = NULL;
++        me->me_dev = (dev_t) fakedevNum++;
++        me->me_dummy = 0;
++        me->me_remote = 0;
++        
++          *mtail = me;
++          mtail = &me->me_next;
++        }
++        //
++        //  Move on to the next volume.
++        Success = FindNextVolumeA(FindHandle, VolumeName, MAX_PATH);
++
++        if ( !Success ) 
++        {
++            Error = GetLastError();
++
++            if (Error != ERROR_NO_MORE_FILES) 
++            {
++                printf("FindNextVolumeW failed with error code %d\n", Error);
++                break;
++            }
++
++            //
++            //  Finished iterating
++            //  through all the volumes.
++            Error = ERROR_SUCCESS;
++            break;
++        }
++    }
++
++    FindVolumeClose(FindHandle);
++    FindHandle = INVALID_HANDLE_VALUE;
++    *mtail = NULL;
++    return mount_list;
++  #endif
+ 
+ #ifdef MOUNTED_GETMNTENT1       /* glibc, HP-UX, IRIX, Cygwin, Android,
+                                    also (obsolete) 4.3BSD, SunOS */

@@ -1,0 +1,257 @@
+diff --git a/build-aux/ar-lib b/build-aux/ar-lib
+index 17de55e79c..8616edabc5 100755
+--- a/build-aux/ar-lib
++++ b/build-aux/ar-lib
+@@ -1,6 +1,13 @@
+ #! /bin/sh
+ # Wrapper for Microsoft lib.exe
+ 
++COLOR_MINOR="${COLOR_MINOR}"
++COLOR_MINOR2="${COLOR_MINOR2}"
++COLOR_MAJOR="${COLOR_MAJOR}"
++COLOR_NONE="${COLOR_NONE}"
++if [[ $DEBUG_GNU_LIB_WRAPPER -eq 1 ]]; then
++  	echo -e "${COLOR_MINOR}GNU LIB INPUT${COLOR_NONE}: " "$@" 1>&2
++fi
+ me=ar-lib
+ scriptversion=2019-07-04.01; # UTC
+ 
+@@ -29,6 +36,15 @@ scriptversion=2019-07-04.01; # UTC
+ # bugs to <bug-automake@gnu.org> or send patches to
+ # <automake-patches@gnu.org>.
+ 
++func_ar_run ()
++{
++  if [[ $DEBUG_GNU_LIB_WRAPPER -eq 1 ]]; then
++      echo -e "${COLOR_MINOR}GNU LIB OUTPUT${COLOR_NONE}: " $AR -NOLOGO "$@" 1>&2
++  fi
++  shopt -s extglob
++  $AR -NOLOGO "${@//'\e'\[*([0-9;])m/}" || exit $? #strip ansi color strings out
++  shopt -u extglob
++}
+ 
+ # func_error message
+ func_error ()
+@@ -92,7 +108,7 @@ func_at_file ()
+ 
+   for member
+   do
+-    $AR -NOLOGO $operation:"$member" "$archive" || exit $?
++    func_ar_run $operation:"$member" "$archive"
+   done
+ }
+ 
+@@ -205,7 +221,7 @@ if test -n "$delete"; then
+         ;;
+       *)
+         func_file_conv "$1"
+-        $AR -NOLOGO -REMOVE:"$file" "$archive" || exit $?
++        func_ar_run -REMOVE:"$file" "$archive"
+         ;;
+     esac
+   done
+@@ -223,15 +239,15 @@ elif test -n "$extract"; then
+           ;;
+         *)
+           func_file_conv "$1"
+-          $AR -NOLOGO -EXTRACT:"$file" "$archive" || exit $?
++          func_ar_run -EXTRACT:${COLOR_MAJOR}"$file"${COLOR_NONE} "$archive"
+           ;;
+       esac
+     done
+   else
+-    $AR -NOLOGO -LIST "$archive" | tr -d '\r' | sed -e 's/\\/\\\\/g' \
++    func_ar_run -LIST "$archive" | tr -d '\r' | sed -e 's/\\/\\\\/g' \
+       | while read member
+         do
+-          $AR -NOLOGO -EXTRACT:"$member" "$archive" || exit $?
++          func_ar_run -EXTRACT:"$member" "$archive"
+         done
+   fi
+ 
+@@ -262,14 +278,14 @@ elif test -n "$quick$replace"; then
+   done
+ 
+   if test -n "$orig_archive"; then
+-    $AR -NOLOGO -OUT:"$archive" "$orig_archive" "$@" || exit $?
++    func_ar_run -OUT:${COLOR_MAJOR}"$archive"${COLOR_NONE} ${COLOR_MAJOR}"$orig_archive"${COLOR_NONE} "$@"
+   else
+-    $AR -NOLOGO -OUT:"$archive" "$@" || exit $?
++    func_ar_run -OUT:${COLOR_MAJOR}"$archive"${COLOR_NONE} "$@"
+   fi
+ 
+ elif test -n "$list"; then
+   if test ! -f "$orig_archive"; then
+     func_error "archive not found"
+   fi
+-  $AR -NOLOGO -LIST "$archive" || exit $?
++  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
+ fi
+diff --git a/build-aux/compile b/build-aux/compile
+index ba883b54aa..bb227eb18a 100755
+--- a/build-aux/compile
++++ b/build-aux/compile
+@@ -1,6 +1,16 @@
+ #! /bin/sh
+ # Wrapper for compilers which do not understand '-c -o'.
+ 
++COLOR_MINOR="${COLOR_MINOR}"
++COLOR_MINOR2="${COLOR_MINOR2}"
++COLOR_MAJOR="${COLOR_MAJOR}"
++COLOR_NONE="${COLOR_NONE}"
++
++
++if [[ $DEBUG_GNU_COMPILE_WRAPPER -eq 1 ]]; then
++  	echo -e "${COLOR_MINOR}GNU COMPILE INPUT${COLOR_NONE}: " "$@" 1>&2
++fi
++
+ scriptversion=2018-03-07.03; # UTC
+ 
+ # Copyright (C) 1999-2023 Free Software Foundation, Inc.
+@@ -91,37 +101,68 @@ func_cl_dashL ()
+   linker_opts="$linker_opts -LIBPATH:$file"
+ }
+ 
++function GetLibNameIfInDir() {
++	local lib=$1
++	local dir=$2
++	local dir_in_libpath=$3
++	local shared=$4
++	FULL_LIB_NAME=''
++
++	local TRY_NAMES=("${lib}.lib" "${lib}lib.lib" "lib${lib}.a" "lib${lib}.lib")
++	if $shared; then
++		TRY_NAMES+="${lib}.dll.lib"; #prefer dynamic last
++		#TRY_NAMES=("$lib.dll.lib" "${TRY_NAMES[@]}");
++	else
++		TRY_NAMES=("${lib}static.lib" "${lib}libstatic.lib" "${lib}-static.lib" "${lib}lib-static.lib" "${lib}_static.lib" "${lib}lib_static.lib" "${TRY_NAMES[@]}");
++	fi
++	for name in "${TRY_NAMES[@]}"; do
++		if test -f "${dir}/${name}"; then
++			if [ $dir_in_libpath -eq 1 ]; then
++				FULL_LIB_NAME="$name"
++			else
++				FULL_LIB_NAME="${dir}/${name}"
++			fi
++			return 0;
++		fi
++	done
++}
++
+ # func_cl_dashl library
+ # Do a library search-path lookup for cl
+ func_cl_dashl ()
+ {
+-  lib=$1
+-  found=no
+-  save_IFS=$IFS
+-  IFS=';'
+-  for dir in $lib_path $LIB
+-  do
+-    IFS=$save_IFS
+-    if $shared && test -f "$dir/$lib.dll.lib"; then
+-      found=yes
+-      lib=$dir/$lib.dll.lib
+-      break
+-    fi
+-    if test -f "$dir/$lib.lib"; then
+-      found=yes
+-      lib=$dir/$lib.lib
+-      break
+-    fi
+-    if test -f "$dir/lib$lib.a"; then
+-      found=yes
+-      lib=$dir/lib$lib.a
+-      break
+-    fi
+-  done
++	lib=$1
++	found=no
++	save_IFS=$IFS
++	IFS=';'
++	FULL_LIB_NAME='' #incase no lib_paths we need to set this so the previous lib doesn't get used in the next check
++	for dir in $lib_path; do
++		IFS=$save_IFS
++		GetLibNameIfInDir "$lib" "$dir" 1 "$shared"
++		if [ ! -z "$FULL_LIB_NAME" ]; then
++			break
++		fi
++	done
++	if [ -z "$FULL_LIB_NAME" ]; then
++		IFS=';'
++		for dir in $LIB; do
++			IFS=$save_IFS
++			#seems like we should be able to leave off LIB dirs as cl.exe will incldue them anyway
++			GetLibNameIfInDir "$lib" "$dir" 1 "$shared"
++			if [ ! -z "$FULL_LIB_NAME" ]; then
++				break
++			fi
++		done
++	fi
++	if [ ! -z "$FULL_LIB_NAME" ]; then
++		found=yes
++		lib="$FULL_LIB_NAME"
++	fi
++
+   IFS=$save_IFS
+ 
+   if test "$found" != yes; then
+-    lib=$lib.lib
++    lib="$lib.lib"
+   fi
+ }
+ 
+@@ -145,12 +186,12 @@ func_cl_wrapper ()
+ 	  case $2 in
+ 	    *.o | *.[oO][bB][jJ])
+ 	      func_file_conv "$2"
+-	      set x "$@" -Fo"$file"
++	      set x "$@" -Fo${COLOR_MAJOR}"$file"${COLOR_NONE}
+ 	      shift
+ 	      ;;
+ 	    *)
+ 	      func_file_conv "$2"
+-	      set x "$@" -Fe"$file"
++	      set x "$@" -Fe${COLOR_MAJOR}"$file"${COLOR_NONE}
+ 	      shift
+ 	      ;;
+ 	  esac
+@@ -200,6 +241,10 @@ func_cl_wrapper ()
+ 	  eat=1
+ 	  linker_opts="$linker_opts $2"
+ 	  ;;
++	--version)
++	  echo "MSVC CL" `cl 2>&1 1>/dev/null | grep -o -E "[0-9]+[.][0-9.]+"`
++	  exit
++	  ;;
+ 	-*)
+ 	  set x "$@" "$1"
+ 	  shift
+@@ -209,9 +254,12 @@ func_cl_wrapper ()
+ 	  set x "$@" -Tp"$file"
+ 	  shift
+ 	  ;;
++	*.a)
++	  linker_opts="$linker_opts $1"
++	  ;;
+ 	*.c | *.cpp | *.CPP | *.lib | *.LIB | *.Lib | *.OBJ | *.obj | *.[oO])
+ 	  func_file_conv "$1" mingw
+-	  set x "$@" "$file"
++	  set x "$@" "${COLOR_MINOR2}$file${COLOR_NONE}"
+ 	  shift
+ 	  ;;
+ 	*)
+@@ -225,7 +273,12 @@ func_cl_wrapper ()
+   if test -n "$linker_opts"; then
+     linker_opts="-link$linker_opts"
+   fi
+-  exec "$@" $linker_opts
++  if [[ $DEBUG_GNU_COMPILE_WRAPPER -eq 1 ]]; then
++  	echo -e "${COLOR_MINOR}GNU COMPILE OUTPUT${COLOR_NONE}: " "$@" $linker_opts 1>&2
++  fi
++  shopt -s extglob
++  exec "${@//'\e'\[*([0-9;])m/}" ${linker_opts//'\e'\[*([0-9;])m/} #strip ansi color strings out
++  shopt -u extglob
+   exit 1
+ }
+ 

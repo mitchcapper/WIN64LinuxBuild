@@ -1,0 +1,23 @@
+diff --git a/lib/fts.c b/lib/fts.c
+index 3fffb45d70..b24178d2eb 100644
+--- a/lib/fts.c
++++ b/lib/fts.c
+@@ -123,6 +123,9 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
+ #ifndef S_IFSOCK
+ # define S_IFSOCK 0
+ #endif
++#ifndef S_IFBLK
++# define S_IFBLK 0
++#endif
+ 
+ enum
+ {
+@@ -1867,7 +1870,7 @@ fts_sort (FTS *sp, FTSENT *head, register size_t nitems)
+         FTSENT *dummy;
+         int (*compare) (void const *, void const *) =
+           ((sizeof &dummy == sizeof (void *)
+-            && (long int) &dummy == (long int) (void *) &dummy)
++            && (long long int) &dummy == (long long int) (void *) &dummy)
+            ? (int (*) (void const *, void const *)) sp->fts_compar
+            : fts_compar);
+ 

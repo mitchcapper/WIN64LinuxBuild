@@ -1,0 +1,153 @@
+name: do_build
+on:
+  workflow_call:
+    inputs:
+      #if buildpkg is "script" then only the script is executed no deps or other items handled
+      BuildPkg:
+        required: true
+        type: string
+      Script: #should be relative to the repo root
+        required: false
+        type: string
+      RequiredDeps:
+        required: false
+        type: string
+        description: 'multi-line scalar for any required artifacts or empty string for none'
+        default: ""
+    outputs:
+      ScriptRes:
+        description: "Result of script execution (optional)"
+        value: ${{ jobs.build.outputs.ScriptRes }}
+env:
+  CI_REQ_DOTNET_SDK_VER: 6.0.401
+  NUKE_TELEMETRY_OPTOUT: 1
+  MSYS: "winsymlinks:native wincmdln"
+  MSYS2_ARG_CONV_EXCL: "/a;/b;/c;/d;/e;/f;/g;/h;/i;/j;/k;/l;/m;/n;/o;/p;/q;/r;/s;/u;/v;/w;/x;/y;/z;/0;/1;/2;/3;/4;/5;/6;/7;/8;/9;/A;/B;/C;/D;/E;/F;/G;/H;/I;/J;/K;/L;/M;/N;/O;/P;/Q;/R;/S;/T;/U;/V;/W;/X;/Y;/Z"
+  MSYS2_PATH_TYPE: inherit
+  WLB_BASE_FOLDER: "d:/WLB"
+  MSYSTEM: UCRT64
+  MSYS_PATH: d:/msys64
+
+jobs:
+  build:
+    name:  ${{ inputs.BuildPkg == 'script' && 'Run Script' || 'Build Package' }}
+    runs-on: windows-2022
+    environment: main
+    outputs:
+      ScriptRes: ${{ steps.script_step.outputs.ScriptRes }}
+    defaults:
+        run:
+          shell: pwsh
+    strategy:
+      fail-fast: false
+      matrix:
+        #BuildPkg: [patch]
+        #BuildPkg: [grep]
+#        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,grep]
+        BaseImage: [windows-latest]
+        Configuration: [Debug]
+        Arch: [x64]
+        #BaseImage: [windows-latest, ubuntu-latest]
+        #Configuration: [Debug, Release]
+        #Arch: [x86, x64]
+        exclude:
+          - Arch: x86
+            BaseImage: ubuntu-latest
+        include:
+          - BaseImage: windows-latest
+            platform: windows
+          #- BuildPkg: grep
+            #needs: [pcre2]
+#          - BaseImage: ubuntu-latest
+#            platform: linux
+    env:
+      BUILD_PKG: ${{inputs.BuildPkg}}
+      SCRIPT: ${{inputs.Script}}
+    steps:
+      - uses: actions/checkout@v3.1.0
+        with:
+          submodules: true
+      - name: ENV Set
+        run: |
+          $dir=$env:GITHUB_WORKSPACE
+          $dir=$dir.replace("\","/")
+          echo "WLB_SCRIPT_FOLDER=$dir" >> $env:GITHUB_ENV
+          mkdir $env:WLB_BASE_FOLDER
+
+#      - uses: actions/setup-dotnet@v3.0.3
+#        with:
+#          dotnet-version: ${{env.CI_REQ_DOTNET_SDK_VER}}
+
+
+
+
+
+      - name: Download Required Artifacts
+        uses: mitchcapper/action-download-artifact@b2e806fc9fc820918660db898ad04630eb99a22c
+        if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
+        with:
+          name: ${{ inputs.RequiredDeps }}
+          path: d:/artifacts
+          name_prefix: WLB-
+          run_id: ${{ github.run_id }}
+          workflow_conclusion: ""
+
+
+
+      - name: MSBuild Setup
+        uses: microsoft/setup-msbuild@v1.1.3
+        if: matrix.platform == 'windows'
+
+      - name: Move Bad DEFAULT MSYS
+        shell: powershell
+        run: Rename-Item c:/msys64 c:/trashmsys
+
+      - name: MSYS Setup
+        uses: msys2/setup-msys2@v2
+        if: matrix.platform == 'windows'
+        with:
+          msystem: ucrt64
+          location: d:\
+          install: pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex
+
+      - name: Save ENV
+        run: "Get-ChildItem env: | Select-Object -Property Name, Value | ConvertTo-Json | Out-File -FilePath d:/env.json -Encoding ASCII"
+# Get-Content -Raw d:/env.json | ConvertFrom-Json | % { Set-Item "env:$($_.Name)" $_.Value }
+#      - name: MSYS Package Install
+#        shell: msys2 {0}
+#        run: pacman -S --noconfirm pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git
+#      - name: File Dump
+#        shell: msys2 {0}
+#        working-directory: ${{env.WLB_BASE_FOLDER}}
+#        run: |
+#          find /d/ > d:/d_all_files.txt
+#          find /c/ > d:/c_all_files.txt
+#      need to do vs pwoershell so cant use msys powershell
+
+      - name: Unpack Artifacts
+        if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
+        run: ${{env.WLB_SCRIPT_FOLDER}}/.github/move_dl_artifacts.ps1
+
+      - name: Build Package
+        if: ${{ inputs.BuildPkg != 'script' }}
+        shell: powershell
+        working-directory: ${{env.WLB_BASE_FOLDER}}
+        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/build/f_$($env:BUILD_PKG)_build.sh"
+
+      - name: Run Script
+        id: script_step
+        if: ${{ inputs.BuildPkg == 'script' }}
+        shell: powershell
+        working-directory: ${{env.WLB_BASE_FOLDER}}
+        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}"
+
+      - name: Debug Session
+        if: ${{ failure() && (vars.DEBUG_FAIL == '1') }}
+        run: ${{env.WLB_SCRIPT_FOLDER}}/.github/debug_ssh_start.ps1
+
+      - uses: actions/upload-artifact@v3.1.1
+        if: ${{ inputs.BuildPkg != 'script' }}
+        with:
+          name: WLB-${{env.BUILD_PKG}}
+          path: ${{env.WLB_BASE_FOLDER}}/${{env.BUILD_PKG}}/final
+          if-no-files-found: error

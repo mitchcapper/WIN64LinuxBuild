@@ -1,0 +1,1407 @@
+diff --git a/src/copy.c b/src/copy.c
+index 0dd059d2e..24df69a18 100644
+--- a/src/copy.c
++++ b/src/copy.c
+@@ -23,6 +23,10 @@
+ #include <sys/types.h>
+ #include <selinux/selinux.h>
+ 
++#ifdef _WIN32
++#define HAVE_LCHOWN 0
++#endif
++
+ #if HAVE_HURD_H
+ # include <hurd.h>
+ #endif
+@@ -900,6 +904,9 @@ set_owner (const struct cp_options *x, char const *dst_name,
+            struct stat const *src_sb, bool new_dst,
+            struct stat const *dst_sb)
+ {
++#ifdef _WIN32
++	return 1;
++#endif
+   uid_t uid = src_sb->st_uid;
+   gid_t gid = src_sb->st_gid;
+ 
+@@ -1272,7 +1279,7 @@ copy_reg (char const *src_name, char const *dst_name,
+ 
+   /* Compare the source dev/ino from the open file to the incoming,
+      saved ones obtained via a previous call to stat.  */
+-  if (! SAME_INODE (*src_sb, src_open_sb))
++  if (src_sb->st_ino && ! SAME_INODE (*src_sb, src_open_sb))
+     {
+       error (0, 0,
+              _("skipping file %s, as it was replaced while being copied"),
+@@ -1745,7 +1752,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+   struct stat tmp_src_sb;
+ 
+   bool same_link;
+-  bool same = SAME_INODE (*src_sb, *dst_sb);
++  bool same = src_sb->st_ino &&  SAME_INODE (*src_sb, *dst_sb);
+ 
+   *return_now = false;
+ 
+@@ -1806,7 +1813,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+       src_sb_link = &tmp_src_sb;
+       dst_sb_link = &tmp_dst_sb;
+ 
+-      same_link = SAME_INODE (*src_sb_link, *dst_sb_link);
++      same_link = src_sb_link->st_ino && SAME_INODE (*src_sb_link, *dst_sb_link);
+ 
+       /* If both are symlinks, then it's ok, but only if the destination
+          will be unlinked before being opened.  This is like the test
+@@ -1894,7 +1901,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+      hard links to the same file.  */
+   if (!S_ISLNK (src_sb_link->st_mode) && !S_ISLNK (dst_sb_link->st_mode))
+     {
+-      if (!SAME_INODE (*src_sb_link, *dst_sb_link))
++      if (src_sb_link->st_ino && !SAME_INODE (*src_sb_link, *dst_sb_link))
+         return true;
+ 
+       /* If they are the same file, it's ok if we're making hard links.  */
+@@ -1955,7 +1962,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+       else if (fstatat (dst_dirfd, dst_relname, &tmp_dst_sb, 0) != 0)
+         return true;
+ 
+-      if ( ! SAME_INODE (tmp_src_sb, tmp_dst_sb))
++      if (tmp_src_sb.st_ino && ! SAME_INODE (tmp_src_sb, tmp_dst_sb))
+         return true;
+ 
+       if (x->hard_link)
+@@ -2174,7 +2181,7 @@ source_is_dst_backup (char const *srcbase, struct stat const *src_st,
+   struct stat dst_back_sb;
+   int dst_back_status = fstatat (dst_dirfd, dst_back, &dst_back_sb, 0);
+   free (dst_back);
+-  return dst_back_status == 0 && SAME_INODE (*src_st, dst_back_sb);
++  return dst_back_status == 0 && src_st->st_ino && SAME_INODE (*src_st, dst_back_sb);
+ }
+ 
+ /* Copy the file SRC_NAME to the file DST_NAME aka DST_DIRFD+DST_RELNAME.
+@@ -2255,7 +2262,7 @@ copy_internal (char const *src_name, char const *dst_name,
+ 
+       src_mode = src_sb.st_mode;
+ 
+-      if (S_ISDIR (src_mode) && !x->recursive)
++      if (S_ISHARDDIR(src_mode) && !x->recursive)
+         {
+           error (0, 0, ! x->install_mode /* cp */
+                  ? _("-r not specified; omitting directory %s")
+@@ -2278,7 +2285,7 @@ copy_internal (char const *src_name, char const *dst_name,
+      This check is enabled only if x->src_info is non-NULL.  */
+   if (command_line_arg && x->src_info)
+     {
+-      if ( ! S_ISDIR (src_mode)
++      if ( !S_ISHARDDIR(src_mode) 
+            && x->backup_type == no_backups
+            && seen_file (x->src_info, src_name, &src_sb))
+         {
+@@ -2349,7 +2356,7 @@ copy_internal (char const *src_name, char const *dst_name,
+               return false;
+             }
+ 
+-          if (x->update && !S_ISDIR (src_mode))
++          if (x->update && !S_ISHARDDIR(src_mode))
+             {
+               /* When preserving timestamps (but not moving within a file
+                  system), don't worry if the destination timestamp is
+@@ -2894,7 +2901,7 @@ skip:
+   if (! set_process_security_ctx (src_name, dst_name, src_mode, new_dst, x))
+     return false;
+ 
+-  if (S_ISDIR (src_mode))
++  if (S_ISHARDDIR (src_mode))
+     {
+       struct dir_list *dir;
+ 
+@@ -2917,7 +2924,7 @@ skip:
+       dir->ino = src_sb.st_ino;
+       dir->dev = src_sb.st_dev;
+ 
+-      if (new_dst || !S_ISDIR (dst_sb.st_mode))
++      if (new_dst || !S_ISHARDDIR(dst_sb.st_mode))
+         {
+           /* POSIX says mkdir's behavior is implementation-defined when
+              (src_mode & ~S_IRWXUGO) != 0.  However, common practice is
+@@ -3026,7 +3033,7 @@ skip:
+                             || stat (".", &dot_sb) != 0
+                             || (fstatat (dst_dirfd, dst_parent, &dst_parent_sb,
+                                          0) != 0)
+-                            || SAME_INODE (dot_sb, dst_parent_sb));
++                            || (dot_sb.st_ino && SAME_INODE (dot_sb, dst_parent_sb)));
+           free (dst_parent);
+ 
+           if (! in_current_dir)
+diff --git a/src/cp.c b/src/cp.c
+index 619eb8260..e685fa6d1 100644
+--- a/src/cp.c
++++ b/src/cp.c
+@@ -340,6 +340,7 @@ re_protect (char const *const_dst_name, char const *dst_src_name,
+ 
+       if (x->preserve_ownership)
+         {
++#ifndef _WIN32
+           if (lchownat (dst_dirfd, relname, p->st.st_uid, p->st.st_gid)
+               != 0)
+             {
+@@ -353,6 +354,7 @@ re_protect (char const *const_dst_name, char const *dst_src_name,
+                  the group, but ignore the possible error. */
+               ignore_value (lchownat (dst_dirfd, relname, -1, p->st.st_gid));
+             }
++#endif // !_WIN32
+         }
+ 
+       if (x->preserve_mode)
+diff --git a/src/csplit.c b/src/csplit.c
+index 92ea4f96d..47d29bc02 100644
+--- a/src/csplit.c
++++ b/src/csplit.c
+@@ -1385,7 +1385,11 @@ main (int argc, char **argv)
+     static int const sig[] =
+       {
+         /* The usual suspects.  */
++#ifndef _WIN32
+         SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGQUIT, SIGTERM,
++#else
++      SIGINT,  SIGTERM,
++#endif        
+ #ifdef SIGPOLL
+         SIGPOLL,
+ #endif
+diff --git a/src/dd.c b/src/dd.c
+index 2808a79ab..293728f31 100644
+--- a/src/dd.c
++++ b/src/dd.c
+@@ -641,6 +641,7 @@ Each FLAG symbol may be:\n\
+         fputs (_("  text      use text I/O for data\n"), stdout);
+ 
+       {
++#ifndef _WIN32        
+         printf (_("\
+ \n\
+ Sending a %s signal to a running 'dd' process makes it\n\
+@@ -649,6 +650,7 @@ print I/O statistics to standard error and then resume copying.\n\
+ Options are:\n\
+ \n\
+ "), SIGINFO == SIGUSR1 ? "USR1" : "INFO");
++#endif
+       }
+ 
+       fputs (HELP_OPTION_DESCRIPTION, stdout);
+@@ -869,7 +871,9 @@ siginfo_handler (int sig)
+ static void
+ install_signal_handlers (void)
+ {
++#ifndef _WIN32  
+   bool catch_siginfo = ! (SIGINFO == SIGUSR1 && getenv ("POSIXLY_CORRECT"));
++#endif
+ 
+ #if SA_NOCLDSTOP
+ 
+@@ -900,12 +904,13 @@ install_signal_handlers (void)
+     }
+ 
+ #else
+-
++#ifndef _WIN32
+   if (catch_siginfo)
+     {
+       signal (SIGINFO, siginfo_handler);
+       siginterrupt (SIGINFO, 1);
+     }
++#endif
+   if (signal (SIGINT, SIG_IGN) != SIG_IGN)
+     {
+       signal (SIGINT, interrupt_handler);
+@@ -1181,7 +1186,7 @@ static idx_t
+ iwrite (int fd, char const *buf, idx_t size)
+ {
+   idx_t total_written = 0;
+-
++#ifndef _WIN32
+   if ((output_flags & O_DIRECT) && size < output_blocksize)
+     {
+       int old_flags = fcntl (STDOUT_FILENO, F_GETFL);
+@@ -1205,7 +1210,7 @@ iwrite (int fd, char const *buf, idx_t size)
+       /* After the subsequent fsync we'll call invalidate_cache
+          to attempt to clear all data from the page cache.  */
+     }
+-
++#endif
+   while (total_written < size)
+     {
+       ssize_t nwritten = 0;
+@@ -2053,6 +2058,7 @@ copy_with_unblock (char const *buf, idx_t nread)
+ static void
+ set_fd_flags (int fd, int add_flags, char const *name)
+ {
++#ifndef _WIN32  
+   /* Ignore file creation flags that are no-ops on file descriptors.  */
+   add_flags &= ~ (O_NOCTTY | O_NOFOLLOW);
+ 
+@@ -2093,6 +2099,7 @@ set_fd_flags (int fd, int add_flags, char const *name)
+       if (!ok)
+         die (EXIT_FAILURE, errno, _("setting flags for %s"), quoteaf (name));
+     }
++#endif    
+ }
+ 
+ /* The main loop.  */
+diff --git a/src/df.c b/src/df.c
+index f3d8e2e2b..7c9cf0715 100644
+--- a/src/df.c
++++ b/src/df.c
+@@ -756,6 +756,9 @@ filter_mount_list (bool devices_only)
+       else
+         {
+           /* If we've already seen this device...  */
++          #ifdef _WIN32
++            buf.st_dev = me->me_dev;
++          #endif
+           struct devlist *seen_dev = devlist_for_dev (buf.st_dev);
+ 
+           if (seen_dev)
+@@ -1086,7 +1089,10 @@ get_dev (char const *device, char const *mount_point, char const *file,
+             }
+         }
+     }
+-
++#ifdef _WIN32
++    if (fstype == NULL || strcmp(fstype, "-") == 0)
++      fstype = fsu.fsu_fs_type; 
++#endif
+   if (fsu.fsu_blocks == 0 && !show_all_fs && !show_listed_fs)
+     return;
+ 
+diff --git a/src/digest.c b/src/digest.c
+index ab32968db..d238319a0 100644
+--- a/src/digest.c
++++ b/src/digest.c
+@@ -1361,7 +1361,11 @@ main (int argc, char **argv)
+ 
+   /* Line buffer stdout to ensure lines are written atomically and immediately
+      so that processes running in parallel do not intersperse their output.  */
++#ifndef _WIN32
+   setvbuf (stdout, NULL, _IOLBF, 0);
++#else
++  setvbuf(stdout, NULL, _IONBF, 0); //windows treats _IOLBF the same as _IOFBF in addition a buffer of NULL and size of 0 is invalid unless you are doing IONBF.
++#endif
+ 
+ #if HASH_ALGO_SUM
+   char const *short_opts = "rs";
+diff --git a/src/du.c b/src/du.c
+index 025a587d7..1bb036b80 100644
+--- a/src/du.c
++++ b/src/du.c
+@@ -427,6 +427,7 @@ print_size (const struct duinfo *pdui, char const *string)
+ static void
+ fill_mount_table (void)
+ {
++  #ifndef _WIN32
+   struct mount_entry *mnt_ent = read_file_system_list (false);
+   while (mnt_ent)
+     {
+@@ -447,6 +448,7 @@ fill_mount_table (void)
+       mnt_ent = mnt_ent->me_next;
+       free_mount_entry (mnt_free);
+     }
++    #endif
+ }
+ 
+ /* This function checks whether any of the directories in the cycle that
+diff --git a/src/env.c b/src/env.c
+index 2f38d7538..98f65f244 100644
+--- a/src/env.c
++++ b/src/env.c
+@@ -56,7 +56,9 @@ enum SIGNAL_MODE {
+   UNCHANGED = 0,
+   DEFAULT,       /* Set to default handler (SIG_DFL).  */
+   DEFAULT_NOERR, /* Ditto, but ignore sigaction(2) errors.  */
++#ifndef _WIN32
+   IGNORE,        /* Set to ignore (SIG_IGN).  */
++#endif  
+   IGNORE_NOERR   /* Ditto, but ignore sigaction(2) errors.  */
+ };
+ static enum SIGNAL_MODE *signals;
+@@ -550,8 +552,13 @@ parse_signal_action_params (char const *optarg, bool set_default)
+          Some signals cannot be set to ignore or default (e.g., SIGKILL,
+          SIGSTOP on most OSes, and SIGCONT on AIX.) - so ignore errors.  */
+       for (int i = 1 ; i <= SIGNUM_BOUND; i++)
++#ifndef _WIN32      
+         if (sig2str (i, signame) == 0)
+           signals[i] = set_default ? DEFAULT_NOERR : IGNORE_NOERR;
++#else
++if (sig2str (i, signame) == 0 && set_default)
++          signals[i] = DEFAULT_NOERR;
++#endif          
+       return;
+     }
+ 
+diff --git a/src/expr.c b/src/expr.c
+index 19475f349..e0a84044f 100644
+--- a/src/expr.c
++++ b/src/expr.c
+@@ -44,7 +44,7 @@
+ 
+ /* Various parts of this code assume size_t fits into unsigned long
+    int, the widest unsigned type that GMP supports.  */
+-static_assert (SIZE_MAX <= ULONG_MAX);
++static_assert (sizeof(size_t) <= ULONG_MAX);
+ 
+ /* The official name of this program (e.g., no 'g' prefix).  */
+ #define PROGRAM_NAME "expr"
+diff --git a/src/find-mount-point.c b/src/find-mount-point.c
+index 529e01165..a02573d67 100644
+--- a/src/find-mount-point.c
++++ b/src/find-mount-point.c
+@@ -34,6 +34,11 @@ find_mount_point (char const *file, struct stat const *file_stat)
+   struct saved_cwd cwd;
+   struct stat last_stat;
+   char *mp = NULL;		/* The malloc'd mount point.  */
++#ifdef _WIN32
++  mp = xmalloc (sizeof (char) * (MAX_PATH));
++  GetVolumePathName (file, mp, MAX_PATH);
++  return mp;
++#endif  
+ 
+   if (save_cwd (&cwd) != 0)
+     {
+diff --git a/src/install.c b/src/install.c
+index 272dfcb8f..b41461412 100644
+--- a/src/install.c
++++ b/src/install.c
+@@ -21,8 +21,12 @@
+ #include <getopt.h>
+ #include <sys/types.h>
+ #include <signal.h>
++#ifndef _WIN32
+ #include <pwd.h>
+ #include <grp.h>
++#else
++#include "execute.h"
++#endif
+ #include <selinux/label.h>
+ #include <sys/wait.h>
+ 
+@@ -193,6 +197,7 @@ need_copy (char const *src_name, char const *dest_name,
+       || (dest_sb.st_mode & CHMOD_MODE_BITS) != mode)
+     return true;
+ 
++#ifndef _WIN32
+   if (owner_id == (uid_t) -1)
+     {
+       errno = 0;
+@@ -236,7 +241,7 @@ need_copy (char const *src_name, char const *dest_name,
+       if (!scontext_match)
+         return true;
+     }
+-
++#endif
+   /* compare files content */
+   src_fd = open (src_name, O_RDONLY | O_BINARY);
+   if (src_fd < 0)
+@@ -437,6 +442,9 @@ copy_file (char const *from, char const *to,
+ static bool
+ change_attributes (char const *name, int dirfd, char const *relname)
+ {
++  #ifdef _WIN32
++  return true;
++  #endif
+   bool ok = false;
+   /* chown must precede chmod because on some systems,
+      chown clears the set[ug]id bits for non-superusers,
+@@ -494,6 +502,7 @@ strip (char const *name)
+ {
+   int status;
+   bool ok = false;
++  #ifndef _WIN32
+   pid_t pid = fork ();
+ 
+   switch (pid)
+@@ -518,6 +527,16 @@ strip (char const *name)
+         ok = true;      /* strip succeeded */
+       break;
+     }
++#else
++  const char* const values[] = {strip_program,name, NULL};
++
++
++  status = execute(strip_program,strip_program,values, NULL, false, false,false,false, true, false, NULL);
++   if (! WIFEXITED (status) || WEXITSTATUS (status))
++        error (0, 0, _("strip process terminated abnormally"));
++      else
++        ok = true;
++#endif    
+   return ok;
+ }
+ 
+@@ -526,6 +545,7 @@ strip (char const *name)
+ static void
+ get_ids (void)
+ {
++#ifndef _WIN32  
+   struct passwd *pw;
+   struct group *gr;
+ 
+@@ -566,6 +586,7 @@ get_ids (void)
+     }
+   else
+     group_id = (gid_t) -1;
++#endif    
+ }
+ 
+ void
+diff --git a/src/ln.c b/src/ln.c
+index 1c3307cac..26b2e16c1 100644
+--- a/src/ln.c
++++ b/src/ln.c
+@@ -261,7 +261,7 @@ do_link (char const *source, int destdir_fd, char const *dest_base,
+                   if (source_status != 0)
+                     source_status = stat (source, &source_stats);
+                   if (source_status == 0
+-                      && SAME_INODE (source_stats, dest_stats)
++                      && source_stats.st_ino && SAME_INODE (source_stats, dest_stats)
+                       && (source_stats.st_nlink == 1
+                           || same_nameat (AT_FDCWD, source,
+                                           destdir_fd, dest_base)))
+diff --git a/src/ls.c b/src/ls.c
+index 71d94fd6a..c4e0415a3 100644
+--- a/src/ls.c
++++ b/src/ls.c
+@@ -52,7 +52,9 @@
+ #include <stdio.h>
+ #include <assert.h>
+ #include <setjmp.h>
++#ifndef _WIN32
+ #include <pwd.h>
++#endif
+ #include <getopt.h>
+ #include <signal.h>
+ #include <selinux/selinux.h>
+@@ -1529,12 +1531,14 @@ process_signals (void)
+       /* SIGTSTP is special, since the application can receive that signal
+          more than once.  In this case, don't set the signal handler to the
+          default.  Instead, just raise the uncatchable SIGSTOP.  */
++#ifndef _WIN32
+       if (stops)
+         {
+           stop_signal_count = stops - 1;
+           sig = SIGSTOP;
+         }
+       else
++#endif
+         signal (sig, SIG_DFL);
+ 
+       /* Exit or suspend the program.  */
+@@ -1555,11 +1559,15 @@ signal_setup (bool init)
+   /* The signals that are trapped, and the number of such signals.  */
+   static int const sig[] =
+     {
++#ifndef _WIN32      
+       /* This one is handled specially.  */
+       SIGTSTP,
+ 
+       /* The usual suspects.  */
+       SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGQUIT, SIGTERM,
++      #else
++      SIGINT,  SIGTERM,
++      #endif
+ #ifdef SIGPOLL
+       SIGPOLL,
+ #endif
+@@ -1612,7 +1620,11 @@ signal_setup (bool init)
+           caught_sig[j] = (signal (sig[j], SIG_IGN) != SIG_IGN);
+           if (caught_sig[j])
+             {
++#ifndef _WIN32
+               signal (sig[j], sig[j] == SIGTSTP ? stophandler : sighandler);
++#else
++              signal (sig[j], sighandler);
++#endif              
+               siginterrupt (sig[j], 0);
+             }
+         }
+@@ -1839,8 +1851,10 @@ main (int argc, char **argv)
+          This can process signals out of order, but there doesn't seem to
+          be an easy way to do them in order, and the order isn't that
+          important anyway.  */
++#ifndef _WIN32
+       for (j = stop_signal_count; j; j--)
+         raise (SIGSTOP);
++#endif        
+       j = interrupt_signal;
+       if (j)
+         raise (j);
+@@ -2225,7 +2239,9 @@ decode_switches (int argc, char **argv)
+           break;
+ 
+         case 'Z':
++#ifndef _WIN32
+           print_scontext = true;
++#endif          
+           break;
+ 
+         case ZERO_OPTION:
+@@ -2292,6 +2308,13 @@ decode_switches (int argc, char **argv)
+ #  pragma GCC diagnostic pop
+ # endif
+         }
++#elif defined(_WIN32)
++	  CONSOLE_SCREEN_BUFFER_INFO csbi;
++	  int columns, rows;
++
++	  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
++	  linelen = csbi.srWindow.Right - csbi.srWindow.Left + 1;
++
+ #endif
+       if (linelen < 0)
+         {
+@@ -3297,6 +3320,7 @@ getfilecon_cache (char const *file, struct fileinfo *f, bool deref)
+       return -1;
+     }
+   int r = 0;
++#ifndef _WIN32  
+ #ifdef HAVE_SMACK
+   if (is_smack_enabled ())
+     r = smack_new_label_from_path (file, "security.SMACK64", deref,
+@@ -3308,6 +3332,7 @@ getfilecon_cache (char const *file, struct fileinfo *f, bool deref)
+          : lgetfilecon (file, &f->scontext));
+   if (r < 0 && errno_unsupported (errno))
+     unsupported_device = f->stat.st_dev;
++#endif    
+   return r;
+ }
+ 
+@@ -3525,7 +3550,11 @@ gobble_file (char const *name, enum filetype type, ino_t inode,
+           && print_with_color && is_colored (C_CAP))
+         f->has_capability = has_capability_cache (full_name, f);
+ 
+-      if (format == long_format || print_scontext)
++      if (print_scontext
++#ifndef _WIN32
++		  || format == long_format
++#endif
++		  )
+         {
+           bool have_scontext = false;
+           bool have_acl = false;
+@@ -4949,12 +4978,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
+     }
+   else
+     {
+-      if (stat_ok ? S_ISDIR (mode) : type == directory || type == arg_directory)
++	  if (stat_ok ? S_ISLNK(mode) : type == symbolic_link) //windows has symlink dir type so needs to be before isdir
++		  c = '@';
++	  else if (stat_ok ? S_ISDIR (mode) : type == directory || type == arg_directory)
+         c = '/';
+       else if (indicator_style == slash)
+         c = 0;
+-      else if (stat_ok ? S_ISLNK (mode) : type == symbolic_link)
+-        c = '@';
+       else if (stat_ok ? S_ISFIFO (mode) : type == fifo)
+         c = '|';
+       else if (stat_ok ? S_ISSOCK (mode) : type == sock)
+@@ -5044,6 +5073,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+           else if ((1 < f->stat.st_nlink) && is_colored (C_MULTIHARDLINK))
+             type = C_MULTIHARDLINK;
+         }
++	  else if (S_ISLNK(mode)) //windows has symlink dir type so needs to be before isdir
++		  type = C_LINK;
+       else if (S_ISDIR (mode))
+         {
+           type = C_DIR;
+@@ -5056,8 +5087,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+           else if ((mode & S_ISVTX) != 0 && is_colored (C_STICKY))
+             type = C_STICKY;
+         }
+-      else if (S_ISLNK (mode))
+-        type = C_LINK;
+       else if (S_ISFIFO (mode))
+         type = C_FIFO;
+       else if (S_ISSOCK (mode))
+diff --git a/src/make-prime-list.c b/src/make-prime-list.c
+index d66ee3d5e..54a657e15 100644
+--- a/src/make-prime-list.c
++++ b/src/make-prime-list.c
+@@ -24,7 +24,11 @@ this program.  If not, see https://www.gnu.org/licenses/.  */
+ 
+ #include <limits.h>
+ #include <stdint.h>
+-#include <stdio.h>
++#ifndef  _WIN32
++#include "../include/stdio.h"
++#else
++#include "../ucrt/stdio.h"
++#endif // ! _WIN32
+ #include <string.h>
+ #include <stdlib.h>
+ #include <errno.h>
+diff --git a/src/mkdir.c b/src/mkdir.c
+index da5c84764..f37daaaa1 100644
+--- a/src/mkdir.c
++++ b/src/mkdir.c
+@@ -62,19 +62,23 @@ Create the DIRECTORY(ies), if they do not already exist.\n\
+ "), stdout);
+ 
+       emit_mandatory_arg_note ();
+-
++#ifndef _WIN32
++fputs (_("\
++  -m, --mode=MODE   set file mode (as in chmod), not a=rwx - umask\n"), stdout);
++#endif
+       fputs (_("\
+-  -m, --mode=MODE   set file mode (as in chmod), not a=rwx - umask\n\
+   -p, --parents     no error if existing, make parent directories as needed,\n\
+                     with their file modes unaffected by any -m option.\n\
+   -v, --verbose     print a message for each created directory\n\
+ "), stdout);
++#ifndef _WIN32
+       fputs (_("\
+   -Z                   set SELinux security context of each created directory\n\
+                          to the default type\n\
+       --context[=CTX]  like -Z, or if CTX is specified then set the SELinux\n\
+                          or SMACK security context to CTX\n\
+ "), stdout);
++#endif
+       fputs (HELP_OPTION_DESCRIPTION, stdout);
+       fputs (VERSION_OPTION_DESCRIPTION, stdout);
+       emit_ancillary_info (PROGRAM_NAME);
+@@ -126,7 +130,7 @@ static int
+ make_ancestor (char const *dir, char const *component, void *options)
+ {
+   struct mkdir_options const *o = options;
+-
++#ifndef _WIN32
+   if (o->set_security_context
+       && defaultcon (o->set_security_context, component, S_IFDIR) < 0
+       && ! ignorable_ctx_err (errno))
+@@ -142,9 +146,14 @@ make_ancestor (char const *dir, char const *component, void *options)
+       umask (o->umask_self);
+       errno = mkdir_errno;
+     }
++#else
++  int r = mkdir (component, 0);
++#endif	
+   if (r == 0)
+     {
++#ifndef _WIN32      
+       r = (o->umask_ancestor & S_IRUSR) != 0;
++#endif      
+       announce_mkdir (dir, options);
+     }
+   return r;
+@@ -157,6 +166,7 @@ process_dir (char *dir, struct savewd *wd, void *options)
+   struct mkdir_options const *o = options;
+ 
+   /* If possible set context before DIR created.  */
++#ifndef _WIN32  
+   if (o->set_security_context)
+     {
+       if (! o->make_ancestor_function
+@@ -165,7 +175,7 @@ process_dir (char *dir, struct savewd *wd, void *options)
+         error (0, errno, _("failed to set default creation context for %s"),
+                quoteaf (dir));
+     }
+-
++#endif
+   int ret = (make_dir_parents (dir, wd, o->make_ancestor_function, options,
+                                o->mode, announce_mkdir,
+                                o->mode_bits, (uid_t) -1, (gid_t) -1, true)
+@@ -177,6 +187,7 @@ process_dir (char *dir, struct savewd *wd, void *options)
+      final component of DIR is created.  So for now, create the
+      final component with the context from previous component
+      and here we set the context for the final component. */
++#ifndef _WIN32
+   if (ret == EXIT_SUCCESS && o->set_security_context
+       && o->make_ancestor_function)
+     {
+@@ -185,7 +196,7 @@ process_dir (char *dir, struct savewd *wd, void *options)
+         error (0, errno, _("failed to restore context for %s"),
+                quoteaf (dir));
+     }
+-
++#endif
+   return ret;
+ }
+ 
+@@ -198,7 +209,9 @@ main (int argc, char **argv)
+   struct mkdir_options options;
+ 
+   options.make_ancestor_function = NULL;
++#ifndef _WIN32  
+   options.mode = S_IRWXUGO;
++#endif
+   options.mode_bits = 0;
+   options.created_directory_format = NULL;
+   options.set_security_context = NULL;
+@@ -225,11 +238,13 @@ main (int argc, char **argv)
+           options.created_directory_format = _("created directory %s");
+           break;
+         case 'Z':
++#ifndef _WIN32        
+           if (is_smack_enabled ())
+             {
+               /* We don't yet support -Z to restore context with SMACK.  */
+               scontext = optarg;
+             }
++
+           else if (is_selinux_enabled () > 0)
+             {
+               if (optarg)
+@@ -248,6 +263,7 @@ main (int argc, char **argv)
+                      _("warning: ignoring --context; "
+                        "it requires an SELinux/SMACK-enabled kernel"));
+             }
++#endif                        
+           break;
+         case_GETOPT_HELP_CHAR;
+         case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
+@@ -261,7 +277,7 @@ main (int argc, char **argv)
+       error (0, 0, _("missing operand"));
+       usage (EXIT_FAILURE);
+     }
+-
++#ifndef _WIN32
+   /* FIXME: This assumes mkdir() is done in the same process.
+      If that's not always the case we would need to call this
+      like we do when options.set_security_context.  */
+@@ -304,7 +320,7 @@ main (int argc, char **argv)
+ 
+       umask (options.umask_self);
+     }
+-
++#endif
+   return savewd_process_files (argc - optind, argv + optind,
+                                process_dir, &options);
+ }
+diff --git a/src/mktemp.c b/src/mktemp.c
+index 89f21fd7e..b151f4832 100644
+--- a/src/mktemp.c
++++ b/src/mktemp.c
+@@ -85,7 +85,7 @@ Files are created u+rw, and directories u+rwx, minus umask restrictions.\n\
+ "), stdout);
+       fputs (_("\
+   -p DIR, --tmpdir[=DIR]  interpret TEMPLATE relative to DIR; if DIR is not\n\
+-                        specified, use $TMPDIR if set, else /tmp.  With\n\
++                        specified, use $TMPDIR if set, else default temp dir.  With\n\
+                         this option, TEMPLATE must not be an absolute name;\n\
+                         unlike with -t, TEMPLATE may contain slashes, but\n\
+                         mktemp creates only the final component\n\
+@@ -93,7 +93,7 @@ Files are created u+rw, and directories u+rwx, minus umask restrictions.\n\
+       fputs (_("\
+   -t                  interpret TEMPLATE as a single file name component,\n\
+                         relative to a directory: $TMPDIR, if set; else the\n\
+-                        directory specified via -p; else /tmp [deprecated]\n\
++                        directory specified via -p; else default temp dir [deprecated]\n\
+ "), stdout);
+       fputs (HELP_OPTION_DESCRIPTION, stdout);
+       fputs (VERSION_OPTION_DESCRIPTION, stdout);
+@@ -265,12 +265,20 @@ main (int argc, char **argv)
+       if (deprecated_t_option)
+         {
+           char *env = getenv ("TMPDIR");
++#ifdef _WIN32
++          if ((env && *env) == false)
++            env = getenv ("TMP");
++#endif
+           if (env && *env)
+             dest_dir = env;
+           else if (dest_dir_arg && *dest_dir_arg)
+             dest_dir = dest_dir_arg;
+           else
++#ifndef _WIN32
+             dest_dir = "/tmp";
++#else
++            dest_dir = "/temp";//technically could  GetTempPath but ENV TMP sohuld work
++#endif
+ 
+           if (last_component (template) != template)
+             die (EXIT_FAILURE, 0,
+@@ -284,7 +292,13 @@ main (int argc, char **argv)
+           else
+             {
+               char *env = getenv ("TMPDIR");
+-              dest_dir = (env && *env ? env : "/tmp");
++#ifdef _WIN32
++              if ((env && *env) == false)
++                env = getenv ("TMP");
++              dest_dir = (env && *env ? env : "/temp");
++#else
++              dest_dir = (env && *env ? env : "/tmp")
++#endif
+             }
+           if (IS_ABSOLUTE_FILE_NAME (template))
+             die (EXIT_FAILURE, 0,
+diff --git a/src/shred.c b/src/shred.c
+index 3ec8fe1f0..373fb9258 100644
+--- a/src/shred.c
++++ b/src/shred.c
+@@ -335,6 +335,7 @@ direct_mode (int fd, bool enable)
+ {
+   if (O_DIRECT)
+     {
++#ifndef _WIN32
+       int fd_flags = fcntl (fd, F_GETFL);
+       if (0 < fd_flags)
+         {
+@@ -344,6 +345,7 @@ direct_mode (int fd, bool enable)
+           if (new_flags != fd_flags)
+             fcntl (fd, F_SETFL, new_flags);
+         }
++#endif    
+     }
+ 
+ #if HAVE_DIRECTIO && defined DIRECTIO_ON && defined DIRECTIO_OFF
+@@ -962,6 +964,7 @@ static bool
+ wipefd (int fd, char const *qname, struct randint_source *s,
+         struct Options const *flags)
+ {
++#ifndef _WIN32
+   int fd_flags = fcntl (fd, F_GETFL);
+ 
+   if (fd_flags < 0)
+@@ -974,6 +977,7 @@ wipefd (int fd, char const *qname, struct randint_source *s,
+       error (0, 0, _("%s: cannot shred append-only file descriptor"), qname);
+       return false;
+     }
++#endif    
+   return do_wipefd (fd, qname, s, flags);
+ }
+ 
+diff --git a/src/sort.c b/src/sort.c
+index 8ca7a88c4..32b4d79b0 100644
+--- a/src/sort.c
++++ b/src/sort.c
+@@ -713,7 +713,11 @@ static pid_t
+ reap (pid_t pid)
+ {
+   int status;
++#ifndef _WIN32  
+   pid_t cpid = waitpid ((pid ? pid : -1), &status, (pid ? 0 : WNOHANG));
++#else
++  pid_t cpid = waitpid ((pid ? pid : -1), &status, 0);
++#endif
+ 
+   if (cpid < 0)
+     die (SORT_FAILURE, errno, _("waiting for %s [-d]"),
+@@ -4332,7 +4336,11 @@ main (int argc, char **argv)
+     static int const sig[] =
+       {
+         /* The usual suspects.  */
++#ifndef _WIN32        
+         SIGALRM, SIGHUP, SIGINT, SIGPIPE, SIGQUIT, SIGTERM,
++#else
++        SIGINT, SIGTERM,
++#endif
+ #ifdef SIGPOLL
+         SIGPOLL,
+ #endif
+@@ -4378,8 +4386,9 @@ main (int argc, char **argv)
+         }
+ #endif
+   }
++#ifndef _WIN32  
+   signal (SIGCHLD, SIG_DFL); /* Don't inherit CHLD handling from parent.  */
+-
++#endif
+   /* The signal mask is known, so it is safe to invoke exit_cleanup.  */
+   atexit (exit_cleanup);
+ 
+diff --git a/src/stat.c b/src/stat.c
+index ecb9696ca..3bab8b85d 100644
+--- a/src/stat.c
++++ b/src/stat.c
+@@ -20,24 +20,14 @@
+ 
+ /* Keep this conditional in sync with the similar conditional in
+    ../m4/stat-prog.m4.  */
+-#if ((STAT_STATVFS || STAT_STATVFS64)                                       \
+-     && (HAVE_STRUCT_STATVFS_F_BASETYPE || HAVE_STRUCT_STATVFS_F_FSTYPENAME \
+-         || (! HAVE_STRUCT_STATFS_F_FSTYPENAME && HAVE_STRUCT_STATVFS_F_TYPE)))
+-# define USE_STATVFS 1
+-#else
+-# define USE_STATVFS 0
+-#endif
++
+ 
+ #include <stddef.h>
+ #include <stdio.h>
+ #include <sys/types.h>
++#ifndef _WIN32
+ #include <pwd.h>
+ #include <grp.h>
+-#if USE_STATVFS
+-# include <sys/statvfs.h>
+-#elif HAVE_SYS_VFS_H
+-# include <sys/vfs.h>
+-#elif HAVE_SYS_MOUNT_H && HAVE_SYS_PARAM_H
+ /* NOTE: freebsd5.0 needs sys/param.h and sys/mount.h for statfs.
+    It does have statvfs.h, but shouldn't use it, since it doesn't
+    HAVE_STRUCT_STATVFS_F_BASETYPE.  So find a clean way to fix it.  */
+@@ -53,6 +43,9 @@
+ #elif HAVE_OS_H /* BeOS */
+ # include <fs_info.h>
+ #endif
++
++#include "fsusage.h"
++
+ #include <selinux/selinux.h>
+ 
+ #include "system.h"
+@@ -74,76 +67,10 @@
+ #include "xvasprintf.h"
+ #include "statx.h"
+ 
+-#if HAVE_STATX && defined STATX_INO
+-# define USE_STATX 1
+-#else
+-# define USE_STATX 0
+-#endif
+-
+-#if USE_STATVFS
+-# define STRUCT_STATXFS_F_FSID_IS_INTEGER STRUCT_STATVFS_F_FSID_IS_INTEGER
+-# define HAVE_STRUCT_STATXFS_F_TYPE HAVE_STRUCT_STATVFS_F_TYPE
+-# if HAVE_STRUCT_STATVFS_F_NAMEMAX
+-#  define SB_F_NAMEMAX(S) ((S)->f_namemax)
+-# endif
+-# if ! STAT_STATVFS && STAT_STATVFS64
+-#  define STRUCT_STATVFS struct statvfs64
+-#  define STATFS statvfs64
+-# else
+-#  define STRUCT_STATVFS struct statvfs
+-#  define STATFS statvfs
+-# endif
+-# define STATFS_FRSIZE(S) ((S)->f_frsize)
+-#else
+-# define HAVE_STRUCT_STATXFS_F_TYPE HAVE_STRUCT_STATFS_F_TYPE
+-# if HAVE_STRUCT_STATFS_F_NAMELEN
+-#  define SB_F_NAMEMAX(S) ((S)->f_namelen)
+-# elif HAVE_STRUCT_STATFS_F_NAMEMAX
+-#  define SB_F_NAMEMAX(S) ((S)->f_namemax)
+-# endif
+-# define STATFS statfs
+-# if HAVE_OS_H /* BeOS */
+ /* BeOS has a statvfs function, but it does not return sensible values
+    for f_files, f_ffree and f_favail, and lacks f_type, f_basetype and
+    f_fstypename.  Use 'struct fs_info' instead.  */
+-NODISCARD
+-static int
+-statfs (char const *filename, struct fs_info *buf)
+-{
+-  dev_t device = dev_for_path (filename);
+-  if (device < 0)
+-    {
+-      errno = (device == B_ENTRY_NOT_FOUND ? ENOENT
+-               : device == B_BAD_VALUE ? EINVAL
+-               : device == B_NAME_TOO_LONG ? ENAMETOOLONG
+-               : device == B_NO_MEMORY ? ENOMEM
+-               : device == B_FILE_ERROR ? EIO
+-               : 0);
+-      return -1;
+-    }
+   /* If successful, buf->dev will be == device.  */
+-  return fs_stat_dev (device, buf);
+-}
+-#  define f_fsid dev
+-#  define f_blocks total_blocks
+-#  define f_bfree free_blocks
+-#  define f_bavail free_blocks
+-#  define f_bsize io_size
+-#  define f_files total_nodes
+-#  define f_ffree free_nodes
+-#  define STRUCT_STATVFS struct fs_info
+-#  define STRUCT_STATXFS_F_FSID_IS_INTEGER true
+-#  define STATFS_FRSIZE(S) ((S)->block_size)
+-# else
+-#  define STRUCT_STATVFS struct statfs
+-#  define STRUCT_STATXFS_F_FSID_IS_INTEGER STRUCT_STATFS_F_FSID_IS_INTEGER
+-#  if HAVE_STRUCT_STATFS_F_FRSIZE
+-#   define STATFS_FRSIZE(S) ((S)->f_frsize)
+-#  else
+-#   define STATFS_FRSIZE(S) 0
+-#  endif
+-# endif
+-#endif
+ 
+ #ifdef SB_F_NAMEMAX
+ # define OUT_NAMEMAX out_uint
+@@ -154,15 +81,6 @@ statfs (char const *filename, struct fs_info *buf)
+ # define OUT_NAMEMAX out_string
+ #endif
+ 
+-#if HAVE_STRUCT_STATVFS_F_BASETYPE
+-# define STATXFS_FILE_SYSTEM_TYPE_MEMBER_NAME f_basetype
+-#else
+-# if HAVE_STRUCT_STATVFS_F_FSTYPENAME || HAVE_STRUCT_STATFS_F_FSTYPENAME
+-#  define STATXFS_FILE_SYSTEM_TYPE_MEMBER_NAME f_fstypename
+-# elif HAVE_OS_H /* BeOS */
+-#  define STATXFS_FILE_SYSTEM_TYPE_MEMBER_NAME fsh_name
+-# endif
+-#endif
+ 
+ #if HAVE_GETATTRAT
+ # include <attr.h>
+@@ -258,12 +176,16 @@ print_stat (char *pformat, size_t prefix_len, char mod, char m,
+    But f_type may only exist in statfs (Cygwin).  */
+ NODISCARD
+ static char const *
+-human_fstype (STRUCT_STATVFS const *statfsbuf)
++human_fstype (struct fs_usage *statfsbuf)
+ {
++#ifdef _WIN32
++  return (const char * ) statfsbuf->fsu_fs_type;
++}
++#else
+ #ifdef STATXFS_FILE_SYSTEM_TYPE_MEMBER_NAME
+   return statfsbuf->STATXFS_FILE_SYSTEM_TYPE_MEMBER_NAME;
+ #else
+-  switch (statfsbuf->f_type)
++  switch (statfsbuf->fsu_fs_type)
+     {
+ # if defined __linux__ || defined __ANDROID__
+ 
+@@ -631,6 +553,7 @@ human_fstype (STRUCT_STATVFS const *statfsbuf)
+     }
+ #endif
+ }
++#endif !_WIN32
+ 
+ NODISCARD
+ static char *
+@@ -861,9 +784,8 @@ NODISCARD
+ static bool
+ print_statfs (char *pformat, size_t prefix_len, MAYBE_UNUSED char mod, char m,
+               int fd, char const *filename,
+-              void const *data)
++              struct fs_usage *statfsbuf)
+ {
+-  STRUCT_STATVFS const *statfsbuf = data;
+   bool fail = false;
+ 
+   switch (m)
+@@ -874,27 +796,10 @@ print_statfs (char *pformat, size_t prefix_len, MAYBE_UNUSED char mod, char m,
+ 
+     case 'i':
+       {
+-#if STRUCT_STATXFS_F_FSID_IS_INTEGER
+-        uintmax_t fsid = statfsbuf->f_fsid;
+-#else
+-        typedef unsigned int fsid_word;
+-        static_assert (alignof (STRUCT_STATVFS) % alignof (fsid_word) == 0);
+-        static_assert (offsetof (STRUCT_STATVFS, f_fsid) % alignof (fsid_word)
+-                       == 0);
+-        static_assert (sizeof statfsbuf->f_fsid % alignof (fsid_word) == 0);
+-        fsid_word const *p = (fsid_word *) &statfsbuf->f_fsid;
+ 
+         /* Assume a little-endian word order, as that is compatible
+            with glibc's statvfs implementation.  */
+-        uintmax_t fsid = 0;
+-        int words = sizeof statfsbuf->f_fsid / sizeof *p;
+-        for (int i = 0; i < words && i * sizeof *p < sizeof fsid; i++)
+-          {
+-            uintmax_t u = p[words - 1 - i];
+-            fsid |= u << (i * CHAR_BIT * sizeof *p);
+-          }
+-#endif
+-        out_uint_x (pformat, prefix_len, fsid);
++        out_uint_x (pformat, prefix_len, statfsbuf->fsu_fsid);
+       }
+       break;
+ 
+@@ -912,30 +817,25 @@ print_statfs (char *pformat, size_t prefix_len, MAYBE_UNUSED char mod, char m,
+       out_string (pformat, prefix_len, human_fstype (statfsbuf));
+       break;
+     case 'b':
+-      out_int (pformat, prefix_len, statfsbuf->f_blocks);
++      out_int (pformat, prefix_len, statfsbuf->fsu_blocks);
+       break;
+     case 'f':
+-      out_int (pformat, prefix_len, statfsbuf->f_bfree);
++      out_int (pformat, prefix_len, statfsbuf->fsu_bfree);
+       break;
+     case 'a':
+-      out_int (pformat, prefix_len, statfsbuf->f_bavail);
++      out_int (pformat, prefix_len, statfsbuf->fsu_bavail);
+       break;
+     case 's':
+-      out_uint (pformat, prefix_len, statfsbuf->f_bsize);
++      out_uint (pformat, prefix_len, statfsbuf->fsu_blocksize);
+       break;
+     case 'S':
+-      {
+-        uintmax_t frsize = STATFS_FRSIZE (statfsbuf);
+-        if (! frsize)
+-          frsize = statfsbuf->f_bsize;
+-        out_uint (pformat, prefix_len, frsize);
+-      }
++      out_uint (pformat, prefix_len, statfsbuf->fsu_blocksize);
+       break;
+     case 'c':
+-      out_uint (pformat, prefix_len, statfsbuf->f_files);
++      out_uint (pformat, prefix_len, statfsbuf->fsu_files);
+       break;
+     case 'd':
+-      out_int (pformat, prefix_len, statfsbuf->f_ffree);
++      out_int (pformat, prefix_len, statfsbuf->fsu_ffree);
+       break;
+     default:
+       fputc ('?', stdout);
+@@ -954,6 +854,7 @@ find_bind_mount (char const * name)
+   char const * bind_mount = NULL;
+ 
+   static struct mount_entry *mount_list;
++#ifndef _WIN32
+   static bool tried_mount_list = false;
+   if (!tried_mount_list) /* attempt/warn once per process.  */
+     {
+@@ -961,7 +862,7 @@ find_bind_mount (char const * name)
+         error (0, errno, "%s", _("cannot read table of mounted file systems"));
+       tried_mount_list = true;
+     }
+-
++#endif
+   struct stat name_stats;
+   if (stat (name, &name_stats) != 0)
+     return NULL;
+@@ -1261,7 +1162,7 @@ NODISCARD
+ static bool
+ do_statfs (char const *filename, char const *format)
+ {
+-  STRUCT_STATVFS statfsbuf;
++  struct fs_usage statfsbuf;
+ 
+   if (STREQ (filename, "-"))
+     {
+@@ -1270,7 +1171,7 @@ do_statfs (char const *filename, char const *format)
+       return false;
+     }
+ 
+-  if (STATFS (filename, &statfsbuf) != 0)
++  if (get_fs_usage(filename,NULL,&statfsbuf))
+     {
+       error (0, errno, _("cannot read file system information for %s"),
+              quoteaf (filename));
+@@ -1567,17 +1468,21 @@ print_stat (char *pformat, size_t prefix_len, char mod, char m,
+       out_uint (pformat, prefix_len, statbuf->st_uid);
+       break;
+     case 'U':
++#ifndef _WIN32
+       pw_ent = getpwuid (statbuf->st_uid);
+       out_string (pformat, prefix_len,
+                   pw_ent ? pw_ent->pw_name : "UNKNOWN");
++#endif ! _WIN32
+       break;
+     case 'g':
+       out_uint (pformat, prefix_len, statbuf->st_gid);
+       break;
+     case 'G':
++#ifndef _WIN32
+       gw_ent = getgrgid (statbuf->st_gid);
+       out_string (pformat, prefix_len,
+                   gw_ent ? gw_ent->gr_name : "UNKNOWN");
++#endif ! _WIN32      
+       break;
+     case 'm':
+       fail |= out_mount_point (filename, pformat, prefix_len, statbuf);
+diff --git a/src/sync.c b/src/sync.c
+index 207ce9b7e..b28670266 100644
+--- a/src/sync.c
++++ b/src/sync.c
+@@ -119,6 +119,7 @@ sync_arg (enum sync_mode mode, char const *file)
+ 
+   /* We used O_NONBLOCK above to not hang with fifos,
+      so reset that here.  */
++#ifndef _WIN32
+   int fdflags = fcntl (fd, F_GETFL);
+   if (fdflags == -1
+       || fcntl (fd, F_SETFL, fdflags & ~O_NONBLOCK) < 0)
+@@ -127,7 +128,7 @@ sync_arg (enum sync_mode mode, char const *file)
+              quoteaf (file));
+       ret = false;
+     }
+-
++#endif
+   if (ret == true)
+     {
+       int sync_status = -1;
+diff --git a/src/system.h b/src/system.h
+index b85897280..92a706af5 100644
+--- a/src/system.h
++++ b/src/system.h
+@@ -679,7 +679,12 @@ emit_ancillary_info (char const *program)
+ 
+   /* Don't output this redundant message for English locales.
+      Note we still output for 'C' so that it gets included in the man page.  */
+-  char const *lc_messages = setlocale (LC_MESSAGES, NULL);
++  char const* lc_messages =
++#ifndef  _WIN32
++	  setlocale(LC_MESSAGES, NULL);
++#else
++	  NULL;
++#endif // ! _WIN32
+   if (lc_messages && STRNCMP_LIT (lc_messages, "en_"))
+     {
+       /* TRANSLATORS: Replace LANG_CODE in this URL with your language code
+diff --git a/src/tail.c b/src/tail.c
+index 92534a592..679c0e632 100644
+--- a/src/tail.c
++++ b/src/tail.c
+@@ -337,7 +337,9 @@ named file in a way that accommodates renaming, removal and creation.\n\
+ static void
+ die_pipe (void)
+ {
++#ifndef _WIN32  
+   raise (SIGPIPE);
++#endif
+   exit (EXIT_FAILURE);
+ }
+ 
+@@ -963,7 +965,7 @@ recheck (struct File_spec *f, bool blocking)
+   bool new_file;
+   int fd = (is_stdin
+             ? STDIN_FILENO
+-            : open (f->name, O_RDONLY | (blocking ? 0 : O_NONBLOCK)));
++            : open_file (f->name, O_RDONLY | (blocking ? 0 : O_NONBLOCK)));
+ 
+   assert (valid_file_spec (f));
+ 
+@@ -1167,6 +1169,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
+ 
+           if (f[i].blocking != blocking)
+             {
++              #ifndef _WIN32
+               int old_flags = fcntl (fd, F_GETFL);
+               int new_flags = old_flags | (blocking ? 0 : O_NONBLOCK);
+               if (old_flags < 0
+@@ -1185,6 +1188,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
+                          quotef (name));
+                 }
+               else
++#endif              
+                 f[i].blocking = blocking;
+             }
+ 
+@@ -1288,13 +1292,14 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
+ 
+           /* Once the writer is dead, read the files once more to
+              avoid a race condition.  */
++#ifndef _WIN32             
+           writer_is_dead = (pid != 0
+                             && kill (pid, 0) != 0
+                             /* Handle the case in which you cannot send a
+                                signal to the writer, so kill fails and sets
+                                errno to EPERM.  */
+                             && errno != EPERM);
+-
++#endif
+           if (!writer_is_dead && xnanosleep (sleep_interval))
+             die (EXIT_FAILURE, errno, _("cannot read realtime clock"));
+ 
+@@ -1624,9 +1629,10 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
+                 {
+                   if (writer_is_dead)
+                     exit (EXIT_SUCCESS);
++#ifndef _WIN32  //not sure if we end up looping forever here...
+ 
+                   writer_is_dead = (kill (pid, 0) != 0 && errno != EPERM);
+-
++#endif
+                   if (writer_is_dead || sleep_interval <= 0)
+                     delay = 0;
+                   else if (sleep_interval < INT_MAX / 1000 - 1)
+@@ -1947,6 +1953,21 @@ tail (char const *filename, int fd, uintmax_t n_units,
+     return tail_bytes (filename, fd, n_units, read_pos);
+ }
+ 
++static int open_file(const char* filename, int flags) {
++	int fd;
++#ifndef _WIN32
++	fd = open(filename, flags);
++#else
++	fd = -1;
++	HANDLE winHandle = CreateFile(filename, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
++	if (winHandle > 0) {
++		fd = _open_osfhandle((intptr_t)winHandle, _O_RDONLY);
++		if (fd > 0 && flags & O_BINARY)
++			xset_binary_mode(fd, O_BINARY);
++	}
++#endif
++	return fd;
++}
+ /* Display the last N_UNITS units of the file described by F.
+    Return true if successful.  */
+ 
+@@ -1965,7 +1986,8 @@ tail_file (struct File_spec *f, uintmax_t n_units)
+       xset_binary_mode (STDIN_FILENO, O_BINARY);
+     }
+   else
+-    fd = open (f->name, O_RDONLY | O_BINARY);
++	  fd = open_file(f->name, O_RDONLY | O_BINARY);
++
+ 
+   f->tailable = !(reopen_inaccessible_files && fd == -1);
+ 
+@@ -2260,7 +2282,11 @@ parse_options (int argc, char **argv,
+   if (pid && !forever)
+     error (0, 0,
+            _("warning: PID ignored; --pid=PID is useful only when following"));
++#ifndef _WIN32  //not sure if we end up looping forever here...
+   else if (pid && kill (pid, 0) != 0 && errno == ENOSYS)
++#else
++  else if (pid)
++#endif  
+     {
+       error (0, 0, _("warning: --pid=PID is not supported on this system"));
+       pid = 0;
+diff --git a/src/wc.c b/src/wc.c
+index becceda98..3267d77c9 100644
+--- a/src/wc.c
++++ b/src/wc.c
+@@ -840,7 +840,11 @@ main (int argc, char **argv)
+   page_size = getpagesize ();
+   /* Line buffer stdout to ensure lines are written atomically and immediately
+      so that processes running in parallel do not intersperse their output.  */
+-  setvbuf (stdout, NULL, _IOLBF, 0);
++#ifndef _WIN32
++  setvbuf(stdout, NULL, _IOLBF, 0);
++#else
++  setvbuf(stdout, NULL, _IONBF, 0); //windows treats _IOLBF the same as _IOFBF in addition a buffer of NULL and size of 0 is invalid unless you are doing IONBF.
++#endif // !_WIN32
+ 
+   posixly_correct = (getenv ("POSIXLY_CORRECT") != NULL);
+ 
+diff --git a/src/whoami.c b/src/whoami.c
+index a93c0c6a2..68848bc99 100644
+--- a/src/whoami.c
++++ b/src/whoami.c
+@@ -21,8 +21,12 @@
+ #include <config.h>
+ #include <stdio.h>
+ #include <sys/types.h>
++#ifndef _WIN32
+ #include <pwd.h>
+-
++#else
++#define WIN32_LEAN_AND_MEAN
++#include <Windows.h>
++#endif
+ #include "system.h"
+ #include "die.h"
+ #include "error.h"
+@@ -81,10 +85,17 @@ main (int argc, char **argv)
+ 
+   errno = 0;
+   uid = geteuid ();
++#ifndef _WIN32  
+   pw = (uid == NO_UID && errno ? NULL : getpwuid (uid));
+   if (!pw)
+     die (EXIT_FAILURE, errno, _("cannot find name for user ID %lu"),
+          (unsigned long int) uid);
+   puts (pw->pw_name);
++#else
++  char buffer[1024];
++  DWORD len = sizeof(buffer);
++  BOOL res = GetUserName(buffer, &len);
++  puts (buffer);
++#endif
+   return EXIT_SUCCESS;
+ }

@@ -1,0 +1,49 @@
+name: Tool Builds
+on:
+  push:
+    branches-ignore:
+      - trash
+  schedule:
+    - cron: '30 5 * * *'
+
+env:
+  CI_REQ_DOTNET_SDK_VER: 6.0.401
+  NUKE_TELEMETRY_OPTOUT: 1
+  MSYS: "winsymlinks:native wincmdln"
+  MSYS2_ARG_CONV_EXCL: "/a;/b;/c;/d;/e;/f;/g;/h;/i;/j;/k;/l;/m;/n;/o;/p;/q;/r;/s;/u;/v;/w;/x;/y;/z;/0;/1;/2;/3;/4;/5;/6;/7;/8;/9;/A;/B;/C;/D;/E;/F;/G;/H;/I;/J;/K;/L;/M;/N;/O;/P;/Q;/R;/S;/T;/U;/V;/W;/X;/Y;/Z"
+  MSYS2_PATH_TYPE: inherit
+  WLB_BASE_FOLDER: "d:/WLB"
+  MSYSTEM: UCRT64
+  MSYS_PATH: d:/msys64
+
+jobs:
+  build_nodeps:
+    name: No Dep
+    strategy:
+      fail-fast: false
+      matrix:
+        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,highlight]
+    uses: ./.github/workflows/do_build.yml
+    with:
+      BuildPkg: ${{ matrix.BuildPkg }}
+  #we always run these as they will fail at the artifact fetch step if the build package(s) they need did not complete successfully
+  build_grep:
+    if: success() || failure()
+    needs: build_nodeps
+    name: Build grep
+    uses: ./.github/workflows/do_build.yml
+    with:
+      BuildPkg: "grep"
+      RequiredDeps: |
+        pcre2
+  build_wget:
+    if: success() || failure()
+    needs: build_nodeps
+    name: Build wget
+    uses: ./.github/workflows/do_build.yml
+    with:
+      BuildPkg: "wget"
+      RequiredDeps: |
+        pcre2
+        libpsl
+        zlib

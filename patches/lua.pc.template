@@ -1,0 +1,11 @@
+version=LUA_VERSION
+prefix=LUA_ROOT
+exec_prefix=${prefix}
+libdir= ${prefix}/lib
+includedir=${prefix}/include
+
+Name: Lua
+Description: An Extensible Extension Language
+Version: ${version}
+Libs: -llua -L${libdir}
+Cflags: -I${includedir}

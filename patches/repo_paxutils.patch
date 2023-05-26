@@ -1,0 +1,83 @@
+diff --git a/lib/rmt.h b/lib/rmt.h
+index 9ced4e2..b72c5bf 100644
+--- a/lib/rmt.h
++++ b/lib/rmt.h
+@@ -35,11 +35,22 @@ extern bool force_local_option;
+    Distributed File System (DFS).  However, when --force-local, a
+    filename is never remote.  */
+ 
++#ifndef _WIN32
+ #define _remdev(dev_name) \
+   (!force_local_option && (rmt_dev_name__ = strchr (dev_name, ':')) \
+    && rmt_dev_name__ > (dev_name) \
+    && ! memchr (dev_name, '/', rmt_dev_name__ - (dev_name)))
+ 
++#else
++//for windows we need to make sure the colon is not a drive letter;0  sorry 1 char hosts you are screwed
++#define _remdev(dev_name) \
++  (!force_local_option && (strlen(dev_name) < 2 || dev_name[1] != ':') && (rmt_dev_name__ = strchr (dev_name, ':')) \
++   && rmt_dev_name__ > (dev_name) \
++   && ! memchr (dev_name, '/', rmt_dev_name__ - (dev_name)))
++
++#endif // !_WIN32
++
++
+ #define _isrmt(fd) \
+   ((fd) >= __REM_BIAS)
+ 
+diff --git a/lib/rtapelib.c b/lib/rtapelib.c
+index 82522b9..4a87c17 100644
+--- a/lib/rtapelib.c
++++ b/lib/rtapelib.c
+@@ -353,7 +353,7 @@ encode_oflag (char *buf, int oflag)
+ static char const *
+ sys_reset_uid_gid (void)
+ {
+-#if !MSDOS
++#if !defined(MSDOS) && !defined(_WIN32)
+   uid_t uid = getuid ();
+   gid_t gid = getgid ();
+   struct passwd *pw = getpwuid (uid);
+@@ -497,8 +497,11 @@ rmt_open__ (const char *file_name, int open_mode, int bias,
+ 	errno = e;
+ 	return -1;
+       }
+-
++#ifdef _WIN32
++  return -1;
++#else
+     status = fork ();
++#endif
+     if (status == -1)
+       {
+ 	int e = errno;
+diff --git a/lib/system.h b/lib/system.h
+index 2b3d50b..b5407b9 100644
+--- a/lib/system.h
++++ b/lib/system.h
+@@ -245,11 +245,20 @@ extern int errno;
+ # define S_IXOTH 0000001
+ #endif
+ 
+-#define MODE_WXUSR	(S_IWUSR | S_IXUSR)
+-#define MODE_R		(S_IRUSR | S_IRGRP | S_IROTH)
+-#define MODE_RW		(S_IWUSR | S_IWGRP | S_IWOTH | MODE_R)
+-#define MODE_RWX	(S_IXUSR | S_IXGRP | S_IXOTH | MODE_RW)
+-#define MODE_ALL	(S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
++#ifndef _WIN32
++#define MODE_WXUSR     (S_IWUSR | S_IXUSR)
++#define MODE_R         (S_IRUSR | S_IRGRP | S_IROTH)
++#define MODE_RW(S_IWUSR | S_IWGRP | S_IWOTH | MODE_R) //owner write group write, other write
++#define MODE_RWX       (S_IXUSR | S_IXGRP | S_IXOTH | MODE_RW)
++#define MODE_ALL       (S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
++#else
++#include <sys/stat.h>
++#define MODE_WXUSR		_S_IWRITE
++#define MODE_R			_S_IREAD
++#define MODE_RW			_S_IWRITE
++#define MODE_RWX		MODE_RW
++#define MODE_ALL		MODE_RWX
++#endif
+ 
+ /* Include <unistd.h> before any preprocessor test of _POSIX_VERSION.  */
+ #include <unistd.h>

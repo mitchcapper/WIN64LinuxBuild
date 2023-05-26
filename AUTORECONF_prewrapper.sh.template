@@ -1,0 +1,5 @@
+#!/bin/bash
+pushd .
+SCRIPT_PATH gnulib_tool_py_remove_nmd_makefiles
+popd
+exec autoreconf "$@"

@@ -1,0 +1,196 @@
+diff --git a/lib/dirchownmod.c b/lib/dirchownmod.c
+index b3dbac3374..992b810c97 100644
+--- a/lib/dirchownmod.c
++++ b/lib/dirchownmod.c
+@@ -62,6 +62,7 @@ dirchownmod (int fd, char const *dir, mode_t mkdir_mode,
+              uid_t owner, gid_t group,
+              mode_t mode, mode_t mode_bits)
+ {
++#ifndef _WIN32
+   struct stat st;
+   int result = (fd < 0 ? stat (dir, &st) : fstat (fd, &st));
+ 
+@@ -138,4 +139,7 @@ dirchownmod (int fd, char const *dir, mode_t mkdir_mode,
+     }
+ 
+   return result;
++#else
++  return 0;
++#endif
+ }
+diff --git a/lib/idcache.c b/lib/idcache.c
+index ff1233aa17..3254e05919 100644
+--- a/lib/idcache.c
++++ b/lib/idcache.c
+@@ -22,8 +22,10 @@
+ #include <stddef.h>
+ #include <stdio.h>
+ #include <string.h>
++#ifndef _WIN32
+ #include <pwd.h>
+ #include <grp.h>
++#endif
+ 
+ #include <unistd.h>
+ 
+@@ -68,6 +70,13 @@ static struct userid *nogroup_alist;
+ char *
+ getuser (uid_t uid)
+ {
++#ifdef _WIN32
++  const char * user = getenv("USERNAME");
++  char * ret = xmalloc ( (strlen (user) + 1)*sizeof(char));
++  strcpy (ret, user);
++  return ret;
++
++#else
+   struct userid *tail;
+   struct userid *match = NULL;
+ 
+@@ -94,6 +103,7 @@ getuser (uid_t uid)
+     }
+ 
+   return match->name[0] ? match->name : NULL;
++  #endif
+ }
+ 
+ /* Translate USER to a UID, with cache.
+@@ -104,6 +114,9 @@ getuser (uid_t uid)
+ uid_t *
+ getuidbyname (const char *user)
+ {
++#ifdef _WIN32
++  return 2;
++#else
+   struct userid *tail;
+   struct passwd *pwent;
+ 
+@@ -143,6 +156,7 @@ getuidbyname (const char *user)
+   tail->next = nouser_alist;
+   nouser_alist = tail;
+   return NULL;
++#endif
+ }
+ 
+ /* Translate GID to a group name, with cache, or NULL if unresolved.  */
+@@ -150,6 +164,12 @@ getuidbyname (const char *user)
+ char *
+ getgroup (gid_t gid)
+ {
++#ifdef _WIN32
++  const char * group = "Users";
++    char * ret = xmalloc ( sizeof(char)  * ( strlen (group) + 1));
++    strcpy(ret, group);
++    return ret;
++#else
+   struct userid *tail;
+   struct userid *match = NULL;
+ 
+@@ -176,6 +196,7 @@ getgroup (gid_t gid)
+     }
+ 
+   return match->name[0] ? match->name : NULL;
++  #endif
+ }
+ 
+ /* Translate GROUP to a GID, with cache.
+@@ -186,6 +207,9 @@ getgroup (gid_t gid)
+ gid_t *
+ getgidbyname (const char *group)
+ {
++  #ifdef _WIN32
++    return 2;
++  #else
+   struct userid *tail;
+   struct group *grent;
+ 
+@@ -225,4 +249,5 @@ getgidbyname (const char *group)
+   tail->next = nogroup_alist;
+   nogroup_alist = tail;
+   return NULL;
++  #endif
+ }
+diff --git a/lib/savewd.c b/lib/savewd.c
+index 4eddba32dc..dcddb342a0 100644
+--- a/lib/savewd.c
++++ b/lib/savewd.c
+@@ -70,7 +70,11 @@ savewd_save (struct savewd *wd)
+           /* "Save" the initial working directory by forking a new
+              subprocess that will attempt all the work from the chdir
+              until the next savewd_restore.  */
++#ifndef _WIN32             
+           wd->val.child = fork ();
++#else
++          assert(0);//should not get here in windows hopefully
++#endif
+           if (wd->val.child != 0)
+             {
+               if (0 < wd->val.child)
+@@ -204,8 +208,12 @@ savewd_restore (struct savewd *wd, int status)
+         if (0 < child)
+           {
+             int child_status;
++#ifndef _WIN32
+             while (waitpid (child, &child_status, 0) < 0)
+               assure (errno == EINTR);
++#else
++            assert(0);//should not get here in windows hopefully
++#endif              
+             wd->val.child = -1;
+             if (! WIFEXITED (child_status))
+               raise (WTERMSIG (child_status));
+diff --git a/lib/userspec.c b/lib/userspec.c
+index 5958883ff4..b0912df1fc 100644
+--- a/lib/userspec.c
++++ b/lib/userspec.c
+@@ -24,8 +24,12 @@
+ 
+ #include <stdio.h>
+ #include <sys/types.h>
++#ifndef _WIN32
+ #include <pwd.h>
+ #include <grp.h>
++#else
++#include "idcache.h"
++#endif
+ 
+ #if HAVE_SYS_PARAM_H
+ # include <sys/param.h>
+@@ -96,7 +100,7 @@ is_number (const char *str)
+   return true;
+ }
+ #endif
+-
++#ifndef _WIN32
+ static char const *
+ parse_with_separator (char const *spec, char const *separator,
+                       uid_t *uid, gid_t *gid,
+@@ -284,15 +288,27 @@ parse_user_spec_warn (char const *spec, uid_t *uid, gid_t *gid,
+     *pwarn = warn;
+   return error_msg;
+ }
+-
++#endif
+ /* Like parse_user_spec_warn, but generate only errors; no warnings.  */
+ 
+ char const *
+ parse_user_spec (char const *spec, uid_t *uid, gid_t *gid,
+                  char **username, char **groupname)
+ {
++#ifdef _WIN32
++  (*uid) = getuidbyname("");
++  (*gid) = getgidbyname("");
++  (*username) = getuser(2);
++  (*groupname) = getgroup(2);
++  return NULL;
++#else
+   return parse_user_spec_warn (spec, uid, gid, username, groupname, NULL);
++#endif
+ }
++#ifdef _WIN32
++uid_t geteuid (void) { return getuidbyname(""); }
++uid_t getegid (void) { return getgidbyname(""); }
++#endif
+ 
+ #ifdef TEST
+ 

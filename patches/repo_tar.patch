@@ -1,0 +1,741 @@
+diff --git a/lib/wordsplit.c b/lib/wordsplit.c
+index 56837c32..d297a1fd 100644
+--- a/lib/wordsplit.c
++++ b/lib/wordsplit.c
+@@ -25,8 +25,11 @@
+ #include <string.h>
+ #include <stdio.h>
+ #include <stdarg.h>
++#ifndef _WIN32
+ #include <pwd.h>
++#else
+ #include <glob.h>
++#endif
+ 
+ #if ENABLE_NLS
+ # include <gettext.h>
+@@ -1692,7 +1695,8 @@ wordsplit_trimws (struct wordsplit *wsp)
+   wsnode_nullelim (wsp);
+   return 0;
+ }
+-
++#ifndef _WIN32
++//Note could do for win32 just look at which.exe's tilde
+ static int
+ wordsplit_tildexpand (struct wordsplit *wsp)
+ {
+@@ -1765,7 +1769,7 @@ wordsplit_tildexpand (struct wordsplit *wsp)
+   free (uname);
+   return 0;
+ }
+-
++#endif
+ static int
+ isglob (const char *s, int l)
+ {
+@@ -2307,8 +2311,10 @@ static struct exptab exptab[] = {
+     wordsplit_cmdexp },
+   { N_("coalesce list"),        0,                EXPOPT_NEG|EXPOPT_COALESCE,
+     NULL },
++#ifndef _WIN32
+   { N_("tilde expansion"),      WRDSF_PATHEXPAND, 0,
+     wordsplit_tildexpand },
++#endif
+   { N_("variable expansion"),   WRDSF_NOVAR,      EXPOPT_NEG,
+     wordsplit_varexp },
+   { N_("quote removal"),        0,                EXPOPT_NEG,
+diff --git a/src/checkpoint.c b/src/checkpoint.c
+index 5a0eade4..da30479f 100644
+--- a/src/checkpoint.c
++++ b/src/checkpoint.c
+@@ -16,12 +16,18 @@
+ 
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+-
++#define _WINNT_
++#define _WINSOCK2API_
++#define _WINSOCKAPI_
+ #include <system.h>
+ #include "common.h"
+ #include "wordsplit.h"
+ #include <sys/ioctl.h>
++#ifndef _WIN32
+ #include <termios.h>
++#else
++#include <sys/time.h>
++#endif
+ #include "fprintftime.h"
+ #include <signal.h>
+ 
+@@ -429,7 +435,10 @@ run_checkpoint_actions (bool do_write)
+ 	case cop_wait:
+ 	  {
+ 	    int n;
++#ifndef _WIN32
+ 	    sigwait (&sigs, &n);
++#endif // !_WIN32
++
+ 	  }
+ 	}
+     }
+diff --git a/src/common.h b/src/common.h
+index f53af9f4..ee4a0835 100644
+--- a/src/common.h
++++ b/src/common.h
+@@ -20,6 +20,16 @@
+ /* Declare the GNU tar archive format.  */
+ #include "tar.h"
+ 
++#ifdef _WIN32
++#  define geteuid() (-1)
++#  define getegid() (-1)
++#  define getgid() (-1)
++#  define getuid() (-1)
++#define _WINNT_
++#define _WINSOCK2API_
++#define _WINSOCKAPI_
++#endif
++
+ /* The checksum field is filled with this while the checksum is computed.  */
+ #define CHKBLANKS	"        "	/* 8 blanks, no null */
+ 
+@@ -342,6 +352,11 @@ GLOBAL bool posixly_correct;
+ 
+ /* File descriptor for archive file.  */
+ GLOBAL int archive;
++#ifndef _WIN32
++#define archive_child archive
++#else
++GLOBAL int archive_child;
++#endif
+ 
+ /* Nonzero when outputting to /dev/null.  */
+ GLOBAL bool dev_null_output;
+@@ -739,7 +754,9 @@ void write_error_details (char const *name, size_t status, size_t size);
+ _Noreturn void write_fatal (char const *name);
+ _Noreturn void write_fatal_details (char const *name, ssize_t status, size_t size);
+ 
++#ifndef _WIN32
+ pid_t xfork (void);
++#endif // !_WIN32
+ void xpipe (int fd[2]);
+ 
+ void *page_aligned_alloc (void **ptr, size_t size);
+diff --git a/src/extract.c b/src/extract.c
+index aec5de69..0178712e 100644
+--- a/src/extract.c
++++ b/src/extract.c
+@@ -1609,6 +1609,9 @@ extract_symlink (char *file_name, int typeflag)
+ }
+ 
+ #if S_IFCHR || S_IFBLK
++#ifndef S_IFBLK
++# define S_IFBLK 0
++#endif
+ static int
+ extract_node (char *file_name, int typeflag)
+ {
+diff --git a/src/map.c b/src/map.c
+index e0a3bc16..2bf47cff 100644
+--- a/src/map.c
++++ b/src/map.c
+@@ -21,7 +21,9 @@
+ #include "common.h"
+ #include "wordsplit.h"
+ #include <hash.h>
++#ifndef _WIN32
+ #include <pwd.h>
++#endif
+ 
+ struct mapentry
+ {
+@@ -189,8 +191,12 @@ static Hash_table *owner_map;
+ static uintmax_t
+ name_to_uid (char const *name)
+ {
++#ifndef _WIN32
+   struct passwd *pw = getpwnam (name);
+   return pw ? pw->pw_uid : UINTMAX_MAX;
++#else
++  return UINTMAX_MAX;
++#endif
+ }
+ 
+ void
+@@ -239,8 +245,12 @@ static Hash_table *group_map;
+ static uintmax_t
+ name_to_gid (char const *name)
+ {
++#ifndef _WIN32
+   struct group *gr = getgrnam (name);
+   return gr ? gr->gr_gid : UINTMAX_MAX;
++#else
++  return UINTMAX_MAX;
++#endif
+ }
+ 
+ void
+diff --git a/src/misc.c b/src/misc.c
+index 0a84c065..3e21cb4a 100644
+--- a/src/misc.c
++++ b/src/misc.c
+@@ -1191,6 +1191,7 @@ file_removed_diag (const char *name, bool top_level,
+     diagfn (name);
+ }
+ 
++#ifndef _WIN32
+ /* Fork, aborting if unsuccessful.  */
+ pid_t
+ xfork (void)
+@@ -1200,6 +1201,7 @@ xfork (void)
+     call_arg_fatal ("fork", _("child process"));
+   return p;
+ }
++#endif
+ 
+ /* Create a pipe, aborting if unsuccessful.  */
+ void
+diff --git a/src/names.c b/src/names.c
+index 14541a31..fbfa26f7 100644
+--- a/src/names.c
++++ b/src/names.c
+@@ -473,6 +473,7 @@ static gid_t cached_no_such_gid;
+ void
+ uid_to_uname (uid_t uid, char **uname)
+ {
++#ifndef _WIN32
+   struct passwd *passwd;
+ 
+   if (uid != 0 && uid == cached_no_such_uid)
+@@ -497,12 +498,16 @@ uid_to_uname (uid_t uid, char **uname)
+ 	}
+     }
+   *uname = xstrdup (cached_uname);
++#else
++  *uname = xstrdup ("");
++#endif
+ }
+ 
+ /* Given GID, find the corresponding GNAME.  */
+ void
+ gid_to_gname (gid_t gid, char **gname)
+ {
++#ifndef _WIN32
+   struct group *group;
+ 
+   if (gid != 0 && gid == cached_no_such_gid)
+@@ -527,12 +532,16 @@ gid_to_gname (gid_t gid, char **gname)
+ 	}
+     }
+   *gname = xstrdup (cached_gname);
++#else
++  *gname = xstrdup ("");
++#endif
+ }
+ 
+ /* Given UNAME, set the corresponding UID and return 1, or else, return 0.  */
+ int
+ uname_to_uid (char const *uname, uid_t *uidp)
+ {
++#ifndef _WIN32
+   struct passwd *passwd;
+ 
+   if (cached_no_such_uname
+@@ -557,12 +566,16 @@ uname_to_uid (char const *uname, uid_t *uidp)
+     }
+   *uidp = cached_uid;
+   return 1;
++#else
++  return 0;
++#endif
+ }
+ 
+ /* Given GNAME, set the corresponding GID and return 1, or else, return 0.  */
+ int
+ gname_to_gid (char const *gname, gid_t *gidp)
+ {
++#ifndef _WIN32
+   struct group *group;
+ 
+   if (cached_no_such_gname
+@@ -587,6 +600,9 @@ gname_to_gid (char const *gname, gid_t *gidp)
+     }
+   *gidp = cached_gid;
+   return 1;
++#else
++  return 0;
++#endif
+ }
+ 
+ 
+diff --git a/src/system.c b/src/system.c
+index 2988ed08..633614d3 100644
+--- a/src/system.c
++++ b/src/system.c
+@@ -16,14 +16,26 @@
+    with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
+ #include <system.h>
++#include "execute.h"
++#include "spawn.h"
++#include <sys/wait.h>
+ #include <system-ioctl.h>
+-
++//rather than manually include the entire windows header lets just define these.
++#ifdef _WIN32
++#ifndef DWORD
++typedef unsigned long       DWORD;
++#endif
++#ifndef HANDLE
++typedef void* HANDLE;
++#endif // !HANDLE
++#endif
+ #include "common.h"
+ #include <priv-set.h>
+ #include <rmt.h>
+ #include <signal.h>
+ #include <wordsplit.h>
+ 
++#ifndef _WIN32
+ static _Noreturn void
+ xexec (const char *cmd)
+ {
+@@ -37,7 +49,7 @@ xexec (const char *cmd)
+   execv ("/bin/sh", argv);
+   exec_fatal (cmd);
+ }
+-
++#endif // !_WIN32
+ /* True if the archive is seekable via ioctl and MTIOCTOP,
+    or if it is not known whether it is seekable.
+    False if it is known to be not seekable.  */
+@@ -230,8 +242,10 @@ sys_spawn_shell (void)
+ {
+   pid_t child;
+   const char *shell = getenv ("SHELL");
++
+   if (! shell)
+     shell = "/bin/sh";
++#ifndef _WIN32
+   child = xfork ();
+   if (child == 0)
+     {
+@@ -249,6 +263,20 @@ sys_spawn_shell (void)
+ 	    break;
+ 	  }
+     }
++#else
++
++  char *arg_arr[3];
++  arg_arr[0] = "-sh";
++  arg_arr[1] =  "-i";
++  arg_arr[2] =  NULL;
++
++
++  errno = execute(shell,shell,(void*)arg_arr,NULL,false,false,false,false,true,false,NULL);
++  if (errno != EINTR)
++	  {
++	    waitpid_error (shell);
++	  }
++#endif
+ }
+ 
+ bool
+@@ -360,6 +388,7 @@ sys_child_open_for_compress (void)
+ 
+   signal (SIGPIPE, SIG_IGN);
+   xpipe (parent_pipe);
++#ifndef _WIN32
+   child_pid = xfork ();
+ 
+   if (child_pid > 0)
+@@ -379,6 +408,8 @@ sys_child_open_for_compress (void)
+   xdup2 (parent_pipe[PREAD], STDIN_FILENO);
+   xclose (parent_pipe[PWRITE]);
+ 
++#endif
++
+   /* Check if we need a grandchild tar.  This happens only if either:
+      a) the file is to be accessed by rmt: compressor doesn't know how;
+      b) the file is not a plain file.  */
+@@ -393,8 +424,8 @@ sys_child_open_for_compress (void)
+ 	 compressor.  */
+       if (strcmp (archive_name_array[0], "-"))
+ 	{
+-	  archive = creat (archive_name_array[0], MODE_RW);
+-	  if (archive < 0)
++		  archive_child = creat(archive_name_array[0], MODE_RW);
++		  if (archive_child < 0)
+ 	    {
+ 	      int saved_errno = errno;
+ 
+@@ -403,12 +434,56 @@ sys_child_open_for_compress (void)
+ 	      errno = saved_errno;
+ 	      open_fatal (archive_name_array[0]);
+ 	    }
+-	  xdup2 (archive, STDOUT_FILENO);
++#ifndef _WIN32
++		  xdup2(archive_child, STDOUT_FILENO);
++#endif
+ 	}
+       priv_set_restore_linkdir ();
++#ifdef _WIN32
++	  char* argv[2];
++
++	  argv[0] = (char*)use_compress_program_option;//we cant use sh in windows to execute the command
++	  argv[1] = NULL;
++	  archive = parent_pipe[PWRITE];
++	  /*int fd[2];
++	  fd[1] = archive;
++	  fd[0] = archive_child;*/
++	  //return create_pipe_out(_("tar (child)"),"/bin/sh",argv,NULL,NULL,NULL,true,true,fd);
++	  int new_pid=0;
++	  posix_spawn_file_actions_t action;
++	  //posix_spawnattr_t attr; //dont think any flags are relaly supported other than process group looking through gnu spawni.c code
++	  posix_spawn_file_actions_init(&action);
++	  //posix_spawnattr_init(&attr);
++	  //posix_spawnattr_setsigmask(&attr, 0);
++	  //posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
++	  
++//	  dlog("OK so tars write to child pipe is: %d (%p) and the childs read end of that pipe is: %d (%p)  the child stdout is: %d", parent_pipe[PWRITE],_get_osfhandle(parent_pipe[PWRITE]),parent_pipe[PREAD], _get_osfhandle(parent_pipe[PREAD]), archive_child);
++  posix_spawn_file_actions_adddup2(&action, parent_pipe[PREAD], STDIN_FILENO);
++  posix_spawn_file_actions_addclose(&action, parent_pipe[PWRITE]);
++  //posix_spawn_file_actions_addclose(&action, 0);
++  //posix_spawn_file_actions_addclose(&action, 1);
++  posix_spawn_file_actions_adddup2(&action, archive_child, STDOUT_FILENO);
++  //dlog("Before spawn parent_pipe[PREAD] %d", parent_pipe[PREAD]);
++  int spawn_res = posix_spawnp(&new_pid, use_compress_program_option, &action,NULL,argv,NULL);
++  //dlog("After spawn parent_pipe[PREAD] %d", parent_pipe[PREAD]);
++  char* errMsg = "";
++  char* errMsg2 = "";
++  if (spawn_res != 0) {
++	  errMsg = strdup( strerror(errno));
++	  errMsg2 = strdup(strerror(spawn_res));
++  }
++  //dlog("child proc spawned pid is: %d and spawn res: %d err msg: %s -- %s", new_pid, spawn_res, errMsg, errMsg2);
++  xclose(parent_pipe[PREAD]);
++  //int pid= create_pipe_bidi(_("tar (child)"), use_compress_program_option,argv,NULL,true,true,true,fd);
++  return new_pid;
++  #else
+       xexec (use_compress_program_option);
++#endif
+     }
+-
++#ifdef _WIN32
++  printf("Grandchild fork not implemented yet for WIN32 but prolly can");
++  exit(1);
++#else
+   /* We do need a grandchild tar.  */
+ 
+   xpipe (child_pipe);
+@@ -491,10 +566,15 @@ sys_child_open_for_compress (void)
+     }
+ 
+   wait_for_grandchild (grandchild_pid);
++  #endif
+ }
+-
++#ifndef _WIN32
+ static void
+ run_decompress_program (void)
++#else
++static int
++run_decompress_program (posix_spawn_file_actions_t * action, int fd_close_on_success)
++#endif
+ {
+   int i;
+   const char *p, *prog = NULL;
+@@ -521,7 +601,23 @@ run_decompress_program (void)
+ 	      sizeof(ws.ws_wordv[0])*ws.ws_wordc);
+       ws.ws_wordv[ws.ws_wordc] = (char *) "-d";
+       prog = p;
++#ifndef _WIN32
+       execvp (ws.ws_wordv[0], ws.ws_wordv);
++#else
++	  int new_pid = 0;
++	  int spawn_res = posix_spawnp(&new_pid, ws.ws_wordv[0], action, NULL, ws.ws_wordv, NULL);
++	  char* errMsg = "";
++	  char* errMsg2 = "";
++	  if (spawn_res != 0) {
++		  errMsg = strdup(strerror(errno));
++		  errMsg2 = strdup(strerror(spawn_res));
++	  }
++	  //dlog("decompress attempt at child proc spawned pid is: %d and spawn res: %d err msg: %s -- %s", new_pid, spawn_res, errMsg, errMsg2);
++	  if (spawn_res == 0) {
++		  xclose(fd_close_on_success);
++		  return new_pid;
++	  }
++#endif // !_WIN32
+       ws.ws_wordv[ws.ws_wordc] = NULL;
+     }
+   if (!prog)
+@@ -537,8 +633,9 @@ sys_child_open_for_uncompress (void)
+   int child_pipe[2];
+   pid_t grandchild_pid;
+   pid_t child_pid;
+-
+   xpipe (parent_pipe);
++#ifndef _WIN32
++
+   child_pid = xfork ();
+ 
+   if (child_pid > 0)
+@@ -557,7 +654,7 @@ sys_child_open_for_uncompress (void)
+ 
+   xdup2 (parent_pipe[PWRITE], STDOUT_FILENO);
+   xclose (parent_pipe[PREAD]);
+-
++#endif
+   /* Check if we need a grandchild tar.  This happens only if either:
+      a) we're reading stdin: to force unblocking;
+      b) the file is to be accessed by rmt: compressor doesn't know how;
+@@ -570,14 +667,35 @@ sys_child_open_for_uncompress (void)
+       /* We don't need a grandchild tar.  Open the archive and launch the
+ 	 uncompressor.  */
+ 
+-      archive = open (archive_name_array[0], O_RDONLY | O_BINARY, MODE_RW);
+-      if (archive < 0)
++      archive_child = open (archive_name_array[0], O_RDONLY | O_BINARY, MODE_RW);
++      if (archive_child < 0)
+ 	open_fatal (archive_name_array[0]);
+-      xdup2 (archive, STDIN_FILENO);
++#ifndef _WIN32
++	  xdup2 (archive_child, STDIN_FILENO);
++#else
++	  archive = parent_pipe[PREAD];
++	  posix_spawn_file_actions_t action;
++	  posix_spawn_file_actions_init(&action);
++
++	  //dlog("OK so tars write to child pipe is: %d (%p) and the childs read end of that pipe is: %d (%p)  the child stdout is: %d", parent_pipe[PWRITE], _get_osfhandle(parent_pipe[PWRITE]), parent_pipe[PREAD], _get_osfhandle(parent_pipe[PREAD]), archive_child);
++	  posix_spawn_file_actions_adddup2(&action, parent_pipe[PWRITE], STDOUT_FILENO);
++	  posix_spawn_file_actions_addclose(&action, parent_pipe[PREAD]);
++	  posix_spawn_file_actions_adddup2(&action, archive_child, STDIN_FILENO);
++#endif
+       priv_set_restore_linkdir ();
++#ifdef _WIN32
++
++	  return run_decompress_program(&action, parent_pipe[PWRITE]);
++#else
+       run_decompress_program ();
+-    }
++#endif // _WIN32
+ 
++		  
++    }
++#ifdef _WIN32
++  printf("Can't do grandchildren yet 2 win32 could potentially if we needed to");
++  exit(1);
++#else
+   /* We do need a grandchild tar.  */
+ 
+   xpipe (child_pipe);
+@@ -646,9 +764,10 @@ sys_child_open_for_uncompress (void)
+   xclose (STDOUT_FILENO);
+ 
+   wait_for_grandchild (grandchild_pid);
++#endif
+ }
+ 
+-
++
+ 
+ static void
+ dec_to_env (char const *envar, uintmax_t num)
+@@ -757,6 +876,7 @@ sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
+   int p[2];
+ 
+   xpipe (p);
++  #ifndef _WIN32
+   pipe_handler = signal (SIGPIPE, SIG_IGN);
+   global_pid = xfork ();
+ 
+@@ -774,6 +894,24 @@ sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
+ 
+   priv_set_restore_linkdir ();
+   xexec (to_command_option);
++#else
++  posix_spawn_file_actions_t action;
++  posix_spawn_file_actions_init(&action);
++  posix_spawn_file_actions_addclose(&action, p[PWRITE]);
++  posix_spawn_file_actions_adddup2(&action, p[PREAD], STDIN_FILENO);
++  stat_to_env(file_name, typechar, st); //yeah we are poluting our env but it looks like these are not used elsewhere, easier than having to o a ful lenv copy + add
++  priv_set_restore_linkdir();
++  int new_pid = 0;
++  char* argv[2];
++
++  argv[0] = (char*)to_command_option;//we cant use sh in windows to execute the command
++  argv[1] = NULL;
++  int spawn_res = posix_spawnp(&new_pid, to_command_option, &action, NULL, argv, NULL);
++  if (spawn_res != 0)
++	  exec_fatal(to_command_option);
++  xclose(p[PREAD]);
++  return p[PWRITE];
++  #endif
+ }
+ 
+ void
+@@ -820,14 +958,43 @@ sys_exec_info_script (const char **archive_name, int volume_number)
+   static void (*saved_handler) (int sig);
+ 
+   xpipe (p);
++ #ifndef _WIN32
+   saved_handler = signal (SIGPIPE, SIG_IGN);
+ 
+   pid = xfork ();
+ 
+-  if (pid != 0)
+-    {
+-      /* Master */
++  if (pid == 0)
++  {//moved child up so we can reuse most of it for the win version, yeah poluting our own env
++	  /* Child */
++#else
++  posix_spawn_file_actions_t action;
++  posix_spawn_file_actions_init(&action);
++  posix_spawn_file_actions_adddup2(&action, p[PWRITE], p[PWRITE]);
++  posix_spawn_file_actions_addclose(&action, p[PREAD]);
++#endif
++	  setenv("TAR_VERSION", PACKAGE_VERSION, 1);
++	  setenv("TAR_ARCHIVE", *archive_name, 1);
++	  setenv("TAR_VOLUME", STRINGIFY_BIGINT(volume_number, uintbuf), 1);
++	  setenv("TAR_BLOCKING_FACTOR",
++		  STRINGIFY_BIGINT(blocking_factor, uintbuf), 1);
++	  setenv("TAR_SUBCOMMAND", subcommand_string(subcommand_option), 1);
++	  setenv("TAR_FORMAT",
++		  archive_format_string(current_format == DEFAULT_FORMAT ?
++			  archive_format : current_format), 1);
++	  setenv("TAR_FD", STRINGIFY_BIGINT(p[PWRITE], uintbuf), 1);
++
++	  priv_set_restore_linkdir();
++#ifndef _WIN32
++	  xclose(p[PREAD]);
++	  xexec(info_script_option);
++  }
+ 
++      /* Master */
++#else
++	int spawn_res = posix_spawnp(&pid, info_script_option, &action, NULL, NULL, NULL);
++	if (spawn_res != 0)
++		exec_fatal(info_script_option);
++#endif
+       int rc;
+       int status;
+       char *buf = NULL;
+@@ -860,27 +1027,9 @@ sys_exec_info_script (const char **archive_name, int volume_number)
+ 	    free (buf);
+ 	  return WEXITSTATUS (status);
+ 	}
+-
+       free (buf);
+       return -1;
+-    }
+ 
+-  /* Child */
+-  setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
+-  setenv ("TAR_ARCHIVE", *archive_name, 1);
+-  setenv ("TAR_VOLUME", STRINGIFY_BIGINT (volume_number, uintbuf), 1);
+-  setenv ("TAR_BLOCKING_FACTOR",
+-	  STRINGIFY_BIGINT (blocking_factor, uintbuf), 1);
+-  setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
+-  setenv ("TAR_FORMAT",
+-	  archive_format_string (current_format == DEFAULT_FORMAT ?
+-				 archive_format : current_format), 1);
+-  setenv ("TAR_FD", STRINGIFY_BIGINT (p[PWRITE], uintbuf), 1);
+-
+-  xclose (p[PREAD]);
+-
+-  priv_set_restore_linkdir ();
+-  xexec (info_script_option);
+ }
+ 
+ void
+@@ -890,25 +1039,15 @@ sys_exec_checkpoint_script (const char *script_name,
+ {
+   pid_t pid;
+   char uintbuf[UINTMAX_STRSIZE_BOUND];
+-
++  #ifdef _WIN32
++  posix_spawn_file_actions_t action;
++  posix_spawn_file_actions_init(&action);
++#else
+   pid = xfork ();
+ 
+-  if (pid != 0)
+-    {
+-      /* Master */
+-
+-      int status;
+-
+-      while (waitpid (pid, &status, 0) == -1)
+-	if (errno != EINTR)
++  if (pid == 0) //child first to minimize win32 dupe code and yes poluting our env
+ 	  {
+-	    waitpid_error (script_name);
+-	    break;
+-	  }
+-
+-      return;
+-    }
+-
++#endif
+   /* Child */
+   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
+   setenv ("TAR_ARCHIVE", archive_name, 1);
+@@ -920,7 +1059,25 @@ sys_exec_checkpoint_script (const char *script_name,
+ 	  archive_format_string (current_format == DEFAULT_FORMAT ?
+ 				 archive_format : current_format), 1);
+   priv_set_restore_linkdir ();
++#ifdef _WIN32
++	  int spawn_res = posix_spawnp(&pid, script_name, &action, NULL, NULL, NULL);
++	  if (spawn_res != 0)
++		  exec_fatal(script_name);
++#else
+   xexec (script_name);
+ }
++#endif
++      /* Master */
++
++      int status;
++
++      while (waitpid (pid, &status, 0) == -1)
++	if (errno != EINTR)
++	  {
++	    waitpid_error (script_name);
++	    break;
++	  }
++  
++}
+ 
+ #endif /* not MSDOS */
+diff --git a/src/tar.c b/src/tar.c
+index d65fc806..d7a54054 100644
+--- a/src/tar.c
++++ b/src/tar.c
+@@ -1026,11 +1026,15 @@ decode_signal (const char *name)
+     char const *name;
+     int signo;
+   } const sigtab[] = {
++#ifndef _WIN32
+     { "USR1", SIGUSR1 },
+     { "USR2", SIGUSR2 },
+     { "HUP", SIGHUP },
+     { "INT", SIGINT },
+     { "QUIT", SIGQUIT }
++#else
++    { "INT", SIGINT }
++#endif
+   };
+   struct sigtab const *p;
+   char const *s = name;
+@@ -2782,8 +2786,9 @@ main (int argc, char **argv)
+   archive_names = 0;
+ 
+   /* System V fork+wait does not work if SIGCHLD is ignored.  */
++#ifndef _WIN32
+   signal (SIGCHLD, SIG_DFL);
+-
++#endif
+   /* Try to disable the ability to unlink a directory.  */
+   priv_set_remove_linkdir ();
+ 

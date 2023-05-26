@@ -1,0 +1,74 @@
+diff --git a/lib/pipe.c b/lib/pipe.c
+index e8573ed97f..ea11ab21fa 100644
+--- a/lib/pipe.c
++++ b/lib/pipe.c
+@@ -34,7 +34,7 @@ pipe (int fd[2])
+   /* Mingw changes fd to {-1,-1} on failure, but this violates
+      http://austingroupbugs.net/view.php?id=467 */
+   int tmp[2];
+-  int result = _pipe (tmp, 4096, _O_BINARY);
++  int result = _pipe (tmp, 4096, _O_BINARY | _O_NOINHERIT);
+   if (!result)
+     {
+       fd[0] = tmp[0];
+diff --git a/lib/spawn-pipe.c b/lib/spawn-pipe.c
+index d2d21e6e8e..e730c9dedc 100644
+--- a/lib/spawn-pipe.c
++++ b/lib/spawn-pipe.c
+@@ -593,7 +593,7 @@ create_pipe (const char *progname,
+  fail_with_saved_errno:
+   if (exit_on_error || !null_stderr)
+     error (exit_on_error ? EXIT_FAILURE : 0, saved_errno,
+-           _("%s subprocess failed"), progname);
++           _("%s (%s) subprocess failed"), progname, prog_path);
+   errno = saved_errno;
+   return -1;
+ }
+diff --git a/lib/spawn_faction_addclose.c b/lib/spawn_faction_addclose.c
+index c87a23794b..9087ac4af1 100644
+--- a/lib/spawn_faction_addclose.c
++++ b/lib/spawn_faction_addclose.c
+@@ -15,7 +15,12 @@
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
+ 
+ #include <config.h>
+-
++#ifdef _WIN32
++#define WIN32_LEAN_AND_MEAN
++#include <Windows.h>
++#include<handleapi.h>
++#include <stdio.h>
++#endif
+ /* Specification.  */
+ #include <spawn.h>
+ 
+@@ -42,7 +47,15 @@ posix_spawn_file_actions_addclose (posix_spawn_file_actions_t *file_actions,
+   /* Test for the validity of the file descriptor.  */
+   if (fd < 0 || fd >= maxfd)
+     return EBADF;
+-
++#ifdef _WIN32
++  DWORD flags;
++  HANDLE hdl = (HANDLE)_get_osfhandle(fd);
++  if (GetHandleInformation(hdl, &flags) && (flags & HANDLE_FLAG_INHERIT)) {
++	  fprintf(stderr, "posix_spawn_file_actions_addclose called with file descriptor %d (wh: %p) however this FD already has the inherit flag on it.  GNULIB will leak any fd that pre-has inherit set, to stop call SetHandleInformation(_get_osfhandle(%d),HANDLE_FLAG_INHERIT,0);",fd,hdl,fd );
++	  exit(1);
++  }
++	  
++#endif
+ #if !REPLACE_POSIX_SPAWN
+   return posix_spawn_file_actions_addclose (file_actions, fd);
+ #else
+diff --git a/lib/w32sock.h b/lib/w32sock.h
+index 84e46e3356..8ffd214597 100644
+--- a/lib/w32sock.h
++++ b/lib/w32sock.h
+@@ -33,7 +33,7 @@
+ #endif
+ 
+ #define FD_TO_SOCKET(fd)   ((SOCKET) _get_osfhandle ((fd)))
+-#define SOCKET_TO_FD(fh)   (_open_osfhandle ((intptr_t) (fh), O_RDWR | O_BINARY))
++#define SOCKET_TO_FD(fh)   (_open_osfhandle ((intptr_t) (fh), O_RDWR | O_BINARY | _O_NOINHERIT))
+ 
+ static inline void
+ set_winsock_errno (void)

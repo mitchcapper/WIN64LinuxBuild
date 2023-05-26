@@ -1,0 +1,546 @@
+diff --git a/lib/dirent.in.h b/lib/dirent.in.h
+index d409a031ec..f9956d6edc 100644
+--- a/lib/dirent.in.h
++++ b/lib/dirent.in.h
+@@ -57,6 +57,7 @@ struct dirent
+ #  define DT_SOCK   12          /* socket */
+ #  define DT_WHT    14          /* whiteout */
+ #  define GNULIB_defined_struct_dirent 1
++#  define HAVE_STRUCT_DIRENT_D_TYPE 1 //we could mod scripts that only look for rthiss or just say we have dirent
+ # endif
+ #endif
+ 
+diff --git a/lib/file-type.c b/lib/file-type.c
+index 359b4b8ebd..b8f76930f2 100644
+--- a/lib/file-type.c
++++ b/lib/file-type.c
+@@ -39,12 +39,12 @@ file_type (struct stat const *st)
+   if (S_ISREG (st->st_mode))
+     return st->st_size == 0 ? _("regular empty file") : _("regular file");
+ 
++  if (S_ISLNK (st->st_mode)) //must go before directory for windows
++    return _("symbolic link");
++
+   if (S_ISDIR (st->st_mode))
+     return _("directory");
+ 
+-  if (S_ISLNK (st->st_mode))
+-    return _("symbolic link");
+-
+   /* Do the S_TYPEIS* macros next, as they may be implemented in terms
+      of S_ISNAM, and we want the more-specialized interpretation.  */
+ 
+diff --git a/lib/filemode.c b/lib/filemode.c
+index 318d287f27..c92bec74a4 100644
+--- a/lib/filemode.c
++++ b/lib/filemode.c
+@@ -45,6 +45,8 @@ ftypelet (mode_t bits)
+   /* These are the most common, so test for them first.  */
+   if (S_ISREG (bits))
+     return '-';
++  if (S_ISLNK (bits)) //must go before dir as windows has symlink dirs
++    return 'l';
+   if (S_ISDIR (bits))
+     return 'd';
+ 
+@@ -53,8 +55,6 @@ ftypelet (mode_t bits)
+     return 'b';
+   if (S_ISCHR (bits))
+     return 'c';
+-  if (S_ISLNK (bits))
+-    return 'l';
+   if (S_ISFIFO (bits))
+     return 'p';
+ 
+diff --git a/lib/fstatat.c b/lib/fstatat.c
+index 372965ef5f..84f2e92044 100644
+--- a/lib/fstatat.c
++++ b/lib/fstatat.c
+@@ -113,7 +113,7 @@ rpl_fstatat (int fd, char const *file, struct stat *st, int flag)
+ static int
+ stat_func (char const *name, struct stat *st)
+ {
+-  return stat (name, st);
++  return lstat (name, st);
+ }
+ 
+ /* Likewise, if there is no native 'lstat', then the gnulib
+diff --git a/lib/fts.c b/lib/fts.c
+index 3fffb45d70..ae1aa3202c 100644
+--- a/lib/fts.c
++++ b/lib/fts.c
+@@ -117,9 +117,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
+ #ifndef S_IFBLK
+ # define S_IFBLK 0
+ #endif
+-#ifndef S_IFLNK
+-# define S_IFLNK 0
+-#endif
++
+ #ifndef S_IFSOCK
+ # define S_IFSOCK 0
+ #endif
+@@ -1823,6 +1821,8 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
+             return FTS_NS;
+           }
+ 
++		if (S_ISLNK(sbp->st_mode))//must be before S_ISDIR due to windows having specific directory sym links
++			return (FTS_SL);
+         if (S_ISDIR(sbp->st_mode)) {
+                 if (ISDOT(p->fts_name)) {
+                         /* Command-line "." and ".." are real directories. */
+@@ -1831,8 +1831,7 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
+ 
+                 return (FTS_D);
+         }
+-        if (S_ISLNK(sbp->st_mode))
+-                return (FTS_SL);
++
+         if (S_ISREG(sbp->st_mode))
+                 return (FTS_F);
+         return (FTS_DEFAULT);
+diff --git a/lib/readdir.c b/lib/readdir.c
+index 04dbba21bc..608f1f3fe5 100644
+--- a/lib/readdir.c
++++ b/lib/readdir.c
+@@ -77,10 +77,11 @@ readdir (DIR *dirp)
+ 
+   dirp->status = 0;
+ 
+-  if (dirp->entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+-    type = DT_DIR;
+-  else if (dirp->entry.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
++
++  if (dirp->entry.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) //linux shows sym l inked directories as symlinks not as directories
+     type = DT_LNK;
++  else if (dirp->entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
++	  type = DT_DIR;
+   else if ((dirp->entry.dwFileAttributes
+             & ~(FILE_ATTRIBUTE_READONLY
+                 | FILE_ATTRIBUTE_HIDDEN
+diff --git a/lib/readlink.c b/lib/readlink.c
+index 14bbb7f10c..79ad602f8e 100644
+--- a/lib/readlink.c
++++ b/lib/readlink.c
+@@ -27,7 +27,7 @@
+ 
+ /* readlink() substitute for systems that don't have a readlink() function,
+    such as DJGPP 2.03 and mingw32.  */
+-
++#ifndef _WIN32
+ ssize_t
+ readlink (char const *file, _GL_UNUSED char *buf,
+           _GL_UNUSED size_t bufsize)
+@@ -37,10 +37,166 @@ readlink (char const *file, _GL_UNUSED char *buf,
+   /* In general we should use lstat() here, not stat().  But on platforms
+      without symbolic links, lstat() - if it exists - would be equivalent to
+      stat(), therefore we can use stat().  This saves us a configure check.  */
+-  if (stat (file, &statbuf) >= 0)
++  if (lstat (file, &statbuf) >= 0)
+     errno = EINVAL;
+   return -1;
+ }
++#else
++#define WIN32_LEAN_AND_MEAN
++#include <Windows.h>
++#include <ioapiset.h>
++#include <winioctl.h>
++#define __extension__
++#define _ANONYMOUS_UNION	__extension__
++typedef struct _REPARSE_DATA_BUFFER {
++	ULONG ReparseTag;
++	USHORT ReparseDataLength;
++	USHORT Reserved;
++	_ANONYMOUS_UNION union {
++		struct {
++			USHORT SubstituteNameOffset;
++			USHORT SubstituteNameLength;
++			USHORT PrintNameOffset;
++			USHORT PrintNameLength;
++			ULONG Flags;
++			WCHAR PathBuffer[1];
++		} SymbolicLinkReparseBuffer;
++		struct {
++			USHORT SubstituteNameOffset;
++			USHORT SubstituteNameLength;
++			USHORT PrintNameOffset;
++			USHORT PrintNameLength;
++			WCHAR PathBuffer[1];
++		} MountPointReparseBuffer;
++		struct {
++			UCHAR DataBuffer[1];
++		} GenericReparseBuffer;
++	} DUMMYUNIONNAME;
++} REPARSE_DATA_BUFFER, * PREPARSE_DATA_BUFFER;
++
++#define REPARSE_DATA_BUFFER_HEADER_SIZE   FIELD_OFFSET(REPARSE_DATA_BUFFER, GenericReparseBuffer)
++// https://github.com/joyent/libuv/blob/1dc2709b999a84520ab1b3c56c0e082bf8617c1f/src/win/fs.c#L971
++ssize_t readlink(char const* file, char* target,
++	size_t target_len) {
++	HANDLE handle = CreateFileA(file, 0, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);//need FILE_FLAG_BACKUP_SEMANTICS  to be able to open directory ssymlinks
++
++	char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
++	REPARSE_DATA_BUFFER* reparse_data = (REPARSE_DATA_BUFFER*)buffer;
++	WCHAR* w_target;
++	DWORD w_target_len;
++	DWORD bytes;
++
++	if (!DeviceIoControl(handle,
++		FSCTL_GET_REPARSE_POINT,
++		NULL,
++		0,
++		buffer,
++		sizeof buffer,
++		&bytes,
++		NULL)) {
++		return -1;
++	}
++
++	if (reparse_data->ReparseTag == IO_REPARSE_TAG_SYMLINK) {
++		/* Real symlink */
++		w_target = reparse_data->SymbolicLinkReparseBuffer.PathBuffer +
++			(reparse_data->SymbolicLinkReparseBuffer.SubstituteNameOffset /
++				sizeof(WCHAR));
++		w_target_len =
++			reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength /
++			sizeof(WCHAR);
++
++		/* Real symlinks can contain pretty much everything, but the only thing */
++		/* we really care about is undoing the implicit conversion to an NT */
++		/* namespaced path that CreateSymbolicLink will perform on absolute */
++		/* paths. If the path is win32-namespaced then the user must have */
++		/* explicitly made it so, and we better just return the unmodified */
++		/* reparse data. */
++		if (w_target_len >= 4 &&
++			w_target[0] == L'\\' &&
++			w_target[1] == L'?' &&
++			w_target[2] == L'?' &&
++			w_target[3] == L'\\') {
++			/* Starts with \??\ */
++			if (w_target_len >= 6 &&
++				((w_target[4] >= L'A' && w_target[4] <= L'Z') ||
++					(w_target[4] >= L'a' && w_target[4] <= L'z')) &&
++				w_target[5] == L':' &&
++				(w_target_len == 6 || w_target[6] == L'\\')) {
++				/* \??\«drive»:\ */
++				w_target += 4;
++				w_target_len -= 4;
++
++			}
++			else if (w_target_len >= 8 &&
++				(w_target[4] == L'U' || w_target[4] == L'u') &&
++				(w_target[5] == L'N' || w_target[5] == L'n') &&
++				(w_target[6] == L'C' || w_target[6] == L'c') &&
++				w_target[7] == L'\\') {
++				/* \??\UNC\«server»\«share»\ - make sure the final path looks like */
++				/* \\«server»\«share»\ */
++				w_target += 6;
++				w_target[0] = L'\\';
++				w_target_len -= 6;
++			}
++		}
++
++	}
++	else if (reparse_data->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT) {
++		/* Junction. */
++		w_target = reparse_data->MountPointReparseBuffer.PathBuffer +
++			(reparse_data->MountPointReparseBuffer.SubstituteNameOffset /
++				sizeof(WCHAR));
++		w_target_len = reparse_data->MountPointReparseBuffer.SubstituteNameLength /
++			sizeof(WCHAR);
++
++		/* Only treat junctions that look like \??\«drive»:\ as symlink. */
++		/* Junctions can also be used as mount points, like \??\Volume{«guid»}, */
++		/* but that's confusing for programs since they wouldn't be able to */
++		/* actually understand such a path when returned by uv_readlink(). */
++		/* UNC paths are never valid for junctions so we don't care about them. */
++		if (!(w_target_len >= 6 &&
++			w_target[0] == L'\\' &&
++			w_target[1] == L'?' &&
++			w_target[2] == L'?' &&
++			w_target[3] == L'\\' &&
++			((w_target[4] >= L'A' && w_target[4] <= L'Z') ||
++				(w_target[4] >= L'a' && w_target[4] <= L'z')) &&
++			w_target[5] == L':' &&
++			(w_target_len == 6 || w_target[6] == L'\\'))) {
++			SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
++			return -1;
++		}
++
++		/* Remove leading \??\ */
++		w_target += 4;
++		w_target_len -= 4;
++
++	}
++	else {
++		/* Reparse tag does not indicate a symlink. */
++		SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
++		return -1;
++	}
++
++
++	int rd= WideCharToMultiByte(CP_UTF8,
++		0,
++		w_target,
++		w_target_len,
++		target,
++		target_len,
++		NULL,
++		NULL);
++	target[rd] = '\0';
++	return rd;
++
++
++}
++
++#endif
++
++
+ 
+ #else /* HAVE_READLINK */
+ 
+diff --git a/lib/stat-w32.c b/lib/stat-w32.c
+index 2f01197584..28f8f74ea4 100644
+--- a/lib/stat-w32.c
++++ b/lib/stat-w32.c
+@@ -260,13 +260,18 @@ _gl_fstat_by_handle (HANDLE h, const char *path, struct stat *buf)
+       buf->st_ino = 0;
+ #endif
+ 
++	  int is_sym_link = info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT;
+       /* st_mode.  */
+       unsigned int mode =
+         /* XXX How to handle FILE_ATTRIBUTE_REPARSE_POINT ?  */
+-        ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? _S_IFDIR | S_IEXEC_UGO : _S_IFREG)
++        ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? _S_IFDIR | S_IEXEC_UGO : 0)
+         | S_IREAD_UGO
++		| (is_sym_link ? S_IFLNK : 0)
+         | ((info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ? 0 : S_IWRITE_UGO);
+-      if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
++	  if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY || is_sym_link))
++		  mode |= _S_IFREG;
++
++      if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && !is_sym_link))
+         {
+           /* Determine whether the file is executable by looking at the file
+              name suffix.
+diff --git a/lib/stat.c b/lib/stat.c
+index 7987e26583..d258d141d2 100644
+--- a/lib/stat.c
++++ b/lib/stat.c
+@@ -107,7 +107,24 @@ is_unc_root (const char *rname)
+    correctly.  */
+ 
+ int
+-rpl_stat (char const *name, struct stat *buf)
++rpl_stat(char const* name, struct stat* buf)
++{
++	return _rpl_stat(name, buf, 0);
++
++}
++
++#undef lstat
++int
++lstat(char const* name, struct stat* buf)
++{
++	int do_lstat = 1;
++	if (*name && ISSLASH(name[strlen(name) - 1]))//if it ends in a slash always resolve as a directory not the symlink by forrcing normal stat mode
++		do_lstat = 0;
++	return _rpl_stat(name, buf, do_lstat);
++
++}
++int
++_rpl_stat (char const *name, struct stat *buf, int do_lstat)
+ {
+ #ifdef WINDOWS_NATIVE
+   /* Fill the fields ourselves, because the original stat function returns
+@@ -201,6 +218,11 @@ rpl_stat (char const *name, struct stat *buf)
+          CreateFile
+          <https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-createfilea>
+          <https://docs.microsoft.com/en-us/windows/desktop/FileIO/creating-and-opening-files>  */
++		DWORD flags = FILE_FLAG_BACKUP_SEMANTICS;
++
++	  if (do_lstat)
++		flags |= FILE_FLAG_OPEN_REPARSE_POINT;
++
+       HANDLE h =
+         CreateFile (rname,
+                     FILE_READ_ATTRIBUTES,
+@@ -210,11 +232,13 @@ rpl_stat (char const *name, struct stat *buf)
+                     /* FILE_FLAG_POSIX_SEMANTICS (treat file names that differ only
+                        in case as different) makes sense only when applied to *all*
+                        filesystem operations.  */
+-                    FILE_FLAG_BACKUP_SEMANTICS /* | FILE_FLAG_POSIX_SEMANTICS */,
++                    flags /* | FILE_FLAG_POSIX_SEMANTICS */,
+                     NULL);
+       if (h != INVALID_HANDLE_VALUE)
+         {
+           ret = _gl_fstat_by_handle (h, rname, buf);
++		  if (ret && do_lstat && GetLastError() == ERROR_SYMLINK_NOT_SUPPORTED)
++			  return _rpl_stat(name, buf, 0);
+           CloseHandle (h);
+           goto done;
+         }
+@@ -277,13 +301,17 @@ rpl_stat (char const *name, struct stat *buf)
+       buf->st_ino = 0;
+ # endif
+ 
++	  int is_sym_link = info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT;
+       /* st_mode.  */
+       unsigned int mode =
+         /* XXX How to handle FILE_ATTRIBUTE_REPARSE_POINT ?  */
+-        ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? _S_IFDIR | S_IEXEC_UGO : _S_IFREG)
++		  ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? _S_IFDIR | S_IEXEC_UGO : 0)
+         | S_IREAD_UGO
++		  | (is_sym_link ? S_IFLNK : 0)
+         | ((info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ? 0 : S_IWRITE_UGO);
+-      if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
++	  if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY || is_sym_link))
++		  mode |= _S_IFREG;
++	  if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && !is_sym_link))
+         {
+           /* Determine whether the file is executable by looking at the file
+              name suffix.  */
+diff --git a/lib/symlink.c b/lib/symlink.c
+index b5009ae835..98941a5712 100644
+--- a/lib/symlink.c
++++ b/lib/symlink.c
+@@ -40,7 +40,26 @@ rpl_symlink (char const *contents, char const *name)
+         errno = EEXIST;
+       return -1;
+     }
+-  return symlink (contents, name);
++#ifdef _WIN32
++  struct stat path_stat;
++  stat(contents, &path_stat);
++  DWORD flags = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
++  if (path_stat.st_mode & _S_IFDIR)
++	  flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
++
++  if (CreateSymbolicLink(name, contents, flags))
++	  return 0;
++
++  errno = GetLastError();
++  if (errno == ERROR_ALREADY_EXISTS) //windows will return this if trying to link a folder and target is a folder name 
++	  errno = EEXIST;
++  if (errno == ERROR_ACCESS_DENIED) //if passing an existing folder this will occur our fallback behavior expects EEXIST in that case
++	  errno = EEXIST;
++  return -1;
++#else
++  return symlink(contents, name);
++#endif
++  
+ }
+ 
+ #else /* !HAVE_SYMLINK */
+diff --git a/lib/sys_stat.in.h b/lib/sys_stat.in.h
+index ad4da17fa4..523873e39f 100644
+--- a/lib/sys_stat.in.h
++++ b/lib/sys_stat.in.h
+@@ -220,12 +220,23 @@ struct stat
+ # endif
+ #endif
+ 
++#ifndef _WIN32
+ #ifndef S_ISLNK
+ # ifdef S_IFLNK
+ #  define S_ISLNK(m) (((m) & S_IFMT) == S_IFLNK)
+ # else
+ #  define S_ISLNK(m) 0
+ # endif
++#endif
++#else
++#define S_IFLNK  0x0800 // symbolic link / junciton point
++#undef S_IFMT
++#define S_IFMT (_S_IFMT | S_IFLNK)
++#define S_ISLNK(m) (((m) & (S_IFMT ^ S_IFDIR)) == S_IFLNK)
++#define S_ISHARDDIR(m) (((m) & S_IFMT) == S_IFDIR)
++#undef S_ISDIR
++#define S_ISDIR(m) (((m) & (S_IFMT ^ S_IFLNK)) == S_IFDIR)
++
+ #endif
+ 
+ #ifndef S_ISMPB /* V7 */
+@@ -878,7 +889,11 @@ _GL_WARN_ON_USE (stat, "stat is unportable - "
+ /* mingw does not support symlinks, therefore it does not have lstat.  But
+    without links, stat does just fine.  */
+ #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
++#ifndef _WIN32 //not sure this is used anywherre but windows so may be redundant
+ #   define lstat stat
++#else
++int lstat(char const* name, struct stat* buf);
++#endif
+ #  endif
+ _GL_CXXALIAS_RPL_1 (lstat, stat, int,
+                     (const char *restrict name, struct stat *restrict buf));
+diff --git a/lib/unlink.c b/lib/unlink.c
+index d77d26298e..fe900e95d7 100644
+--- a/lib/unlink.c
++++ b/lib/unlink.c
+@@ -93,6 +93,18 @@ rpl_unlink (char const *name)
+         }
+ #endif
+       result = unlink (name);
++#ifdef _WIN32 //here we fix unlinking of symlinked directories, 
++	  if (result && errno == EACCES) {
++		  struct stat st;
++		  result = lstat(name, &st);
++		  if (!result && S_ISLNK(st.st_mode) && S_ISDIR(st.st_mode))
++			  result = _rmdir(name);
++		  else {
++			  result = -1;
++			  errno = EACCES;//restore orig errno
++    }
++	  }
++#endif
+     }
+   return result;
+ }
+diff --git a/lib/utime.c b/lib/utime.c
+index 3cf1840feb..79e4ce3320 100644
+--- a/lib/utime.c
++++ b/lib/utime.c
+@@ -96,6 +96,7 @@ _gl_utimens_windows (const char *name, struct timespec ts[2])
+                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                 NULL,
+                 OPEN_EXISTING,
++                FILE_FLAG_OPEN_REPARSE_POINT | //If it is not a reparse point this is ignored, this allows us to modify the reparse point itself
+                 /* FILE_FLAG_POSIX_SEMANTICS (treat file names that differ only
+                    in case as different) makes sense only when applied to *all*
+                    filesystem operations.  */
+diff --git a/lib/utimens.c b/lib/utimens.c
+index faa197e6cb..1a25964744 100644
+--- a/lib/utimens.c
++++ b/lib/utimens.c
+@@ -639,7 +639,9 @@ lutimens (char const *file, struct timespec const timespec[2])
+   /* Out of luck for symlinks, but we still handle regular files.  */
+   if (!(adjustment_needed || REPLACE_FUNC_STAT_FILE) && lstat (file, &st))
+     return -1;
++#ifndef _WIN32
+   if (!S_ISLNK (st.st_mode))
++#endif // !_WIN32
+     return fdutimens (-1, file, ts);
+   errno = ENOSYS;
+   return -1;
+diff --git a/m4/symlink.m4 b/m4/symlink.m4
+index 52d6c115ca..d3411c2299 100644
+--- a/m4/symlink.m4
++++ b/m4/symlink.m4
+@@ -17,7 +17,16 @@ AC_DEFUN([gl_FUNC_SYMLINK],
+   dnl that compilation can proceed with fewer ifdefs.  On FreeBSD 7.2, AIX 7.1,
+   dnl and Solaris 9, we want to fix a bug with trailing slash handling.
+   if test $ac_cv_func_symlink = no; then
+-    HAVE_SYMLINK=0
++  case "$host_os" in
++
++  	  mingw*)
++  	  	REPLACE_SYMLINK=1
++  	  	HAVE_SYMLINK=1
++  	   ;;
++      *)
++        HAVE_SYMLINK=0
++        ;;
++	esac
+   else
+     AC_CACHE_CHECK([whether symlink handles trailing slash correctly],
+       [gl_cv_func_symlink_works],
