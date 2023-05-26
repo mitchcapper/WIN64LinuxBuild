@@ -6,17 +6,17 @@
 - [Warnings](#warnings)
 - [Why](#why)
 - [Requirements](#requirements)
-	- [MSYS2](#msys2)
-	- [Visual Studio 2022](#visual-studio-2022)
-	- [ENV Vars](#env-vars)
-	- [Shell Launch](#shell-launch)
+  - [MSYS2](#msys2)
+  - [Visual Studio 2022](#visual-studio-2022)
+  - [ENV Vars](#env-vars)
+  - [Shell Launch](#shell-launch)
 - [Other Notes](#other-notes)
-	- [Credits](#credits)
-	- [Tips & Tricks](#tips--tricks)
-	- [Why don't you add these patches upstream?](#why-dont-you-add-these-patches-upstream)
-	- [Why does it take so long to build?](#why-does-it-take-so-long-to-build)
-		- [Things we try to do to fix this](#things-we-try-to-do-to-fix-this)
-	- [Why bash?](#why-bash)
+  - [Credits](#credits)
+  - [Tips & Tricks](#tips--tricks)
+  - [Why don't you add these patches upstream?](#why-dont-you-add-these-patches-upstream)
+  - [Why does it take so long to build?](#why-does-it-take-so-long-to-build)
+    - [Things we try to do to fix this](#things-we-try-to-do-to-fix-this)
+  - [Why bash?](#why-bash)
 
 <!-- /MarkdownTOC -->
 
@@ -29,7 +29,7 @@ It is a few primary components:
 - A bash script that uses the above helper lib to compile a variety of common *nix tools for details on changes for each: [tar](repo_notes/tar_README.md), [grep](repo_notes/grep_README.md), [gzip](repo_notes/gzip_README.md), [pcre2](repo_notes/pcre2_README.md), [zstd](repo_notes/zstd_README.md), [coreutils](repo_notes/coreutils_README.md), [findutils](repo_notes/findutils_README.md), [which](repo_notes/which_README.md), [wget](repo_notes/wget_README.md), [patch](repo_notes/patch_README.md) .
 - A tool to generate a basic Visual Studio debug project to debug the target, if you can't run the binary in the debugger you can add `launchdebugger()` to the code run from the CLI and will get the normal JIT prompt.  Note due to how the debugger launch works it may better to do a bit earlier than needed (or in the main launch).  If the code you want to debug into is part of a library then you need to remove that code from the library (and add to your MSVC project) or build that library in MSVC.  The VS project comes with `debug.h` and `debug.c` that includes a basic console/file logger.
 - Minimal changes to each target to make it work, to reduce maintenance requirements as the code changes.  For some of these projects we throw additional gnulib modules at it that seem to fix the problems, there may be easier ways but this does result in minimal changes to the native code base.
-- Github actions produces Windows binaries for download.  You can find these under the [![Tool Builds](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_builds.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_builds.yml) workflows, click on a successful one and then the downloads can be found under Artifacts on that page.  Note: you must be signed into github to see the artifacts produced.
+- Github actions produces **Windows binaries** for download.  You can find these under the [![Tool Builds](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_builds.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_builds.yml) workflows, click on a successful one and then the downloads can be found under Artifacts on that page.  Note: you must be signed into github to see the artifacts produced.
 
 # Warnings
 
