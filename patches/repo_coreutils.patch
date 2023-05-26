@@ -1,3 +1,41 @@
+diff --git a/bootstrap.conf b/bootstrap.conf
+index 238f68dc7..7ab5f5895 100644
+--- a/bootstrap.conf
++++ b/bootstrap.conf
+@@ -364,13 +364,11 @@ gettext    0.19.2
+ git        1.4.4
+ gperf      -
+ gzip       -
+-m4         -
+ makeinfo   6.1
+-texi2pdf   6.1
+ patch      -
+ perl       5.5
++rsync      -
+ tar        -
+-wget       -
+ xz         -
+ "
+ 
+diff --git a/configure.ac b/configure.ac
+index 520de8184..27e743157 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -263,6 +263,7 @@ if test $gl_gcc_warnings != no; then
+ 
+   # FIXME: remove this line when gcc improves
+   # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88443
++  # FP wth -O0 in nstrftime.c w/gcc 12, and 13 at least
+   gl_WARN_ADD([-Wno-stringop-overflow])
+ 
+   gl_MANYWARN_COMPLEMENT([GNULIB_WARN_CFLAGS], [$WARN_CFLAGS], [$nw])
+diff --git a/gnulib b/gnulib
+index e2bd71038..9f205ff96 160000
+--- a/gnulib
++++ b/gnulib
+@@ -1 +1 @@
+-Subproject commit e2bd71038406e06eeedb4139cb61f3b43aeb3b2f
++Subproject commit 9f205ff9624b8e10b4331432c59bc732b8c1a7fe
 diff --git a/src/copy.c b/src/copy.c
 index 0dd059d2e..24df69a18 100644
 --- a/src/copy.c
@@ -1370,7 +1408,7 @@ index becceda98..3267d77c9 100644
    posixly_correct = (getenv ("POSIXLY_CORRECT") != NULL);
  
 diff --git a/src/whoami.c b/src/whoami.c
-index a93c0c6a2..68848bc99 100644
+index a93c0c6a2..7622d1a71 100644
 --- a/src/whoami.c
 +++ b/src/whoami.c
 @@ -21,8 +21,12 @@
@@ -1387,7 +1425,7 @@ index a93c0c6a2..68848bc99 100644
  #include "system.h"
  #include "die.h"
  #include "error.h"
-@@ -81,10 +85,17 @@ main (int argc, char **argv)
+@@ -81,10 +85,19 @@ main (int argc, char **argv)
  
    errno = 0;
    uid = geteuid ();
@@ -1401,6 +1439,8 @@ index a93c0c6a2..68848bc99 100644
 +  char buffer[1024];
 +  DWORD len = sizeof(buffer);
 +  BOOL res = GetUserName(buffer, &len);
++  if (! res)
++  	die (EXIT_FAILURE, errno, _("Error calling GetUserName");
 +  puts (buffer);
 +#endif
    return EXIT_SUCCESS;

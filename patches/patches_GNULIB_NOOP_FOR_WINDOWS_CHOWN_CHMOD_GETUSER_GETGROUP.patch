@@ -19,7 +19,7 @@ index b3dbac3374..992b810c97 100644
 +#endif
  }
 diff --git a/lib/idcache.c b/lib/idcache.c
-index ff1233aa17..3b7207d1ce 100644
+index ff1233aa17..e6563a453b 100644
 --- a/lib/idcache.c
 +++ b/lib/idcache.c
 @@ -22,8 +22,10 @@
@@ -41,7 +41,7 @@ index ff1233aa17..3b7207d1ce 100644
 +  DWORD len = 1024* sizeof(char);
 +  char * ret = xmalloc ( 1024 * sizeof(char));
 +  if (! GetUserName(ret, &len)) //len is not bytes but number of chars
-+    return null;
++    return NULL;
 +  return ret;
 +
 +#else
