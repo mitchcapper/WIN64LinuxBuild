@@ -19,7 +19,7 @@ index b3dbac3374..992b810c97 100644
 +#endif
  }
 diff --git a/lib/idcache.c b/lib/idcache.c
-index ff1233aa17..e6563a453b 100644
+index ff1233aa17..2a2d8b6202 100644
 --- a/lib/idcache.c
 +++ b/lib/idcache.c
 @@ -22,8 +22,10 @@
@@ -33,22 +33,17 @@ index ff1233aa17..e6563a453b 100644
  
  #include <unistd.h>
  
-@@ -68,6 +70,14 @@ static struct userid *nogroup_alist;
+@@ -68,6 +70,9 @@ static struct userid *nogroup_alist;
  char *
  getuser (uid_t uid)
  {
 +#ifdef _WIN32
-+  DWORD len = 1024* sizeof(char);
-+  char * ret = xmalloc ( 1024 * sizeof(char));
-+  if (! GetUserName(ret, &len)) //len is not bytes but number of chars
-+    return NULL;
-+  return ret;
-+
++  return getlogin();
 +#else
    struct userid *tail;
    struct userid *match = NULL;
  
-@@ -94,6 +104,7 @@ getuser (uid_t uid)
+@@ -94,6 +99,7 @@ getuser (uid_t uid)
      }
  
    return match->name[0] ? match->name : NULL;
@@ -56,7 +51,7 @@ index ff1233aa17..e6563a453b 100644
  }
  
  /* Translate USER to a UID, with cache.
-@@ -104,6 +115,9 @@ getuser (uid_t uid)
+@@ -104,6 +110,9 @@ getuser (uid_t uid)
  uid_t *
  getuidbyname (const char *user)
  {
@@ -66,7 +61,7 @@ index ff1233aa17..e6563a453b 100644
    struct userid *tail;
    struct passwd *pwent;
  
-@@ -143,6 +157,7 @@ getuidbyname (const char *user)
+@@ -143,6 +152,7 @@ getuidbyname (const char *user)
    tail->next = nouser_alist;
    nouser_alist = tail;
    return NULL;
@@ -74,7 +69,7 @@ index ff1233aa17..e6563a453b 100644
  }
  
  /* Translate GID to a group name, with cache, or NULL if unresolved.  */
-@@ -150,6 +165,12 @@ getuidbyname (const char *user)
+@@ -150,6 +160,12 @@ getuidbyname (const char *user)
  char *
  getgroup (gid_t gid)
  {
@@ -87,7 +82,7 @@ index ff1233aa17..e6563a453b 100644
    struct userid *tail;
    struct userid *match = NULL;
  
-@@ -176,6 +197,7 @@ getgroup (gid_t gid)
+@@ -176,6 +192,7 @@ getgroup (gid_t gid)
      }
  
    return match->name[0] ? match->name : NULL;
@@ -95,7 +90,7 @@ index ff1233aa17..e6563a453b 100644
  }
  
  /* Translate GROUP to a GID, with cache.
-@@ -186,6 +208,9 @@ getgroup (gid_t gid)
+@@ -186,6 +203,9 @@ getgroup (gid_t gid)
  gid_t *
  getgidbyname (const char *group)
  {
@@ -105,7 +100,7 @@ index ff1233aa17..e6563a453b 100644
    struct userid *tail;
    struct group *grent;
  
-@@ -225,4 +250,5 @@ getgidbyname (const char *group)
+@@ -225,4 +245,5 @@ getgidbyname (const char *group)
    tail->next = nogroup_alist;
    nogroup_alist = tail;
    return NULL;

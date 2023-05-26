@@ -1408,10 +1408,10 @@ index becceda98..3267d77c9 100644
    posixly_correct = (getenv ("POSIXLY_CORRECT") != NULL);
  
 diff --git a/src/whoami.c b/src/whoami.c
-index a93c0c6a2..7622d1a71 100644
+index a93c0c6a2..4956c09a5 100644
 --- a/src/whoami.c
 +++ b/src/whoami.c
-@@ -21,8 +21,12 @@
+@@ -21,8 +21,13 @@
  #include <config.h>
  #include <stdio.h>
  #include <sys/types.h>
@@ -1421,27 +1421,24 @@ index a93c0c6a2..7622d1a71 100644
 +#else
 +#define WIN32_LEAN_AND_MEAN
 +#include <Windows.h>
++#include <unistd.h>
 +#endif
  #include "system.h"
  #include "die.h"
  #include "error.h"
-@@ -81,10 +85,19 @@ main (int argc, char **argv)
+@@ -81,10 +86,15 @@ main (int argc, char **argv)
  
    errno = 0;
    uid = geteuid ();
-+#ifndef _WIN32  
++#ifndef _WIN32
    pw = (uid == NO_UID && errno ? NULL : getpwuid (uid));
    if (!pw)
      die (EXIT_FAILURE, errno, _("cannot find name for user ID %lu"),
           (unsigned long int) uid);
    puts (pw->pw_name);
 +#else
-+  char buffer[1024];
-+  DWORD len = sizeof(buffer);
-+  BOOL res = GetUserName(buffer, &len);
-+  if (! res)
-+  	die (EXIT_FAILURE, errno, _("Error calling GetUserName");
-+  puts (buffer);
++  const char * login = getlogin();
++  puts (login);
 +#endif
    return EXIT_SUCCESS;
  }
