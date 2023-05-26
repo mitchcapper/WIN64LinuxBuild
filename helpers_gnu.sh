@@ -88,8 +88,9 @@ function gnulib_add_addl_modules_to_bootstrap(){
 		CUR_MODULES=`cat gnulib.modules | grep "^[A-Za-z0-9]" | sed 's/^ *//;s/ *$//'`;
 		BOOT_FILE=`cat gnulib.modules | grep -v "^[A-Za-z0-9]"`;
 	else
-		CUR_MODULES=`grep -Pzo "\n\s*gnulib_modules\s*=\s*['\"][^\"']+['\"]" bootstrap.conf | tail -n +3 | head -n -1 | sed 's/^ *//;s/ *$//'`
-		BOOT_FILE=`sed -z -E "s#\n\s*gnulib_modules\s*=\s*['\"]([^'\"]+['\"])#\ngnulib_modules=\"\nTOREPLACEZSTR\"#" bootstrap.conf  | sed ''`
+		#use \K to get exactly what we want here sed doesn't do \K so will just capture the group and sub that as grep doesnt do that
+		CUR_MODULES=`grep -Pzo "\n[ \t]*gnulib_modules\s*=\s*[\"'\x5c]+\K[^\"'\x5c]+" bootstrap.conf | sed 's/^ *//;s/ *$//'`
+		BOOT_FILE=`sed -z -E "s#(\n[ \t]*gnulib_modules\s*=\s*['\"]+)[\n\x5c]*[^\"'\x5c]+#\1\nTOREPLACEZSTR\n#" bootstrap.conf  | sed ''`
 		INDENT="    "
 	fi
 	CUR_MODULES=$"${CUR_MODULES}"$'\n'`printf '%s\n' "${LIB_ADD[@]}"`
