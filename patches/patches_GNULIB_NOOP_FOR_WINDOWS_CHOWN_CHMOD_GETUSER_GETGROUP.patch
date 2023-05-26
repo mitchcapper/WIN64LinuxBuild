@@ -190,3 +190,15 @@ index 5958883ff4..b0912df1fc 100644
  
  #ifdef TEST
  
+diff --git a/modules/idcache b/modules/idcache
+index 72b7b91e62..8eab00045c 100644
+--- a/modules/idcache
++++ b/modules/idcache
+@@ -9,6 +9,7 @@ m4/idcache.m4
+ Depends-on:
+ flexmember
+ xalloc
++getlogin
+ 
+ configure.ac:
+ gl_IDCACHE
