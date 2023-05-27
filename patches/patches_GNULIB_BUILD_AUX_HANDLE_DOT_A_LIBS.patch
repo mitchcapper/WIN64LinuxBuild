@@ -88,7 +88,7 @@ index 17de55e79c..8616edabc5 100755
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index ba883b54aa..bb227eb18a 100755
+index ba883b54aa..4cc8702b97 100755
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,6 +1,16 @@
@@ -216,7 +216,16 @@ index ba883b54aa..bb227eb18a 100755
  	      shift
  	      ;;
  	  esac
-@@ -200,6 +241,10 @@ func_cl_wrapper ()
+@@ -187,6 +228,8 @@ func_cl_wrapper ()
+ 	-static)
+ 	  shared=false
+ 	  ;;
++	-W[a-zA-Z][a-zA-Z-][a-zA-Z-][a-zA-Z-][a-zA-Z-]*) #word based warnings other than all are not supported by msvc
++	  ;;
+ 	-Wl,*)
+ 	  arg=${1#-Wl,}
+ 	  save_ifs="$IFS"; IFS=','
+@@ -200,6 +243,10 @@ func_cl_wrapper ()
  	  eat=1
  	  linker_opts="$linker_opts $2"
  	  ;;
@@ -227,7 +236,7 @@ index ba883b54aa..bb227eb18a 100755
  	-*)
  	  set x "$@" "$1"
  	  shift
-@@ -209,9 +254,12 @@ func_cl_wrapper ()
+@@ -209,9 +256,12 @@ func_cl_wrapper ()
  	  set x "$@" -Tp"$file"
  	  shift
  	  ;;
@@ -241,7 +250,7 @@ index ba883b54aa..bb227eb18a 100755
  	  shift
  	  ;;
  	*)
-@@ -225,7 +273,12 @@ func_cl_wrapper ()
+@@ -225,7 +275,12 @@ func_cl_wrapper ()
    if test -n "$linker_opts"; then
      linker_opts="-link$linker_opts"
    fi
