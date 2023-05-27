@@ -103,6 +103,19 @@ function gnulib_add_addl_modules_to_bootstrap(){
 		echo "${BOOT_FILE/TOREPLACEZSTR/"$CUR_MODULES"$'\n'}" > bootstrap.conf
 	fi
 }
+function setup_gnulibtool_py_autoconfwrapper(){
+	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
+
+		#For things like coreutils bootstrap will create the mk files we need to fix before it also then runs autoreconf so we will just use our wrapper for autoreconf, call ourselves, then call autoreconf
+		WRAPPER=`cat "${SCRIPT_FOLDER}/AUTORECONF_prewrapper.sh.template"`
+		WRAPPER="${WRAPPER/SCRIPT_PATH/"$CALL_SCRIPT_PATH"}"
+		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
+		echo "${WRAPPER}" > "${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
+		export AUTORECONF="${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
+
+		gnulib_tool_py_remove_nmd_makefiles;
+	fi
+}
 function gnulib_tool_py_remove_nmd_makefiles() {
 	#this taken from the normal gnulib_tool process, not sure lib/ will exist yet
 

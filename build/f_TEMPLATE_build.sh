@@ -37,13 +37,14 @@ fi
 
 	#apply_our_repo_patch; #looks in the patches folder for  repo_BUILD_NAME.patch and if found applies it.  Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
 	add_items_to_gitignore;
-	gnulib_add_addl_modules_to_bootstrap;
-
 	gnulib_switch_to_master_and_patch;
+	gnulib_add_addl_modules_to_bootstrap;
 
 	cd $BLD_CONFIG_SRC_FOLDER
 	#vcpkg_install_package "openssl"
 
+	#setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
+	gnulib_tool_py_remove_nmd_makefiles
 	./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
 
 	gnulib_ensure_buildaux_scripts_copied;

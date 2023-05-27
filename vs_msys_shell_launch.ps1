@@ -11,5 +11,3 @@ if (! $env:VS_ENV_INITIALIZED) {
     Enter-VsDevShell $VS_INSTANCE_ID -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64";
 }
 . "$($env:WLB_SCRIPT_FOLDER)/msys_shell.ps1" "$StartScript"
-
- #"$($env:WLB_SCRIPT_FOLDER)/build/f_$($env:BUILD_PKG)_build.sh"

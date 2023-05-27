@@ -183,19 +183,7 @@ function configure_run(){
 	echo "Running ./configure ${config_cmd}" 1>&2
 	./configure $config_cmd;
 }
-function setup_gnulibtool_py_autoconfwrapper(){
-	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
 
-		#For things like coreutils bootstrap will create the mk files we need to fix before it also then runs autoreconf so we will just use our wrapper for autoreconf, call ourselves, then call autoreconf
-		WRAPPER=`cat "${SCRIPT_FOLDER}/AUTORECONF_prewrapper.sh.template"`
-		WRAPPER="${WRAPPER/SCRIPT_PATH/"$CALL_SCRIPT_PATH"}"
-		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
-		echo "${WRAPPER}" > "${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
-		export AUTORECONF="${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
-
-		gnulib_tool_py_remove_nmd_makefiles;
-	fi
-}
 function setup_build_env(){
 	if [[ $BLD_CONFIG_ADD_WIN_ARGV_LIB -eq 1 ]]
 	then
