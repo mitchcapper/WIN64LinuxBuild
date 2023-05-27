@@ -1,0 +1,97 @@
+diff --git a/Makefile.am b/Makefile.am
+index 23a48e47..d53b16eb 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -39,8 +39,8 @@ make_SRCS =	src/ar.c src/arscan.c src/commands.c src/commands.h \
+ 		src/signame.c src/strcache.c src/variable.c src/variable.h \
+ 		src/version.c src/vpath.c src/warning.c src/warning.h
+ 
+-w32_SRCS =	src/w32/pathstuff.c src/w32/w32os.c src/w32/compat/dirent.c \
+-		src/w32/compat/posixfcn.c src/w32/include/dirent.h \
++w32_SRCS =	src/w32/pathstuff.c src/w32/w32os.c \
++		src/w32/compat/posixfcn.c  \
+ 		src/w32/include/dlfcn.h src/w32/include/pathstuff.h \
+ 		src/w32/include/sub_proc.h src/w32/include/w32err.h \
+ 		src/w32/subproc/misc.c src/w32/subproc/proc.h \
+diff --git a/src/ar.c b/src/ar.c
+index d7928563..7d6d21d4 100644
+--- a/src/ar.c
++++ b/src/ar.c
+@@ -23,6 +23,7 @@ this program.  If not, see <https://www.gnu.org/licenses/>.  */
+ #include "dep.h"
+ #include <fnmatch.h>
+ #include <intprops.h>
++#include "glob.h"
+ 
+ /* Return nonzero if NAME is an archive-member reference, zero if not.  An
+    archive-member reference is a name like 'lib(member)' where member is a
+diff --git a/src/dir.c b/src/dir.c
+index 514170bf..edac2356 100644
+--- a/src/dir.c
++++ b/src/dir.c
+@@ -13,15 +13,21 @@ A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public License along with
+ this program.  If not, see <https://www.gnu.org/licenses/>.  */
+-
++#include "config.h"
+ #include "makeint.h"
+ #include "hash.h"
+ #include "filedef.h"
+ #include "dep.h"
+ #include "debug.h"
++#define GetVolumeInformation GetVolumeInformationA
++#if defined HAVE_DIRENT_H || defined _WIN32
++#ifdef _WIN32
++#include <dirent.h>
++#include <sys/types.h>
++#define MAX_PATH 1024
++#define FALSE 0
++#endif
+ 
+-#ifdef HAVE_DIRENT_H
+-# include <dirent.h>
+ # define NAMLEN(dirent) strlen((dirent)->d_name)
+ # if MK_OS_VMS
+ /* its prototype is in vmsdir.h, which is not needed for HAVE_DIRENT_H */
+diff --git a/src/misc.c b/src/misc.c
+index 04437c2b..1b906e6b 100644
+--- a/src/misc.c
++++ b/src/misc.c
+@@ -22,7 +22,9 @@ this program.  If not, see <https://www.gnu.org/licenses/>.  */
+ 
+ #include <assert.h>
+ #include <stdarg.h>
+-
++#ifdef _WIN32
++#define HAVE_UNISTD_H
++#endif
+ #if MK_OS_W32
+ # include <windows.h>
+ # include <io.h>
+diff --git a/src/remake.c b/src/remake.c
+index 9c7939b9..ec3ca9e0 100644
+--- a/src/remake.c
++++ b/src/remake.c
+@@ -39,7 +39,8 @@ this program.  If not, see <https://www.gnu.org/licenses/>.  */
+ #include <sys/stat.h>
+ #if defined(_MSC_VER) && _MSC_VER > 1200
+ /* VC7 or later supports _stat64 to access 64-bit file size. */
+-#define STAT _stat64
++//#define STAT _stat64
++#define STAT stat
+ #else
+ #define STAT stat
+ #endif
+diff --git a/src/w32/subproc/w32err.c b/src/w32/subproc/w32err.c
+index e947a5b2..094a04bd 100644
+--- a/src/w32/subproc/w32err.c
++++ b/src/w32/subproc/w32err.c
+@@ -14,6 +14,7 @@ A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+ You should have received a copy of the GNU General Public License along with
+ this program.  If not, see <https://www.gnu.org/licenses/>.  */
+ 
++#include "config.h"
+ #include <stdlib.h>
+ #include <windows.h>
+ #include "makeint.h"
