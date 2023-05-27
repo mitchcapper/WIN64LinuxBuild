@@ -217,6 +217,10 @@ function setup_build_env(){
 	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
 		STATIC_ADD=" -static" #we shouldnt nneed to add -MT here
 	fi
+	if [[ $BLD_CONFIG_LOG_DEBUG_WRAPPERS -eq 1 ]]; then
+		export DEBUG_GNU_COMPILE_WRAPPER=1 DEBUG_GNU_LIB_WRAPPER=1
+
+	fi
 	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT -eq 1 ]]; then
 		export COLOR_MINOR='\e[2;33m' COLOR_MINOR2='\e[2;36m' COLOR_MAJOR='\e[1;32m' COLOR_NONE='\e[0m'
 	fi
