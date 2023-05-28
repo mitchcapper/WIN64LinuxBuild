@@ -21,7 +21,7 @@ jobs:
     uses: ./.github/workflows/do_build.yml
     with:
       BuildPkg: script
-      Script: f_template_build_file.sh gnulib_dump_patches
+      Script: ./build/f_TEMPLATE_build.sh gnulib_dump_patches
   gnulib_test_all_patches:
     name: Test All Patches Together
     uses: ./.github/workflows/do_build.yml

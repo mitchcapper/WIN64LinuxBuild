@@ -48,9 +48,9 @@ fi
 	./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
 
 	gnulib_ensure_buildaux_scripts_copied;
-
 	configure_fixes;
 	configure_run;
+	#setup_build_env;
 	#log_make;  #will log all the commands make would run to a file
 	make
 	make install
