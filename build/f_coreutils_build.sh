@@ -55,9 +55,6 @@ fi
 
 	./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
 
-	#the makefile will already have HAVE_SYMLINK set but we will set it in the config.h to do so for VS if we debug from there
-
-	sed -i -E 's/undef HAVE_SYMLINK$/define HAVE_SYMLINK 1/' lib/config.hin
 #fi;
 	gnulib_ensure_buildaux_scripts_copied;
 #fi;
