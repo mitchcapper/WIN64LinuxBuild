@@ -119,7 +119,7 @@ index 04dbba21bc..608f1f3fe5 100644
              & ~(FILE_ATTRIBUTE_READONLY
                  | FILE_ATTRIBUTE_HIDDEN
 diff --git a/lib/readlink.c b/lib/readlink.c
-index 14bbb7f10c..79ad602f8e 100644
+index 14bbb7f10c..b0fc7cb708 100644
 --- a/lib/readlink.c
 +++ b/lib/readlink.c
 @@ -27,7 +27,7 @@
@@ -131,7 +131,7 @@ index 14bbb7f10c..79ad602f8e 100644
  ssize_t
  readlink (char const *file, _GL_UNUSED char *buf,
            _GL_UNUSED size_t bufsize)
-@@ -37,10 +37,166 @@ readlink (char const *file, _GL_UNUSED char *buf,
+@@ -37,10 +37,172 @@ readlink (char const *file, _GL_UNUSED char *buf,
    /* In general we should use lstat() here, not stat().  But on platforms
       without symbolic links, lstat() - if it exists - would be equivalent to
       stat(), therefore we can use stat().  This saves us a configure check.  */
@@ -178,6 +178,8 @@ index 14bbb7f10c..79ad602f8e 100644
 +ssize_t readlink(char const* file, char* target,
 +	size_t target_len) {
 +	HANDLE handle = CreateFileA(file, 0, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);//need FILE_FLAG_BACKUP_SEMANTICS  to be able to open directory ssymlinks
++	if (handle == INVALID_HANDLE_VALUE)
++		return -1;
 +
 +	char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
 +	REPARSE_DATA_BUFFER* reparse_data = (REPARSE_DATA_BUFFER*)buffer;
@@ -193,6 +195,7 @@ index 14bbb7f10c..79ad602f8e 100644
 +		sizeof buffer,
 +		&bytes,
 +		NULL)) {
++		CloseHandle(handle);
 +		return -1;
 +	}
 +
@@ -264,6 +267,7 @@ index 14bbb7f10c..79ad602f8e 100644
 +			w_target[5] == L':' &&
 +			(w_target_len == 6 || w_target[6] == L'\\'))) {
 +			SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
++			CloseHandle(handle);
 +			return -1;
 +		}
 +
@@ -275,6 +279,7 @@ index 14bbb7f10c..79ad602f8e 100644
 +	else {
 +		/* Reparse tag does not indicate a symlink. */
 +		SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
++		CloseHandle(handle);
 +		return -1;
 +	}
 +
@@ -288,6 +293,7 @@ index 14bbb7f10c..79ad602f8e 100644
 +		NULL,
 +		NULL);
 +	target[rd] = '\0';
++	CloseHandle(handle);
 +	return rd;
 +
 +
@@ -402,10 +408,22 @@ index 7987e26583..d258d141d2 100644
            /* Determine whether the file is executable by looking at the file
               name suffix.  */
 diff --git a/lib/symlink.c b/lib/symlink.c
-index b5009ae835..98941a5712 100644
+index b5009ae835..abca0f5b50 100644
 --- a/lib/symlink.c
 +++ b/lib/symlink.c
-@@ -40,7 +40,26 @@ rpl_symlink (char const *contents, char const *name)
+@@ -24,7 +24,10 @@
+ #include <sys/stat.h>
+ 
+ 
+-#if HAVE_SYMLINK
++#if HAVE_SYMLINK || REPLACE_SYMLINK
++#ifdef _WIN32
++#include <Windows.h>
++#endif
+ 
+ # undef symlink
+ 
+@@ -40,7 +43,26 @@ rpl_symlink (char const *contents, char const *name)
          errno = EEXIST;
        return -1;
      }
@@ -421,7 +439,7 @@ index b5009ae835..98941a5712 100644
 +	  return 0;
 +
 +  errno = GetLastError();
-+  if (errno == ERROR_ALREADY_EXISTS) //windows will return this if trying to link a folder and target is a folder name 
++  if (errno == ERROR_ALREADY_EXISTS) //windows will return this if trying to link a folder and target is a folder name
 +	  errno = EEXIST;
 +  if (errno == ERROR_ACCESS_DENIED) //if passing an existing folder this will occur our fallback behavior expects EEXIST in that case
 +	  errno = EEXIST;
@@ -429,10 +447,23 @@ index b5009ae835..98941a5712 100644
 +#else
 +  return symlink(contents, name);
 +#endif
-+  
++
  }
  
  #else /* !HAVE_SYMLINK */
+diff --git a/lib/symlinkat.c b/lib/symlinkat.c
+index 11eda8289a..7bae7b1486 100644
+--- a/lib/symlinkat.c
++++ b/lib/symlinkat.c
+@@ -47,7 +47,7 @@ rpl_symlinkat (char const *contents, int fd, char const *name)
+   return symlinkat (contents, fd, name);
+ }
+ 
+-#elif !HAVE_SYMLINK
++#elif !HAVE_SYMLINK && !REPLACE_SYMLINK
+ /* Mingw lacks symlink, and it is more efficient to provide a trivial
+    wrapper than to go through at-func.c to call rpl_symlink.  */
+ 
 diff --git a/lib/sys_stat.in.h b/lib/sys_stat.in.h
 index ad4da17fa4..523873e39f 100644
 --- a/lib/sys_stat.in.h
@@ -523,10 +554,10 @@ index faa197e6cb..1a25964744 100644
    errno = ENOSYS;
    return -1;
 diff --git a/m4/symlink.m4 b/m4/symlink.m4
-index 52d6c115ca..d3411c2299 100644
+index 52d6c115ca..2b235cd4b4 100644
 --- a/m4/symlink.m4
 +++ b/m4/symlink.m4
-@@ -17,7 +17,16 @@ AC_DEFUN([gl_FUNC_SYMLINK],
+@@ -17,7 +17,17 @@ AC_DEFUN([gl_FUNC_SYMLINK],
    dnl that compilation can proceed with fewer ifdefs.  On FreeBSD 7.2, AIX 7.1,
    dnl and Solaris 9, we want to fix a bug with trailing slash handling.
    if test $ac_cv_func_symlink = no; then
@@ -535,7 +566,8 @@ index 52d6c115ca..d3411c2299 100644
 +
 +  	  mingw*)
 +  	  	REPLACE_SYMLINK=1
-+  	  	HAVE_SYMLINK=1
++  	  	HAVE_SYMLINK=0
++        AC_DEFINE([REPLACE_SYMLINK],[1], [Define to 1 if gnulib's symlink() replacement is used.])
 +  	   ;;
 +      *)
 +        HAVE_SYMLINK=0
@@ -544,3 +576,16 @@ index 52d6c115ca..d3411c2299 100644
    else
      AC_CACHE_CHECK([whether symlink handles trailing slash correctly],
        [gl_cv_func_symlink_works],
+diff --git a/tests/test-readlinkat.c b/tests/test-readlinkat.c
+index 5a18fa3642..9b723a2d5e 100644
+--- a/tests/test-readlinkat.c
++++ b/tests/test-readlinkat.c
+@@ -79,7 +79,7 @@ main (void)
+ 
+   /* Now perform some cross-directory checks.  Skip everything else on
+      mingw.  */
+-  if (HAVE_SYMLINK)
++  if (HAVE_SYMLINK || REPLACE_SYMLINK)
+     {
+       const char *contents = "don't matter!";
+       ssize_t exp = strlen (contents);

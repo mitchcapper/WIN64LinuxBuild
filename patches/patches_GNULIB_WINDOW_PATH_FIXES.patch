@@ -1790,7 +1790,7 @@ index 19a68c052b..2d5e3f3f13 100644
      }
  # endif
 diff --git a/lib/link.c b/lib/link.c
-index 2c81e2f2e3..7d32708870 100644
+index 2c81e2f2e3..3aacd91d00 100644
 --- a/lib/link.c
 +++ b/lib/link.c
 @@ -23,6 +23,7 @@
@@ -1817,7 +1817,7 @@ index 2c81e2f2e3..7d32708870 100644
      struct stat st;
      char *p = strchr (dir, '\0');
 -    while (dir < p && (*--p != '/' && *p != '\\'));
-+    while (dir < p && ISSLASH(*--p));
++    while (dir < p && (--p) && ISSLASH(*p));
      *p = '\0';
      if (p != dir && stat (dir, &st) != 0 && errno != EOVERFLOW)
        {
@@ -2292,19 +2292,18 @@ index cc9511fdd8..baea536b98 100644
    p = path;
    do
 diff --git a/lib/symlink.c b/lib/symlink.c
-index b5009ae835..1d64429d4a 100644
+index b5009ae835..1ebaeafaa8 100644
 --- a/lib/symlink.c
 +++ b/lib/symlink.c
-@@ -22,7 +22,7 @@
+@@ -19,6 +19,7 @@
+ /* Specification.  */
+ #include <unistd.h>
+ 
++#include "filename.h"
  #include <errno.h>
  #include <string.h>
  #include <sys/stat.h>
--
-+#include "filename.h"
- 
- #if HAVE_SYMLINK
- 
-@@ -33,7 +33,7 @@ int
+@@ -33,7 +34,7 @@ int
  rpl_symlink (char const *contents, char const *name)
  {
    size_t len = strlen (name);
