@@ -2372,21 +2372,3 @@ index 9c96a6972c..fe1d5a57b5 100644
    return __xstat64 (_STAT_VER, dir, &buf) == 0 && S_ISDIR (buf.st_mode);
  }
  
-diff --git a/lib/unlink.c b/lib/unlink.c
-index d77d26298e..1957ef9a2c 100644
---- a/lib/unlink.c
-+++ b/lib/unlink.c
-@@ -93,6 +93,13 @@ rpl_unlink (char const *name)
-         }
- #endif
-       result = unlink (name);
-+#ifdef _WIN32 //windows won't let us delete readonly files by default but things like RM have already verified we wanted to delete it
-+	  if (result != 0 && errno == EACCES) {
-+		  chmod(name, _S_IREAD | _S_IWRITE); 
-+		  result = unlink(name);
-+	  }
-+#endif // _WIN32
-+
-     }
-   return result;
- }

@@ -505,24 +505,28 @@ index ad4da17fa4..523873e39f 100644
  _GL_CXXALIAS_RPL_1 (lstat, stat, int,
                      (const char *restrict name, struct stat *restrict buf));
 diff --git a/lib/unlink.c b/lib/unlink.c
-index d77d26298e..fe900e95d7 100644
+index d77d26298e..6359e1c9fb 100644
 --- a/lib/unlink.c
 +++ b/lib/unlink.c
-@@ -93,6 +93,18 @@ rpl_unlink (char const *name)
+@@ -93,6 +93,22 @@ rpl_unlink (char const *name)
          }
  #endif
        result = unlink (name);
-+#ifdef _WIN32 //here we fix unlinking of symlinked directories, 
-+	  if (result && errno == EACCES) {
-+		  struct stat st;
-+		  result = lstat(name, &st);
-+		  if (!result && S_ISLNK(st.st_mode) && S_ISDIR(st.st_mode))
-+			  result = _rmdir(name);
-+		  else {
-+			  result = -1;
-+			  errno = EACCES;//restore orig errno
++#ifdef _WIN32
++    if (result && errno == EACCES) { //windows won't let us delete readonly files by default but things like RM have already verified we wanted to delete it
++      chmod(name, _S_IREAD | _S_IWRITE);
++      result = unlink(name);
 +    }
-+	  }
++    if (result && errno == EACCES) { //fix unlinking of symlinked dirs in windows
++      struct stat st;
++      result = lstat(name, &st);
++      if (!result && S_ISLNK(st.st_mode) && S_ISDIR(st.st_mode))
++        result = _rmdir(name);
++      else {
++        result = -1;
++        errno = EACCES;//restore orig errno
++      }
++    }
 +#endif
      }
    return result;
