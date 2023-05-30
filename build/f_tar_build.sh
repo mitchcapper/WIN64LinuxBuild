@@ -17,7 +17,7 @@ PreInitialize;
 BLD_CONFIG_BUILD_NAME="tar";
 BLD_CONFIG_CONFIG_CMD_ADDL="--enable-threads=windows"
 BLD_CONFIG_ADD_WIN_ARGV_LIB=0
-BLD_CONFIG_GNU_LIBS_ADDL=( "lock" "thread" "sigpipe" "glob" "ioctl" "symlink" "unistd" "sys_time" "sys_wait" "ftello" "ftruncate" "system-posix" "posix_spawn" "pipe-posix" "close" "fclose" "fopen-gnu" "open" "posix_spawnattr_setsigdefault" "posix_spawnattr_getsigmask" "posix_spawnattr_getflags" "posix_spawnattr_setflags" "posix_spawnattr_setsigmask" "posix_spawnp" "stdio" "nonblocking" "poll" "pipe2" "signal-h" "sys_types" "sys_stat" "fcntl-h" "fcntl" "stdbool-c99" "waitpid" "sys_file" )
+BLD_CONFIG_GNU_LIBS_ADDL=(  "lock" "thread" "sigpipe" "glob" "ioctl" "sys_time" "sys_wait" "ftello" "ftruncate" "system-posix" "posix_spawn" "pipe-posix" "close" "fclose" "fopen-gnu" "open" "posix_spawnattr_setsigdefault" "posix_spawnattr_getsigmask" "posix_spawnattr_getflags" "posix_spawnattr_setflags" "posix_spawnattr_setsigmask" "posix_spawnp" "stdio" "nonblocking" "poll" "pipe2" "signal-h" "sys_types" "sys_stat" "fcntl-h" "fcntl" "stdbool-c99" "waitpid" "sys_file" )
 
 function ourmain() {
 	startcommon;
@@ -32,13 +32,12 @@ fi
 	cd $BLD_CONFIG_SRC_FOLDER
 	apply_our_repo_patch;
 	add_items_to_gitignore;
+	cd $BLD_CONFIG_SRC_FOLDER/paxutils
+	apply_our_repo_patch "paxutils"
 
 	cd $BLD_CONFIG_SRC_FOLDER
 	gnulib_switch_to_master_and_patch;
-
 	gnulib_add_addl_modules_to_bootstrap;
-	cd $BLD_CONFIG_SRC_FOLDER/paxutils
-	apply_our_repo_patch "paxutils"
 
 	git checkout bootstrap.conf
 	#it doesn't use extras so we can just add ours, they use paxutils to gnulib everyhting
@@ -57,10 +56,9 @@ fi
 	configure_run;
 
 
-	make
+	make -j 8 || make
 	make install
 
 	finalcommon;
 }
 ourmain;
-
