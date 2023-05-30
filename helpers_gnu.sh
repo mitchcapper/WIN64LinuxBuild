@@ -138,13 +138,6 @@ function gnulib_apply_patch(){
 	local patch=$1
 	local options=$2 #only valid option is skip_fixes right now
 
-	EXTRA=""
-	if [[ "${patch}" == "WINDOW_PATH_FIXES" ]]; then #for unlink symlink and path fixes overlap so we will apply pathfixes with 0 context for that ifle
-		if [[ options != "skip_fixes" ]]; then
-			EXTRA="--exclude lib/unlink.c"
-			git apply -C 0 --include=lib/unlink.c "$WIN_SCRIPT_FOLDER/patches/patches_GNULIB_${patch}.patch"
-		fi
-	fi;
 	git apply --ignore-space-change --ignore-whitespace --verbose ${EXTRA} "$WIN_SCRIPT_FOLDER/patches/patches_GNULIB_${patch}.patch"
 
 }
