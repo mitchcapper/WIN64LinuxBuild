@@ -13,6 +13,8 @@ function gnulib_switch_to_master_and_patch(){
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
 		sed -i -E "s#(gnulib_tool=.+gnulib-tool)\$#\1.py#" bootstrap
+	else
+		sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
 	fi
 	git submodule foreach git pull origin master
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
