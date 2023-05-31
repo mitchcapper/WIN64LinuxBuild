@@ -32,12 +32,13 @@ fi
 	cd $BLD_CONFIG_SRC_FOLDER
 	apply_our_repo_patch;
 	add_items_to_gitignore;
-	cd $BLD_CONFIG_SRC_FOLDER/paxutils
-	apply_our_repo_patch "paxutils"
 
 	cd $BLD_CONFIG_SRC_FOLDER
 	gnulib_switch_to_master_and_patch;
 	gnulib_add_addl_modules_to_bootstrap;
+	#must be patched after other checkout
+	cd $BLD_CONFIG_SRC_FOLDER/paxutils
+	apply_our_repo_patch "paxutils"
 
 	git checkout bootstrap.conf
 	#it doesn't use extras so we can just add ours, they use paxutils to gnulib everyhting
