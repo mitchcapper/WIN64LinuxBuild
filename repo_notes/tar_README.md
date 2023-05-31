@@ -7,3 +7,4 @@ While the changes are only #defined for windows, the spawn code should work for 
 - Standard GNULIB patches
 - Disable some permission settings that don't apply
 - Largest changes to change fork code over to gnulib execute/spawnp library
+- Fixed symbolic links to work properly in create, extract, compare on windows
