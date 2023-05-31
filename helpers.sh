@@ -154,7 +154,12 @@ convert_to_msys_path () {
 	WPATH=`cygpath -u "$WPATH"`
 	echo $WPATH
 }
-WIN_SCRIPT_FOLDER=$(convert_from_msys_path "$SCRIPT_FOLDER")
+convert_to_universal_path () {
+	local WPATH=$1
+	WPATH=`cygpath -u "$WPATH"`
+	echo $WPATH
+}
+WIN_SCRIPT_FOLDER=$(convert_to_universal_path "$SCRIPT_FOLDER")
 
 regex_strip_to_first_match() {
 	local REG=$1
@@ -190,6 +195,7 @@ function setup_build_env(){
 		LD_ADDL="-Xlinker setargv.obj"
 	fi
 	CL_PREFIX=""
+	USING_BLD_CFG=0
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]] || [[ $BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED -eq 1 ]]; then
 		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
 		local gnu_compile_path=$(convert_to_msys_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/compile")
@@ -203,7 +209,7 @@ function setup_build_env(){
 
 		CL_PREFIX="${gnu_compile_path} "
 		AR="${gnu_arlib_path} lib"
-
+		USING_BLD_CFG=1
 	fi
 	config_cmd=$"--config-cache $BLD_CONFIG_CONFIG_CMD_DEFAULT $BLD_CONFIG_CONFIG_CMD_ADDL"
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]]; then
@@ -214,7 +220,7 @@ function setup_build_env(){
 	setup_gnulibtool_py_autoconfwrapper
 	#not sure how to call two functions with the env vars set without using export
 	local STATIC_ADD=""
-	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 && $USING_BLD_CFG -eq 1 ]]; then #if not using compile script this isnt needed as it is just for lib finding assist
 		STATIC_ADD=" -static" #we shouldnt nneed to add -MT here
 	fi
 	if [[ $BLD_CONFIG_LOG_DEBUG_WRAPPERS -eq 1 ]]; then
@@ -224,7 +230,9 @@ function setup_build_env(){
 	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT -eq 1 ]]; then
 		export COLOR_MINOR='\e[2;33m' COLOR_MINOR2='\e[2;36m' COLOR_MAJOR='\e[1;32m' COLOR_NONE='\e[0m'
 	fi
-	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$LD_ADDL ${LDFLAGS}" CFLAGS="${CFLAGS} -nologo" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="LINK.exe";
+	LINK_PATH=$(convert_to_universal_path "$VCToolsInstallDir")
+	LINK_PATH="${LINK_PATH}/bin/HostX64/x64/link.exe"
+	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$LD_ADDL ${LDFLAGS}" CFLAGS="${CFLAGS} -nologo" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
 }
 function log_make() {
