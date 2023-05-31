@@ -22,8 +22,9 @@ BLD_CONFIG_ADD_WIN_ARGV_LIB=0
 
 #BLD_CONFIG_GNU_LIBS_ADDL=( "lock" )
 #BLD_CONFIG_LOG_EXPAND_VARS=1  # set this to expand vars in log - so this works well but this is the only way I found to properly log the current command in a reproducible form.  It is exceptionally slow.
+#BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY=0
+#BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY_ADDL_MK_FILES_FIX=( "lib/gnulib.mk" )
 
-# after including this script have:
 function ourmain() {
 	startcommon;
 	#add_lib_pkg_config  "libpsl" "pcre2" "zlib"
@@ -43,8 +44,8 @@ fi
 	cd $BLD_CONFIG_SRC_FOLDER
 	#vcpkg_install_package "openssl"
 
-	#setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
-	gnulib_tool_py_remove_nmd_makefiles
+	#gnulib_tool_py_remove_nmd_makefiles
+	setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
 	./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
 
 	gnulib_ensure_buildaux_scripts_copied;
@@ -52,7 +53,7 @@ fi
 	configure_run;
 	#setup_build_env;
 	#log_make;  #will log all the commands make would run to a file
-	make
+	make -j 8 || make
 	make install
 
 	finalcommon;
