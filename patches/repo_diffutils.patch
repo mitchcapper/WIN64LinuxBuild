@@ -1,0 +1,26 @@
+diff --git a/src/util.c b/src/util.c
+index cb8f45d..7cb4c16 100644
+--- a/src/util.c
++++ b/src/util.c
+@@ -276,7 +276,9 @@ process_signals (void)
+       if (stops)
+         {
+           stop_signal_count = stops - 1;
++#ifndef _WIN32
+           sig = SIGSTOP;
++#endif
+         }
+       else
+ 	{
+@@ -307,7 +309,10 @@ static int const sig[] =
+ #ifdef SIGALRM
+     SIGALRM,
+ #endif
+-    SIGHUP, SIGINT, SIGPIPE,
++#ifdef SIGHUP
++    SIGHUP,
++  #endif
++    SIGINT, SIGPIPE,
+ #ifdef SIGQUIT
+     SIGQUIT,
+ #endif
