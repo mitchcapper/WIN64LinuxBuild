@@ -156,7 +156,7 @@ convert_to_msys_path () {
 }
 convert_to_universal_path () {
 	local WPATH=$1
-	WPATH=`cygpath -u "$WPATH"`
+	WPATH=`cygpath -m "$WPATH"`
 	echo $WPATH
 }
 WIN_SCRIPT_FOLDER=$(convert_to_universal_path "$SCRIPT_FOLDER")
