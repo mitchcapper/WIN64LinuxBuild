@@ -52,6 +52,21 @@ void ArrExpandWithDefs(string root, List<string> arr, IEnumerable<string> addl, 
     arr.Clear();
     arr.AddRange(l2);
 }
+void ArrExpandWildcards(string root, List<string> arr){
+        for (var x = 0; x < arr.Count; x++){
+        if (arr[x].Contains("*")){ //try to expand wildcards
+            var dir = Path.GetDirectoryName(arr[x]);
+            var file = Path.GetFileName(arr[x]);
+            var all = Directory.GetFiles(Path.Combine(root,dir),file);
+            arr.RemoveAt(x);
+            foreach (var f in all){
+                arr.Insert(x,f);
+                x++;
+            }
+            x--;
+        }
+    }
+}
 void RelativePaths(string root, List<string> arr) {
     for (var x = 0; x < arr.Count; x++)
         arr[x] = Path.GetRelativePath(root.Replace("/","\\"),arr[x].Replace("/","\\")).Replace("\\","/");
@@ -70,6 +85,8 @@ void DoFileReplace(String filename, ConfigRead config, Opts opts, String save_fi
     var compile = opts.GetArrVal("compile");
     var define = opts.GetArrVal("define");
     var include = opts.GetArrVal("include");
+    ArrExpandWildcards(ROOT_DIR,compile);
+    ArrExpandWildcards(ROOT_DIR,include);
     ArrExpandWithDefs(ROOT_DIR, lib_paths, new[] { "", "lib", "gl/lib", "src", "gnu" });
     ArrExpandWithDefs(ROOT_DIR, incl_paths, new[] { "", "lib", "gl/lib", "gnu" });
     var replaceExt = opts.GetVal("replace_ext");
@@ -110,22 +127,43 @@ void DoFileReplace(String filename, ConfigRead config, Opts opts, String save_fi
 	
 	RelativePaths(ROOT_DIR, compile);
 	RelativePaths(ROOT_DIR, include);
+	var all_files = new List<ProjFile>();
+	all_files.AddRange(compile.Select(a=>new ProjFile(true,a)));
+	all_files.AddRange(include.Select(a=>new ProjFile(false,a)));
 
     TemplateReplace(ref text, "BIN_NAME", opts.GetVal("exe"));
     TemplateReplace(ref text, "PROJ_NAME", config.GetVal("BUILD_NAME"));
     TemplateReplace(ref text, "ADDL_LIBS", String.Join(";", libs));
     TemplateReplace(ref text, "INCLUDE_PATHS", String.Join(";", incl_paths));
     TemplateReplace(ref text, "LIB_PATHS", String.Join(";", lib_paths));
-    TemplateReplace(ref text, "INCLUDE_FILES", String.Join("\n", include.Select(a => $"<ClInclude Include=\"{a}\" />")));
-    TemplateReplace(ref text, "COMPILE_FILES", String.Join("\n", compile.Select(a => $"<ClCompile Include=\"{a}\" />")));
-    TemplateReplace(ref text, "INCLUDE_FILES_FILT", String.Join("\n", include.Select(a => $"<ClInclude Include=\"{a}\">\n\t<Filter>Header Files</Filter>\n\t</ClInclude>")));
-    TemplateReplace(ref text, "COMPILE_FILES_FILT", String.Join("\n", compile.Select(a => $"<ClCompile Include=\"{a}\">\n\t<Filter>Source Files</Filter>\n\t</ClCompile>")));
+    TemplateReplace(ref text, "INCLUDE_FILES", String.Join("\n", all_files.Where(a=>a.compile==false).Select(a => a.ItemAsProj)));
+    TemplateReplace(ref text, "COMPILE_FILES", String.Join("\n", all_files.Where(a=>a.compile).Select(a => a.ItemAsProj)));
+    
+    TemplateReplace(ref text, "INCLUDE_FILES_FILT", String.Join("\n", all_files.Where(a=>a.compile==false).Select(a => a.ItemAsProjFilter)));
+    TemplateReplace(ref text, "COMPILE_FILES_FILT", String.Join("\n", all_files.Where(a=>a.compile).Select(a => a.ItemAsProjFilter)));
+    var all_paths = new List<string>();
+    all_paths.AddRange(all_files.Select(a=>a.ItemProjFilterFolderPath).Distinct());
+    var tmp = all_paths;
+    all_paths = all_paths.Select(a=>System.IO.Path.GetDirectoryName(a)).ToList();
+    all_paths.AddRange(tmp);
+
+    all_paths = all_paths.Select(a=>System.IO.Path.GetDirectoryName(a)).ToList();
+    all_paths.AddRange(tmp);
+    all_paths = all_paths.Where(a=>String.IsNullOrWhiteSpace(a) ==false).Distinct().ToList();
+    
+    TemplateReplace(ref text, "PROJ_FOLDERS_FILT", String.Join("\n",  all_paths.OrderBy(a=>a.Length).Select(a=>$@"<Filter Include=""{a}"">
+      <UniqueIdentifier>{Guid.NewGuid().ToString().ToLower()}</UniqueIdentifier>
+</Filter>")  ));
+    
+    
+
+
+
     TemplateReplace(ref text, "DEFINES", String.Join(";", define.Distinct()));
     text = new Regex(@"[;]{2,}").Replace(text, ";");
 
     File.WriteAllText(save_filename, text);
 }
-
 
 DoFileReplace("ProjTemplate.sln", config, opts, "[PROJ_NAME].sln");
 DoFileReplace("ProjTemplate.vcxproj", config, opts, "[PROJ_NAME].vcxproj");
@@ -137,14 +175,36 @@ foreach (var fl in copy) {
     if (fl == "debug.c" && opts.GetValBool("debug_cpp"))
         dstName = "debug.cpp";
     var target = Path.Combine(ROOT_DIR, dstName);
-    File.Copy(Path.Combine(TEMPLATE_FOLDER, fl), target, true);
+    var useSym = fl == "debug.c";
+    if (! File.Exists(target)){
+     if (useSym){
+        
+        	File.CreateSymbolicLink(target,Path.Combine(TEMPLATE_FOLDER, fl));
+    }else
+        File.Copy(Path.Combine(TEMPLATE_FOLDER, fl), target, true);
+   }
 }
 
 Console.WriteLine("DONE");
 
 
 
-
+class ProjFile{
+    public bool compile;
+    public string relative_folder;
+    public string ItemProjFilterFolderPath => $"{(compile ? "Source" : "Header")} Files{(String.IsNullOrWhiteSpace(relative_folder) ? "" : $"\\{relative_folder}")}";
+    public string ItemAsProj => @$"<Cl{(compile ? "Compile":"Include")} Include=""{relative_full_path}"" />";
+    public string ItemAsProjFilter => @$"<Cl{(compile ? "Compile":"Include")} Include=""{relative_full_path}"">
+	<Filter>{ItemProjFilterFolderPath}</Filter>
+</Cl{(compile ? "Compile":"Include")}>";
+    public string relative_full_path => Path.Combine(relative_folder,filename).Replace("/","\\");
+    public string filename;
+    public ProjFile(bool compile, String path){
+        this.compile = compile;
+        relative_folder = System.IO.Path.GetDirectoryName(path);
+        filename = System.IO.Path.GetFileName(path);
+    }
+}
 class ConfigRead {
     Dictionary<string, string> items = new();
     public void ReadConfig() {
