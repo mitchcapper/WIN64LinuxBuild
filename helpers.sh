@@ -197,16 +197,10 @@ function setup_build_env(){
 	CL_PREFIX=""
 	USING_BLD_CFG=0
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]] || [[ $BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED -eq 1 ]]; then
-		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
-		local gnu_compile_path=$(convert_to_msys_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/compile")
-		local gnu_arlib_path=$(convert_to_msys_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ar-lib")
-		if [[ ! -f "${gnu_compile_path}" ]]; then
-			wget --quiet https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/compile -O "${gnu_compile_path}"
-		fi
-		if [[ ! -f "${gnu_arlib_path}" ]]; then
-			wget --quiet https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/ar-lib -O "${gnu_arlib_path}"
-		fi
 
+		gnulib_ensure_buildaux_scripts_copied
+		local gnu_compile_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/compile")
+		local gnu_arlib_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ar-lib")
 		CL_PREFIX="${gnu_compile_path} "
 		AR="${gnu_arlib_path} lib"
 		USING_BLD_CFG=1

@@ -77,8 +77,29 @@ function gnulib_switch_to_master_and_patch(){
 	#done
 }
 function gnulib_ensure_buildaux_scripts_copied(){
-	cp "${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/ar-lib" "${BLD_CONFIG_BUILD_AUX_FOLDER}"
-	cp "${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/compile" "${BLD_CONFIG_BUILD_AUX_FOLDER}"
+	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]] || [[ $BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED -eq 1 ]]; then
+		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
+		local gnu_compile_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/compile")
+		local gnu_arlib_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ar-lib")
+		AR_PATH="${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/ar-lib"
+
+		if [[ -f "${AR_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
+			if [[ ! -f "${gnu_arlib_path}" ]]; then
+				cp "${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/ar-lib" "${gnu_arlib_path}"
+			fi
+			if [[ ! -f "${gnu_compile_path}" ]]; then
+				cp "${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/compile" "${gnu_compile_path}"
+			fi
+		else #no gnulib local so lets fetch it from remote
+			if [[ ! -f "${gnu_arlib_path}" ]]; then
+				wget --quiet https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/ar-lib -O "${gnu_arlib_path}"
+			fi
+			if [[ ! -f "${gnu_compile_path}" ]]; then
+				wget --quiet https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/compile -O "${gnu_compile_path}"
+			fi
+
+		fi
+	fi
 }
 function gnulib_add_addl_modules_to_bootstrap(){
 	cd $BLD_CONFIG_SRC_FOLDER
