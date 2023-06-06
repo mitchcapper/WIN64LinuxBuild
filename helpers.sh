@@ -168,6 +168,10 @@ regex_strip_to_first_match() {
 	fi
 }
 
+function tee_cmd_outs() {
+	CMD=$1
+	"$@" > >(tee "${CMD}.stdout") 2> >(tee "${CMD}.stderr" >&2)
+}
 
 SetupIgnores(){
 	IGNORE_CMDS=("${BLD_CONFIG_LOG_IGNORE_CMDS_EXACT_DEFAULT[@]}" "${BLD_CONFIG_LOG_IGNORE_CMDS_EXACT_ADDL[@]}")
@@ -186,7 +190,7 @@ PreInitialize(){
 function configure_run(){
 	setup_build_env;
 	echo "Running ./configure ${config_cmd}" 1>&2
-	./configure $config_cmd;
+	./configure $config_cmd  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
 
 function setup_build_env(){
@@ -225,7 +229,7 @@ function setup_build_env(){
 		export COLOR_MINOR='\e[2;33m' COLOR_MINOR2='\e[2;36m' COLOR_MAJOR='\e[1;32m' COLOR_NONE='\e[0m'
 	fi
 	LINK_PATH=$(convert_to_universal_path "$VCToolsInstallDir")
-	LINK_PATH="${LINK_PATH}/bin/HostX64/x64/link.exe"
+	LINK_PATH="${LINK_PATH}bin/HostX64/x64/link.exe"
 	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$LD_ADDL ${LDFLAGS}" CFLAGS="${CFLAGS} -nologo" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
 }
