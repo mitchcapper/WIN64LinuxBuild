@@ -19,6 +19,7 @@ BLD_CONFIG_ADD_WIN_ARGV_LIB=0
 BLD_CONFIG_GNU_LIBS_USED=0
 BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED=0
 BLD_CONFIG_BUILD_DEBUG=0
+BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 
 function ourmain() {
 	startcommon;
@@ -48,20 +49,7 @@ fi
 	BRO_BASE=$(get_install_prefix_for_vcpkg_pkg "brotli")
 	ZST_BASE=$(get_install_prefix_for_vcpkg_pkg "zstd")
 
-	ADL_C_FLAGS=""
-	ADL_LIB_FLAGS=""
-	MSVC_RUNTIME="MD"
-	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
-		MSVC_RUNTIME="MT"
-	fi
-	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
-		sed -i -E "s#NDEBUG#DEBUG#g" src/Makefile extras/tcl/makefile
-		ADL_C_FLAGS+=" /DEBUG"
-		ADL_LIB_FLAGS+=" /DEBUG" #-ldebug  for the debug lib
-		MSVC_RUNTIME+="d"
-	fi
-	export CFLAGS=" ${ADL_C_FLAGS} /${MSVC_RUNTIME} /Os"
-	export LDFLAGS=" ${ADL_LIB_FLAGS}"
+
 	PERL="./perl/perl/bin/perl.exe"
 	#-static will break when going to link
 	setup_build_env;
