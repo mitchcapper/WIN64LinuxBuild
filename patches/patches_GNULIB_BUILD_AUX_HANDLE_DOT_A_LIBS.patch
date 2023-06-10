@@ -1,5 +1,5 @@
 diff --git a/build-aux/ar-lib b/build-aux/ar-lib
-index 17de55e79c..8616edabc5 100755
+index 17de55e79c..aec8e78532 100755
 --- a/build-aux/ar-lib
 +++ b/build-aux/ar-lib
 @@ -1,6 +1,13 @@
@@ -32,7 +32,26 @@ index 17de55e79c..8616edabc5 100755
  
  # func_error message
  func_error ()
-@@ -92,7 +108,7 @@ func_at_file ()
+@@ -49,6 +65,10 @@ func_file_conv ()
+     / | /[!/]*) # absolute file, and not a UNC file
+       if test -z "$file_conv"; then
+ 	# lazily determine how to convert abs files
++        OS_SYS=`uname -o`
++        if [[ "$OS_SYS" == "Msys" ]]; then
++            file_conv=cygwin
++        else
+ 	case `uname -s` in
+ 	  MINGW*)
+ 	    file_conv=mingw
+@@ -60,6 +80,7 @@ func_file_conv ()
+ 	    file_conv=wine
+ 	    ;;
+ 	esac
++        fi
+       fi
+       case $file_conv in
+ 	mingw)
+@@ -92,7 +113,7 @@ func_at_file ()
  
    for member
    do
@@ -41,7 +60,7 @@ index 17de55e79c..8616edabc5 100755
    done
  }
  
-@@ -205,7 +221,7 @@ if test -n "$delete"; then
+@@ -205,7 +226,7 @@ if test -n "$delete"; then
          ;;
        *)
          func_file_conv "$1"
@@ -50,7 +69,7 @@ index 17de55e79c..8616edabc5 100755
          ;;
      esac
    done
-@@ -223,15 +239,15 @@ elif test -n "$extract"; then
+@@ -223,15 +244,15 @@ elif test -n "$extract"; then
            ;;
          *)
            func_file_conv "$1"
@@ -69,7 +88,7 @@ index 17de55e79c..8616edabc5 100755
          done
    fi
  
-@@ -262,14 +278,14 @@ elif test -n "$quick$replace"; then
+@@ -262,14 +283,14 @@ elif test -n "$quick$replace"; then
    done
  
    if test -n "$orig_archive"; then
@@ -88,7 +107,7 @@ index 17de55e79c..8616edabc5 100755
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index ba883b54aa..4cc8702b97 100755
+index ba883b54aa..e44b3533a2 100755
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,6 +1,16 @@
@@ -108,7 +127,26 @@ index ba883b54aa..4cc8702b97 100755
  scriptversion=2018-03-07.03; # UTC
  
  # Copyright (C) 1999-2023 Free Software Foundation, Inc.
-@@ -91,37 +101,68 @@ func_cl_dashL ()
+@@ -49,6 +59,10 @@ func_file_conv ()
+     / | /[!/]*) # absolute file, and not a UNC file
+       if test -z "$file_conv"; then
+ 	# lazily determine how to convert abs files
++        OS_SYS=`uname -o`
++        if [[ "$OS_SYS" == "Msys" ]]; then
++            file_conv=cygwin
++        else
+ 	case `uname -s` in
+ 	  MINGW*)
+ 	    file_conv=mingw
+@@ -61,6 +75,7 @@ func_file_conv ()
+ 	    ;;
+ 	esac
+       fi
++      fi
+       case $file_conv/,$2, in
+ 	*,$file_conv,*)
+ 	  ;;
+@@ -91,37 +106,68 @@ func_cl_dashL ()
    linker_opts="$linker_opts -LIBPATH:$file"
  }
  
@@ -201,7 +239,15 @@ index ba883b54aa..4cc8702b97 100755
    fi
  }
  
-@@ -145,12 +186,12 @@ func_cl_wrapper ()
+@@ -132,6 +178,7 @@ func_cl_wrapper ()
+   # Assume a capable shell
+   lib_path=
+   shared=:
++  STD_DECLARE=""
+   linker_opts=
+   for arg
+   do
+@@ -145,12 +192,12 @@ func_cl_wrapper ()
  	  case $2 in
  	    *.o | *.[oO][bB][jJ])
  	      func_file_conv "$2"
@@ -216,27 +262,38 @@ index ba883b54aa..4cc8702b97 100755
  	      shift
  	      ;;
  	  esac
-@@ -187,6 +228,8 @@ func_cl_wrapper ()
+@@ -187,6 +234,19 @@ func_cl_wrapper ()
  	-static)
  	  shared=false
  	  ;;
++	-std=*)
++	  std="${1#-std=}"
++	  if [[ "$std" == "c99" ]]; then
++	  	std="c11"
++	  fi
++	  set x "$@" -std:"$std"
++	  if [[ "$std" == "c11" || "$std" == "c17" ]]; then #note that MSVC never supported dynamic arrays as it never supported c99 fully and c11 made them optional.  If your configure has a dynamic array test it will fail still.
++		STD_DECLARE="/Zc:__STDC__"
++	  fi
++	  shift
++	  ;;
 +	-W[a-zA-Z][a-zA-Z-][a-zA-Z-][a-zA-Z-][a-zA-Z-]*) #word based warnings other than all are not supported by msvc
 +	  ;;
  	-Wl,*)
  	  arg=${1#-Wl,}
  	  save_ifs="$IFS"; IFS=','
-@@ -200,6 +243,10 @@ func_cl_wrapper ()
+@@ -200,6 +260,10 @@ func_cl_wrapper ()
  	  eat=1
  	  linker_opts="$linker_opts $2"
  	  ;;
-+	--version)
++	-version | --version)
 +	  echo "MSVC CL" `cl 2>&1 1>/dev/null | grep -o -E "[0-9]+[.][0-9.]+"`
 +	  exit
 +	  ;;
  	-*)
  	  set x "$@" "$1"
  	  shift
-@@ -209,9 +256,12 @@ func_cl_wrapper ()
+@@ -209,9 +273,12 @@ func_cl_wrapper ()
  	  set x "$@" -Tp"$file"
  	  shift
  	  ;;
@@ -250,16 +307,16 @@ index ba883b54aa..4cc8702b97 100755
  	  shift
  	  ;;
  	*)
-@@ -225,7 +275,12 @@ func_cl_wrapper ()
+@@ -225,7 +292,12 @@ func_cl_wrapper ()
    if test -n "$linker_opts"; then
      linker_opts="-link$linker_opts"
    fi
 -  exec "$@" $linker_opts
 +  if [[ $DEBUG_GNU_COMPILE_WRAPPER -eq 1 ]]; then
-+  	echo -e "${COLOR_MINOR}GNU COMPILE OUTPUT${COLOR_NONE}: " "$@" $linker_opts 1>&2
++  	echo -e "${COLOR_MINOR}GNU COMPILE OUTPUT${COLOR_NONE}: " "$@" $STD_DECLARE $linker_opts 1>&2
 +  fi
 +  shopt -s extglob
-+  exec "${@//'\e'\[*([0-9;])m/}" ${linker_opts//'\e'\[*([0-9;])m/} #strip ansi color strings out
++  exec "${@//'\e'\[*([0-9;])m/}" $STD_DECLARE ${linker_opts//'\e'\[*([0-9;])m/} #strip ansi color strings out
 +  shopt -u extglob
    exit 1
  }
