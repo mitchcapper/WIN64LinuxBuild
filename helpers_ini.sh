@@ -131,6 +131,16 @@ ini_read(){
 
 DoTemplateSubs(){
 	INI_OUT=""
+	TEMPLATE_SUB_ORDER+=("STATIC_RELEASE_TRIPLET_ADD")
+	BLD_CONFIG_STATIC_RELEASE_TRIPLET_ADD=""
+
+	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+		BLD_CONFIG_STATIC_RELEASE_TRIPLET_ADD+="-static"
+	fi
+	if [[ ! $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+		BLD_CONFIG_STATIC_RELEASE_TRIPLET_ADD+="-release"
+	fi
+	
 	for value in "${TEMPLATE_SUB_ORDER[@]}"
 	do
 		declare -n cur_val="BLD_CONFIG_$value"

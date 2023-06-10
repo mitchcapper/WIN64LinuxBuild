@@ -4,7 +4,6 @@ CALL_CMD="$1"
 CALL_SCRIPT_PATH="$2"
 SCRIPT_FOLDER="$(dirname "$(readlink -f "$BASH_SOURCE")")"
 #if a env variable is completely undefined our changes wont be picked up unless past directly to the command or exported
-export VCPKG_DISABLE_METRICS=1 PKG_CONFIG_PATH CFLAGS LDFLAGS LIBS CXX CX CPPFLAGS
 
 
 vcpkg_ensure_installed(){
@@ -17,32 +16,24 @@ vcpkg_ensure_installed(){
 	git clone https://github.com/microsoft/vcpkg .
 	./bootstrap-vcpkg.bat
 }
+
 vcpkg_remove_package(){
 	vcpkg_ensure_installed
 	local TO_INSTALL=""
 	for TO_INSTALL in "$@"; do
 		mkdir -p "${BLD_CONFIG_VCPKG_BINARY_DIR}"
 		export VCPKG_DEFAULT_BINARY_CACHE="${BLD_CONFIG_VCPKG_BINARY_DIR}"
-		local INSTALL_TARGET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}")
-		local VCPKG_FIX_TARGET="${INSTALL_TARGET}/${BLD_CONFIG_VCPKG_TRIPLET}"
-		#local TRASH_FOLDER="${BLD_CONFIG_VCPKG_INSTALL_TARGET_BASEDIR}/trash"
+		local INSTALL_ROOT=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "no_triplet")
+		local INSTALL_TRIPLET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "triplet") #this will have the triplet on it if strip is off
+		local INSTALL_TARGET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}") #triplet included when strip is off
 		mkdir -p "${INSTALL_TARGET}"
-		if [[ -e "$VCPKG_FIX_TARGET" ]]; then
-			true
-			#rm "$VCPKG_FIX_TARGET" || true
-			#if [[ -e "$VCPKG_FIX_TARGET" ]]; then
-				#mkdir -p "${TRASH_FOLDER}"
-				#mv "$VCPKG_FIX_TARGET" "$TRASH_FOLDER/"
-			#fi
-		else
-			ln -s "${INSTALL_TARGET}" "$VCPKG_FIX_TARGET"
+		if [[ $BLD_CONFIG_VCPKG_STRIP_TRIPLET -eq 1 && ! -e "$INSTALL_TRIPLET" ]]; then
+			ln -s "${INSTALL_TARGET}" "$INSTALL_TRIPLET"
 		fi
 
-
 		#host triplet doesnt seem to work 100%
-		"${BLD_CONFIG_VCPKG_BIN}" remove "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" "--x-install-root=${INSTALL_TARGET}"
-		#rm "$VCPKG_FIX_TARGET" || true
-		#fix the odd prefix=${pcfiledir}/../..
+		"${BLD_CONFIG_VCPKG_BIN}" remove "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" "--x-install-root=${INSTALL_ROOT}"
+
 	done
 }
 
@@ -53,26 +44,16 @@ vcpkg_install_package(){
 	for TO_INSTALL in "$@"; do
 		mkdir -p "${BLD_CONFIG_VCPKG_BINARY_DIR}"
 		export VCPKG_DEFAULT_BINARY_CACHE="${BLD_CONFIG_VCPKG_BINARY_DIR}"
-		local INSTALL_TARGET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}")
-		local VCPKG_FIX_TARGET="${INSTALL_TARGET}/${BLD_CONFIG_VCPKG_TRIPLET}"
-		#local TRASH_FOLDER="${BLD_CONFIG_VCPKG_INSTALL_TARGET_BASEDIR}/trash"
+		local INSTALL_ROOT=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "no_triplet")
+		local INSTALL_TRIPLET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "triplet") #this will have the triplet on it if strip is off
+		local INSTALL_TARGET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}") #triplet included when strip is off
 		mkdir -p "${INSTALL_TARGET}"
-		if [[ -e "$VCPKG_FIX_TARGET" ]]; then
-			true
-			#rm "$VCPKG_FIX_TARGET" || true
-			#if [[ -e "$VCPKG_FIX_TARGET" ]]; then
-				#mkdir -p "${TRASH_FOLDER}"
-				#mv "$VCPKG_FIX_TARGET" "$TRASH_FOLDER/"
-			#fi
-		else
-			ln -s "${INSTALL_TARGET}" "$VCPKG_FIX_TARGET"
+		if [[ $BLD_CONFIG_VCPKG_STRIP_TRIPLET -eq 1 && ! -e "$INSTALL_TRIPLET" ]]; then
+			ln -s "${INSTALL_TARGET}" "$INSTALL_TRIPLET"
 		fi
 
-
 		#host triplet doesnt seem to work 100%
-		"${BLD_CONFIG_VCPKG_BIN}" install "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" --host-triplet=${BLD_CONFIG_VCPKG_TRIPLET} "--x-install-root=${INSTALL_TARGET}"
-		#rm "$VCPKG_FIX_TARGET" || true
-		#fix the odd prefix=${pcfiledir}/../..
+		"${BLD_CONFIG_VCPKG_BIN}" install "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" --host-triplet=${BLD_CONFIG_VCPKG_TRIPLET} --allow-unsupported "--x-install-root=${INSTALL_ROOT}"
 		local FILES=`find "${INSTALL_TARGET}" -name "*.pc"`
 		if [[ "${FILES}" != "" ]]; then
 			mapfile -t TO_FIX <<<$FILES
@@ -80,19 +61,41 @@ vcpkg_install_package(){
 				sed -i -E "s#^prefix=.+#prefix=${INSTALL_TARGET}#" "${fl}"
 			done
 		fi
+		local DEBUG_DIR="${INSTALL_TARGET}/debug"
+		if [[ -e "${DEBUG_DIR}" && $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+			if [[ -e "${INSTALL_TARGET}/debug/lib/pkgconfig" && -e "${INSTALL_TARGET}/lib/pkgconfig" ]]; then #assume normal pkg config is fine avoid needing to recurse
+				rm -rf "${INSTALL_TARGET}/debug/lib/pkgconfig"
+				rmdir --ignore-fail-on-non-empty "${INSTALL_TARGET}/debug/lib"
+			fi
+			for fl in "$DEBUG_DIR"/*; do
+				if [[ -d "${fl}" ]]; then
+					local DIR_NAME="${fl##*/}"    # print everything after the final "/"
+					mv "${fl}"/* "${INSTALL_TARGET}/${DIR_NAME}/"
+					rmdir "${fl}"
+				else
+					mv "${fl}" "${INSTALL_TARGET}/"
+				fi
+			done
+
+			rmdir "${DEBUG_DIR}"
+		fi
 	done
 }
 get_install_prefix_for_vcpkg_pkg(){
 	local BLD_NAME=$1
+	local TRIPLET_FORCE=$2
 	# cheating rather than actually try to reparse templates
-	echo "${BLD_CONFIG_VCPKG_INSTALL_TARGET_BASEDIR}/${BLD_NAME}"
+	ADD_TRIPLET=""
+	if [[  (! $BLD_CONFIG_VCPKG_STRIP_TRIPLET -eq 1 && ! $TRIPLET_FORCE == "no_triplet") || $TRIPLET_FORCE == "triplet" ]]; then
+		ADD_TRIPLET="/${BLD_CONFIG_VCPKG_TRIPLET}"
+	fi
+	echo "${BLD_CONFIG_VCPKG_INSTALL_TARGET_BASEDIR}/${BLD_NAME}${ADD_TRIPLET}"
 }
 add_vcpkg_pkg_config(){
 	local PTH=""
 	#VCPKG_INSTALL_TARGET_BASEDIR
 	for var in "$@"; do
 		PTH=$(get_install_prefix_for_vcpkg_pkg "${var}")
-		#PTH=$"${PTH}/${BLD_CONFIG_VCPKG_TRIPLET}"
 		PTH=$(convert_to_msys_path "${PTH}")
 		# we may use this at the top of a script but install the package during the script so don't die out if we dont exist
 		#if [ ! -d "${PTH}" ]; then
