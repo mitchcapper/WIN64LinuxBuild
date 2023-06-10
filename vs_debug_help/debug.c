@@ -22,7 +22,12 @@ void DisableDebugAssertPopup() {
 }
 void EnableDebugAssertPopup() {
 	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG | _CRTDBG_MODE_WNDW);
-	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+}
+int MSVCAssertTmpSilenceAll() {
+	return _CrtSetReportMode(_CRT_ASSERT, 0);
+}
+int MSVCAssertTmpRestoreAll(int oldMode) {
+	return _CrtSetReportMode(_CRT_ASSERT, oldMode);
 }
 
 void launchdebugger() {
@@ -167,7 +172,7 @@ void _fdbglog_msg(const char* prefix_str, const char* format, va_list args) {
 	OutputDebugString(buffer);
 	OutputDebugString("\n");
 }
-int _dbglog(int retval, int funcLog, int lineno, const char* file, const char* func, const char* format, ...) {
+int _dbglog(int retval, __DbgLogType_t LogType, int lineno, const char* file, const char* func, const char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	time_t rawtime;
@@ -179,14 +184,16 @@ int _dbglog(int retval, int funcLog, int lineno, const char* file, const char* f
 	time(&rawtime);
 	localtime_s(&timeinfo, &rawtime);
 	char prefix_str[150];
-	sprintf_s(prefix_str, sizeof(prefix_str), "%2d:%02d:%02d %s:%d::%s %s", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, file, lineno, func, funcLog ? "FLOG " : "");
-	if (dbgcfg.stderr_log_target)
+	sprintf_s(prefix_str, sizeof(prefix_str), "%2d:%02d:%02d %s:%d::%s %s", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, file, lineno, func, LogType == __DbgLogFatal ? "FLOG " : "");
+	if (dbgcfg.stderr_log_target || LogType == __DbgLogFatal)
 		_fdbglog_help(stderr, prefix_str, dbgcfg.stderr_color, format, args);
 	if (dbgcfg.logfile)
 		_fdbglog_help(dbgcfg.logfile, prefix_str, dbgcfg.file_color, format, args);
 	_fdbglog_msg(prefix_str, format, args);
 	//DbgPrint();
 	va_end(args);
+	if (LogType == __DbgLogFatal)
+		exit(-99);
 	return retval;
 }
 
@@ -225,45 +232,30 @@ void dbgInit(const char* logfile) {
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING  0x0004
 #endif
 
-static HANDLE stderrHandle, stdinHandle;
-static DWORD outModeInit, inModeInit;
+static DWORD errModeInit, outModeInit, inModeInit;
+
+DWORD SetupConsoleHandle(BOOL is_input, HANDLE handle) {
+	DWORD mode = 0;
+	if (handle == INVALID_HANDLE_VALUE)
+		return mode;
+	if (!GetConsoleMode(handle, &mode))
+		return mode;
+	DWORD orig=mode;
+	if (is_input) {
+		mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT); // Set stdin as no echo and unbuffered
+		mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+	}
+	else
+		mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+	
+	SetConsoleMode(handle, mode);
+	return orig;
+}
 
 void dbgSetupConsole(void) {
-	DWORD outMode = 0, inMode = 0;
-	stderrHandle = GetStdHandle(STD_ERROR_HANDLE);
-	stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
-
-	if (stderrHandle == INVALID_HANDLE_VALUE || stdinHandle == INVALID_HANDLE_VALUE) {
-		dbgcfg.stderr_color = FALSE;
-		dlog("Color console mode not enabled last error: %d", GetLastError());
-		return;
-		//exit(10000 + GetLastError());
-	}
-
-	if (!GetConsoleMode(stderrHandle, &outMode) || !GetConsoleMode(stdinHandle, &inMode)) {
-		dbgcfg.stderr_color = FALSE;
-		dlog("Color console mode not enabled last error: %d", GetLastError());
-		return;
-		//exit(20000 + GetLastError());
-	}
-
-	outModeInit = outMode;
-	inModeInit = inMode;
-
-	// Enable ANSI escape codes
-	outMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-
-	// Set stdin as no echo and unbuffered
-	inMode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
-
-	if (!SetConsoleMode(stderrHandle, outMode) || !SetConsoleMode(stdinHandle, inMode)) {
-		dbgcfg.stderr_color = FALSE;
-		dlog("Color console mode not enabled last error: %d", GetLastError());
-		return;
-		//exit(30000 + GetLastError());
-	}
-
-
+	errModeInit=SetupConsoleHandle(FALSE, GetStdHandle(STD_ERROR_HANDLE));
+	outModeInit=SetupConsoleHandle(FALSE, GetStdHandle(STD_OUTPUT_HANDLE));
+	inModeInit=SetupConsoleHandle(TRUE, GetStdHandle(STD_INPUT_HANDLE));
 }
 
 void dbgRestoreConsole(void) {
@@ -271,12 +263,16 @@ void dbgRestoreConsole(void) {
 		return;
 
 	// Reset colors
-	printf("\x1b[0m");
+	if (outModeInit)
+		printf("\x1b[0m");
 
 	// Reset console mode
-	if (!SetConsoleMode(stderrHandle, outModeInit) || !SetConsoleMode(stdinHandle, inModeInit)) {
-		exit(GetLastError());
-	}
+	if (inModeInit)
+		SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), inModeInit);
+	if (errModeInit)
+		SetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), errModeInit);
+	if (outModeInit)
+		SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), outModeInit);		
 }
 #else
 
