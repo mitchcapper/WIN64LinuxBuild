@@ -186,20 +186,33 @@ PreInitialize(){
 
 
 
-
+function cmake_config_run(){
+	#echo -n "Running: cmake " 1>&2
+	#printf "%q " "$@" 1>&2
+	#echo $@
+	#echo ""
+	echo "Running cmake ${*@Q}" 1>&2
+	cmake "$@" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+}
 function configure_run(){
 	setup_build_env;
 	echo "Running ./configure ${config_cmd}" 1>&2
 	./configure $config_cmd  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
-
+declare -g SETUP_BUILD_ENV_RUN=0
 function setup_build_env(){
-	if [[ $BLD_CONFIG_ADD_WIN_ARGV_LIB -eq 1 ]]
-	then
-		LD_ADDL="-Xlinker setargv.obj"
+	ADL_LIB_FLAGS=""
+	ADL_C_FLAGS=""
+	if [[ $SETUP_BUILD_ENV_RUN -eq 1 ]]; then
+		echo "setup_build_env() called twice, this would cause some vars to stack to do including the prev value and also break caches" 1>&2
+		exit 1
 	fi
+	if [[ $BLD_CONFIG_ADD_WIN_ARGV_LIB -eq 1 ]]; then
+		ADL_LIB_FLAGS+=" -Xlinker setargv.obj"
+	fi
+	SETUP_BUILD_ENV_RUN=1
 	CL_PREFIX=""
-	USING_BLD_CFG=0
+	USING_GNU_COMPILE_WRAPPER=0
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]] || [[ $BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED -eq 1 ]]; then
 
 		gnulib_ensure_buildaux_scripts_copied
@@ -207,19 +220,40 @@ function setup_build_env(){
 		local gnu_arlib_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ar-lib")
 		CL_PREFIX="${gnu_compile_path} "
 		AR="${gnu_arlib_path} lib"
-		USING_BLD_CFG=1
+		USING_GNU_COMPILE_WRAPPER=1
 	fi
 	config_cmd=$"--config-cache $BLD_CONFIG_CONFIG_CMD_DEFAULT $BLD_CONFIG_CONFIG_CMD_ADDL"
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]]; then
 		config_cmd=$"$config_cmd $CONFIG_CMD_GNULIB_ADDL"
 
 	fi
-
+	
+	if [[ $BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS -eq 1 ]]; then
+		MSVC_RUNTIME="MD"
+		if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+			MSVC_RUNTIME="MT"
+		else
+			ADL_C_FLAGS+=" /LD" #passes /dll to linker
+			ADL_LIB_FLAGS+=" /DLL"
+		fi
+		if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+			ADL_C_FLAGS+=" /D_DEBUG ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}"
+			ADL_LIB_FLAGS+=" /DEBUG"
+			MSVC_RUNTIME+="d"
+		else
+			ADL_C_FLAGS+=" /DNDEBUG ${BLD_CONFIG_BUILD_MSVC_CL_NDEBUG_OPTS}"
+		fi
+		ADL_C_FLAGS+=" /${MSVC_RUNTIME}"
+	fi
+	for warn in "${BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS[@]}"; do
+		ADL_C_FLAGS+=" /wd${warn}"
+	done
+	
 	setup_gnulibtool_py_autoconfwrapper
 	#not sure how to call two functions with the env vars set without using export
-	local STATIC_ADD=""
-	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 && $USING_BLD_CFG -eq 1 ]]; then #if not using compile script this isnt needed as it is just for lib finding assist
-		STATIC_ADD=" -static" #we shouldnt nneed to add -MT here
+	local STATIC_ADD=" -nologo"
+	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 && $USING_GNU_COMPILE_WRAPPER -eq 1 ]]; then #if not using compile script this isnt needed as it is just for lib finding assist
+		STATIC_ADD+=" -static" #we shouldnt nneed to add -MT here
 	fi
 	if [[ $BLD_CONFIG_LOG_DEBUG_WRAPPERS -eq 1 ]]; then
 		export DEBUG_GNU_COMPILE_WRAPPER=1 DEBUG_GNU_LIB_WRAPPER=1
@@ -230,7 +264,7 @@ function setup_build_env(){
 	fi
 	LINK_PATH=$(convert_to_universal_path "$VCToolsInstallDir")
 	LINK_PATH="${LINK_PATH}bin/HostX64/x64/link.exe"
-	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$LD_ADDL ${LDFLAGS}" CFLAGS="${CFLAGS} -nologo" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
+	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${ADL_C_FLAGS} ${CFLAGS}" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
 }
 function log_make() {

@@ -16,8 +16,8 @@ function gnulib_switch_to_master_and_patch(){
 	else
 		sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
 	fi
-	git submodule foreach git pull origin master
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
+	git pull
 	if [[ ! -z "$BLD_CONFIG_GNU_LIBS_BRANCH" ]]; then
 		git checkout "$BLD_CONFIG_GNU_LIBS_BRANCH"
 	fi
@@ -60,7 +60,7 @@ function gnulib_switch_to_master_and_patch(){
 				mkdir build-aux
 			fi
 			echo "" > build-aux/config.rpath
-			sed -i -E 's/^AM_GNU_GETTEXT/#AM_GNU_GETTEXT/g' configure.ac
+			sed -i -E 's/^[ ]*AM_GNU_GETTEXT/#AM_GNU_GETTEXT/g' configure.ac
 			grep -v "texi2pdf" bootstrap.conf > tmp
 			mv tmp bootstrap.conf
 			if [[ -d "po" ]]; then
@@ -79,26 +79,21 @@ function gnulib_switch_to_master_and_patch(){
 function gnulib_ensure_buildaux_scripts_copied(){
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]] || [[ $BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED -eq 1 ]]; then
 		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
-		local gnu_compile_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/compile")
-		local gnu_arlib_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ar-lib")
-		AR_PATH="${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/ar-lib"
+		declare -a SCRIPTS_TO_ADD=("${BLD_CONFIG_BUILD_AUX_SCRIPTS_DEFAULT[@]}" "${BLD_CONFIG_BUILD_AUX_SCRIPTS_ADDL[@]}")
+		for flf in "${SCRIPTS_TO_ADD[@]}"; do
+			local gnu_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/${flf}")
+			local SRC_PATH="${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/${flf}"
 
-		if [[ -f "${AR_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
-			if [[ ! -f "${gnu_arlib_path}" ]]; then
-				cp "${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/ar-lib" "${gnu_arlib_path}"
+			if [[ -f "${SRC_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
+				if [[ ! -f "${gnu_path}" ]]; then
+					cp "${SRC_PATH}" "${gnu_path}"
+				fi
+			else #no gnulib local so lets fetch it from remote
+				if [[ ! -f "${SRC_PATH}" ]]; then
+					wget --quiet "https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/${flf}" -O "${gnu_path}"
+				fi
 			fi
-			if [[ ! -f "${gnu_compile_path}" ]]; then
-				cp "${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/compile" "${gnu_compile_path}"
-			fi
-		else #no gnulib local so lets fetch it from remote
-			if [[ ! -f "${gnu_arlib_path}" ]]; then
-				wget --quiet https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/ar-lib -O "${gnu_arlib_path}"
-			fi
-			if [[ ! -f "${gnu_compile_path}" ]]; then
-				wget --quiet https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/compile -O "${gnu_compile_path}"
-			fi
-
-		fi
+		done
 	fi
 }
 function gnulib_add_addl_modules_to_bootstrap(){
