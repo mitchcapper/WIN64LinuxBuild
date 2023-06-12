@@ -38,9 +38,19 @@ vcpkg_remove_package(){
 }
 
 
-vcpkg_install_package(){
+vcpkg_install_package(){ #if the first parameter after optionally --head is a function that function will be called on install failure
 	vcpkg_ensure_installed
 	local TO_INSTALL=""
+	local install_postfix=""
+	if [[ "$1" == "--head" ]]; then
+		shift;
+		install_postfix="--head --editable"
+	fi
+	local ON_FAIL;
+	if [ "$(type -t $1)" = "function" ]; then
+		ON_FAIL=$1;
+		shift;
+	fi
 	for TO_INSTALL in "$@"; do
 		mkdir -p "${BLD_CONFIG_VCPKG_BINARY_DIR}"
 		export VCPKG_DEFAULT_BINARY_CACHE="${BLD_CONFIG_VCPKG_BINARY_DIR}"
@@ -49,11 +59,20 @@ vcpkg_install_package(){
 		local INSTALL_TARGET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}") #triplet included when strip is off
 		mkdir -p "${INSTALL_TARGET}"
 		if [[ $BLD_CONFIG_VCPKG_STRIP_TRIPLET -eq 1 && ! -e "$INSTALL_TRIPLET" ]]; then
-			ln -s "${INSTALL_TARGET}" "$INSTALL_TRIPLET"
+			ln -s "${INSTALL_TARGET}" "$INSTALL_TRIPLET" 
 		fi
 
+		local RUN_CMD=""
 		#host triplet doesnt seem to work 100%
-		"${BLD_CONFIG_VCPKG_BIN}" install "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" --host-triplet=${BLD_CONFIG_VCPKG_TRIPLET} --allow-unsupported "--x-install-root=${INSTALL_ROOT}"
+		if [ -z ${ON_FAIL+x} ]; then
+			"${BLD_CONFIG_VCPKG_BIN}" install "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" --host-triplet=${BLD_CONFIG_VCPKG_TRIPLET} --allow-unsupported "--x-install-root=${INSTALL_ROOT}" ${install_postfix}
+		else
+			"${BLD_CONFIG_VCPKG_BIN}" install "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" --host-triplet=${BLD_CONFIG_VCPKG_TRIPLET} --allow-unsupported "--x-install-root=${INSTALL_ROOT}" ${install_postfix} || {
+				$ON_FAIL
+				return;
+			}
+		fi
+		
 		local FILES=`find "${INSTALL_TARGET}" -name "*.pc"`
 		if [[ "${FILES}" != "" ]]; then
 			mapfile -t TO_FIX <<<$FILES
@@ -97,11 +116,6 @@ add_vcpkg_pkg_config(){
 	for var in "$@"; do
 		PTH=$(get_install_prefix_for_vcpkg_pkg "${var}")
 		PTH=$(convert_to_msys_path "${PTH}")
-		# we may use this at the top of a script but install the package during the script so don't die out if we dont exist
-		#if [ ! -d "${PTH}" ]; then
-#			echo "Error not able to find lib directory to add: ${var} as path does not exist: ${PTH}" 1>&2;
-			#exit 1
-		#fi
 		PKG_CONFIG_PATH="${PTH}/lib/pkgconfig:${PKG_CONFIG_PATH}";
 	done
 }
@@ -121,7 +135,7 @@ pkg_config_manual_add(){
 get_install_prefix_for_pkg(){
 	local BLD_NAME=$1
 	# cheating rather than actually try to reparse templates
-	echo "${BLD_CONFIG_INSTALL_FOLDER/"${BLD_CONFIG_BUILD_NAME}"/"${BLD_NAME}"}"
+	echo "${BLD_CONFIG_INSTALL_FOLDER/"${BLD_CONFIG_BUILD_FOLDER_NAME}"/"${BLD_NAME}"}"
 }
 add_lib_pkg_config(){
 	local PTH=""
