@@ -1,0 +1,29 @@
+diff --git a/src/hsts.c b/src/hsts.c
+index e5fb899..9224d54 100644
+--- a/src/hsts.c
++++ b/src/hsts.c
+@@ -30,7 +30,9 @@
+ 
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#ifndef _WIN32
+ #include <unistd.h>
++#endif
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+diff --git a/tools/hsts.c b/tools/hsts.c
+index e74c9d3..aaf215d 100644
+--- a/tools/hsts.c
++++ b/tools/hsts.c
+@@ -27,8 +27,9 @@
+ #if HAVE_CONFIG_H
+ # include <config.h>
+ #endif
+-
++#ifndef _WIN32
+ #include <unistd.h>
++#endif
+ #include <stdlib.h>
+ #include <string.h>
+ #include <ctype.h>

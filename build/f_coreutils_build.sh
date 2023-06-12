@@ -51,7 +51,7 @@ fi
 	cd $BLD_CONFIG_SRC_FOLDER
 
 
-	setup_build_env; #need this for the autoconf patch
+	setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
 
 	./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
 
