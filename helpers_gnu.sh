@@ -17,7 +17,7 @@ function gnulib_switch_to_master_and_patch(){
 		sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
 	fi
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
-	git pull
+	git fetch
 	if [[ ! -z "$BLD_CONFIG_GNU_LIBS_BRANCH" ]]; then
 		git checkout "$BLD_CONFIG_GNU_LIBS_BRANCH"
 	fi
