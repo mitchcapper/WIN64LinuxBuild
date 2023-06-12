@@ -1,5 +1,6 @@
 #!/bin/bash
-
+set -e
+set -o pipefail
 OUR_PATH="$(readlink -f "$0")";
 CALL_CMD="$1"
 SKIP_STEP="${CALL_CMD}"
@@ -47,7 +48,7 @@ fi
 		SKIP_STEP=""
 	fi
 	
-	if [[ $BLD_CONFIG_GNU_LIBS_USED ]]; then
+	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then
 		if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib" ]]; then
 			gnulib_switch_to_master_and_patch;
 			gnulib_add_addl_modules_to_bootstrap;
@@ -63,7 +64,7 @@ fi
 		fi
 	fi
 	if [[ $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
-		autoreconf --symlink --verbose --install --force --no-recursive
+		autoreconf --symlink --verbose --install --force
 		SKIP_STEP="" #to do all the other steps
 	fi
 	
