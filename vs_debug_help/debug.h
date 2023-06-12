@@ -11,7 +11,8 @@ extern void dbgInit(const char* logfile);
 extern void launchdebugger();
 extern void DisableDebugAssertPopup();
 extern void flagAppend(char* buffer, int bufferLen, int flags, const char* flag_name, int flag_val);
-
+int MSVCAssertTmpRestoreAll(int oldMode);
+int MSVCAssertTmpSilenceAll();
 typedef enum { __DbgLogNorm, __DbgLogFunc, __DbgLogFatal } __DbgLogType_t;//dbglogfunc means we are logging a call we commented out or norm trace
 
 #ifdef  DBGLOG_LOGGING
