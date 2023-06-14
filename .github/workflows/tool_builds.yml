@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,highlight,make,symlinks,sed,diffutils,openssl,automake,pdcurses,automake,libhsts]
+        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,highlight,make,symlinks,sed,diffutils,openssl,automake,pdcurses,automake,libhsts,wolfcrypt]
     uses: ./.github/workflows/do_build.yml
     with:
       BuildPkg: ${{ matrix.BuildPkg }}
@@ -36,6 +36,18 @@ jobs:
       BuildPkg: "grep"
       RequiredDeps: |
         pcre2
+  build_wget:
+    if: success() || failure()
+    needs: build_nodeps
+    name: Build wget
+    uses: ./.github/workflows/do_build.yml
+    with:
+      BuildPkg: "wget"
+      RequiredDeps: |
+        pcre2
+        libpsl
+        zlib
+
   build_wget2:
     if: success() || failure()
     needs: build_nodeps
@@ -48,14 +60,5 @@ jobs:
         libpsl
         zlib
         libhsts
-  build_wget:
-    if: success() || failure()
-    needs: build_nodeps
-    name: Build wget
-    uses: ./.github/workflows/do_build.yml
-    with:
-      BuildPkg: "wget"
-      RequiredDeps: |
-        pcre2
-        libpsl
-        zlib
+        wolfcrypt
+    

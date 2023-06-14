@@ -29,26 +29,25 @@ BLD_CONFIG_ADD_WIN_ARGV_LIB=0
 BLD_CONFIG_GNU_LIBS_ADDL=( "atexit" "pathmax" "ftruncate" "fnmatch-gnu" "fnmatch-h" "xstrndup" )
 BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY_ADDL_MK_FILES_FIX=( "lib/gnulib.mk" )
 BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY=1
-BLD_CONFIG_BUILD_DEBUG=0
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 #  KEEP_OUR_CERT DEBUG_WOLFSSL
-function fix_wolf_src(){
-	#We have to use master to get wget2 to not ail on certain domains due to newer sigs, but need to fix this declare.  If they ever fix their compile failure will have to figoure out a better way to edit the portfile.
-	## so the macro this is in assigns a suffix we cant double suffix
-	sed -i -E 's#(0x[f0]{0,2}f0f0f0f0f0f0f0f0?)U\)#\1)#g' "${BLD_CONFIG_VCPKG_DIR}/buildtrees/wolfssl/src/head/"*"/wolfcrypt/src/aes.c"
-	# we also need to fix the fact we need it compiled with KEEP_OUR_CERT
-	PORT_FILE="${BLD_CONFIG_VCPKG_DIR}/ports/wolfssl/portfile.cmake"
-	sed -i -E 's#-DWOLFSSL_DES_ECB#-DSESSION_CERTS\\ -DDOPENSSL_EXTRA\\ -DKEEP_OUR_CERT\\ -DSESSION_CERTS#g' "$PORT_FILE"
-	vcpkg_install_package --head "wolfssl"
+# function fix_wolf_src(){ #not needed we have our own build now
+# 	#We have to use master to get wget2 to not ail on certain domains due to newer sigs, but need to fix this declare.  If they ever fix their compile failure will have to figoure out a better way to edit the portfile.
+# 	## so the macro this is in assigns a suffix we cant double suffix
+# 	sed -i -E 's#(0x[f0]{0,2}f0f0f0f0f0f0f0f0?)U\)#\1)#g' "${BLD_CONFIG_VCPKG_DIR}/buildtrees/wolfssl/src/head/"*"/wolfcrypt/src/aes.c"
+# 	# we also need to fix the fact we need it compiled with KEEP_OUR_CERT
+# 	PORT_FILE="${BLD_CONFIG_VCPKG_DIR}/ports/wolfssl/portfile.cmake"
+# 	sed -i -E 's#-DWOLFSSL_DES_ECB#-DSESSION_CERTS\\ -DDOPENSSL_EXTRA\\ -DKEEP_OUR_CERT\\ -DSESSION_CERTS#g' "$PORT_FILE"
+# 	vcpkg_install_package --head "wolfssl"
 	
-}
+# }
 function ourmain() {
 	if [[ "$BLD_CONFIG_BUILD_DEBUG" -eq "1" ]]; then
 		BLD_CONFIG_CONFIG_CMD_ADDL+=" --enable-assert"
 	fi
 	startcommon;
-	add_lib_pkg_config  "libpsl" "pcre2" "zlib" "libhsts"
-	add_vcpkg_pkg_config  "wolfssl" "nghttp2" "zlib-ng" "zstd" "liblzma" "brotli" "bzip2"
+	add_lib_pkg_config  "libpsl" "pcre2" "zlib" "libhsts" "wolfcrypt"
+	add_vcpkg_pkg_config  "nghttp2" "zlib-ng" "zstd" "liblzma" "brotli" "bzip2"
 
 if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
@@ -73,8 +72,8 @@ fi
 	fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "vcpkg" ]]; then
 		vcpkg_install_package "zlib-ng" "nghttp2" "zstd" "liblzma" "brotli" "bzip2"
-		vcpkg_remove_package "wolfssl";
-		vcpkg_install_package --head fix_wolf_src "wolfssl";
+		#vcpkg_remove_package "wolfssl";
+		#vcpkg_install_package --head fix_wolf_src "wolfssl";
 		SKIP_STEP=""
 	fi
 	BZIP_INCL=`pkg-config -cflags-only-I bzip2`
