@@ -83,7 +83,7 @@ jobs:
 
 
       - name: Download Required Artifacts
-        uses: mitchcapper/action-download-artifact@b2e806fc9fc820918660db898ad04630eb99a22c
+        uses: mitchcapper/action-download-artifact@c026c9be4097d153332e6cd0974d140ba22cd6cc
         if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
         with:
           name: ${{ inputs.RequiredDeps }}
