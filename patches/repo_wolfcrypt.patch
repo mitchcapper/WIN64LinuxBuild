@@ -11,25 +11,6 @@ index 7a09d9b6a..91347cd7a 100644
  
  
  # Distro build feature subset (Debian, Ubuntu, etc.)
-diff --git a/wolfcrypt/src/aes.c b/wolfcrypt/src/aes.c
-index 8121e2a84..7815efa32 100644
---- a/wolfcrypt/src/aes.c
-+++ b/wolfcrypt/src/aes.c
-@@ -5623,10 +5623,10 @@ static WC_INLINE void GMULT(byte *x, byte m[32][AES_BLOCK_SIZE])
-     a = (z8[1] >> 56) & 0xf;
- 
-     /* Rotate z by 4-bits */
--    n3 = z8[1] & W64LIT(0xf0f0f0f0f0f0f0f0U);
--    n2 = z8[1] & W64LIT(0x0f0f0f0f0f0f0f0fU);
--    n1 = z8[0] & W64LIT(0xf0f0f0f0f0f0f0f0U);
--    n0 = z8[0] & W64LIT(0x0f0f0f0f0f0f0f0fU);
-+    n3 = z8[1] & W64LIT(0xf0f0f0f0f0f0f0f0);
-+    n2 = z8[1] & W64LIT(0x0f0f0f0f0f0f0f0f);
-+    n1 = z8[0] & W64LIT(0xf0f0f0f0f0f0f0f0);
-+    n0 = z8[0] & W64LIT(0x0f0f0f0f0f0f0f0f);
-     z8[1] = (n3 >> 4) | (n2 << 12) | (n0 >> 52);
-     z8[0] = (n1 >> 4) | (n0 << 12);
- 
 diff --git a/wolfssl/wolfcrypt/settings.h b/wolfssl/wolfcrypt/settings.h
 index 47e3b7363..4c3149b34 100644
 --- a/wolfssl/wolfcrypt/settings.h

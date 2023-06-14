@@ -17,7 +17,7 @@ PreInitialize;
 
 BLD_CONFIG_BUILD_NAME="wolfcrypt";
 #BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
-BLD_CONFIG_CONFIG_CMD_ADDL="--disable-makeclean --enable-pkcs7 --disable-crypttests"
+BLD_CONFIG_CONFIG_CMD_ADDL="--disable-makeclean --enable-sessionexport --enable-opensslextra --enable-curl --enable-webclient --enable-curve25519 --enable-ed25519 --enable-dtls --enable-dtls13 --enable-pkcs7 --disable-crypttests --enable-alpn --enable-sni --enable-cryptocb --enable-64bit --enable-ocsp --enable-certgen --enable-keygen --enable-sessioncerts"
 BLD_CONFIG_ADD_WIN_ARGV_LIB=0
 BLD_CONFIG_GNU_LIBS_USED=0
 BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED=1
@@ -36,7 +36,7 @@ function ourmain() {
 	else
 		BLD_CONFIG_CONFIG_CMD_ADDL+=" --disable-static --enable-shared"
 	fi;
-	export CFLAGS="-DWOLFSSL_CRYPT_TESTS=no -DWOLFSSL_CRL=yes -DSESSION_CERTS -DKEEP_OUR_CERT -DDOPENSSL_EXTRA -DSESSION_CERTS -DWOLFSSL_OPENSSLEXTRA=yes -DWOLFSSL_OCSP=yes -DWOLFSSL_ALT_CERT_CHAINS -DWOLFSSL_DES_ECB -DWOLFSSL_CUSTOM_OID -DHAVE_OID_ENCODING -DWOLFSSL_CERT_GEN -DWOLFSSL_ASN_TEMPLATE -DWOLFSSL_KEY_GEN -DHAVE_PKCS7 -DHAVE_AES_KEYWRAP -DWOLFSSL_AES_DIRECT -DHAVE_X963_KDF $CFLAGS"
+	export CFLAGS="-DWOLFSSL_CRYPT_TESTS=no -DSESSION_CERTS -DKEEP_OUR_CERT -DOPENSSL_EXTRA -DSESSION_CERTS -DWOLFSSL_OPENSSLEXTRA -DWOLFSSL_ALT_CERT_CHAINS -DWOLFSSL_DES_ECB -DWOLFSSL_CUSTOM_OID -DHAVE_OID_ENCODING -DWOLFSSL_CERT_GEN -DWOLFSSL_ASN_TEMPLATE -DWOLFSSL_KEY_GEN -DHAVE_PKCS7 -DHAVE_AES_KEYWRAP -DWOLFSSL_AES_DIRECT -DHAVE_X963_KDF $CFLAGS"
 	if [[ $BLD_CONFIG_BUILD_DEBUG -eq "1" ]]; then
 		BLD_CONFIG_CONFIG_CMD_ADDL+=" --enable-debug"
 		CFLAGS="-DWOLFSSL_DEBUG=yes $CFLAGS"
