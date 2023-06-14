@@ -61,6 +61,8 @@ struct DbgCfg {
 	.stderr_color = TRUE,
 #endif
 	.logging = TRUE
+#else
+	.logging = FALSE
 #endif
 };
 //no reason to actually have this in a header
@@ -172,7 +174,10 @@ void _fdbglog_msg(const char* prefix_str, const char* format, va_list args) {
 	OutputDebugString(buffer);
 	OutputDebugString("\n");
 }
+
+
 int _dbglog(int retval, __DbgLogType_t LogType, int lineno, const char* file, const char* func, const char* format, ...) {
+#ifdef DBGLOG_LOGGING
 	va_list args;
 	va_start(args, format);
 	time_t rawtime;
@@ -195,6 +200,9 @@ int _dbglog(int retval, __DbgLogType_t LogType, int lineno, const char* file, co
 	if (LogType == __DbgLogFatal)
 		exit(-99);
 	return retval;
+#else
+	return retval;
+#endif // !1
 }
 
 
