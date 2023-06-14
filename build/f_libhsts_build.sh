@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-set -o pipefail
 OUR_PATH="$(readlink -f "$0")";
 CALL_CMD="$1"
 SKIP_STEP="${CALL_CMD}"
@@ -66,9 +65,8 @@ fi
 		fi
 	fi
 	gnulib_ensure_buildaux_scripts_copied
-	autoreconf -i --symlink
-	if [[ $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
-		autoreconf --symlink --verbose --install --force
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
+		autoreconf --symlink --verbose --install
 		SKIP_STEP="" #to do all the other steps
 	fi
 	
