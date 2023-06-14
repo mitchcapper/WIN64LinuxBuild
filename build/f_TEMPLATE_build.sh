@@ -33,6 +33,8 @@ function ourmain() {
 	startcommon;
 	#add_lib_pkg_config  "libpsl" "pcre2" "zlib"
 	#add_vcpkg_pkg_config  "openssl"
+	#export CFLAGS="-DDEC -i/oth $CFLAGS"
+	#export LDFLAGS=" $LDFLAGS"
 
 if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
@@ -64,7 +66,7 @@ fi
 		fi
 	fi
 	if [[ $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
-		autoreconf --symlink --verbose --install --force
+		autoreconf --symlink --verbose --install
 		SKIP_STEP="" #to do all the other steps
 	fi
 	
@@ -78,7 +80,7 @@ fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
 		configure_fixes;
 		configure_run;
-		SKIP_STEP=""
+		SKIP_STEP="";
 	else
 		setup_build_env;
 	fi
