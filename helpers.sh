@@ -1,5 +1,8 @@
 #!/bin/bash
-set -e -o functrace
+set -eo pipefail -o functrace
+shopt -s inherit_errexit
+#while we could export SHELLOPTS many scripts dont work well with pipefail enabled
+
 CALL_CMD="$1"
 CALL_SCRIPT_PATH="$2"
 SCRIPT_FOLDER="$(dirname "$(readlink -f "$BASH_SOURCE")")"
@@ -209,7 +212,15 @@ function cmake_config_run(){
 	#echo $@
 	#echo ""
 	echo "Running cmake ${*@Q}" 1>&2
-	cmake "$@" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+	
+	#these almost certainly wont work   normally the static and release are prefixed by something
+	STATIC_VAL=0
+	SHARE_VAL=1
+	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+		STATIC_VAL=1
+		SHARE_VAL=0
+	fi
+	cmake -G "Visual Studio 17 2022" --install-prefix "$BLD_CONFIG_INSTALL_FOLDER" -S . -B winbuild -DCMAKE_C_FLAGS_DEBUG:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_RELEASE:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_MINSIZEREL:STRING="${CFLAGS}" -DBUILD_STATIC:BOOL="${STATIC_VAL}" -DBUILD_SHARED:BOOL="${SHARE_VAL}" -DCMAKE_CONFIGURATION_TYPES:STRING="${BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO}" -DCMAKE_BUILD_TYPE:STRING="${BLD_CONFIG_CMAKE_BUILD_TYPE_AUTO}" "$@" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
 function configure_run(){
 	setup_build_env;
@@ -254,7 +265,7 @@ function setup_build_env(){
 			ADL_LIB_FLAGS+=" /DLL"
 		fi
 		if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
-			ADL_C_FLAGS+=" /D_DEBUG ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}"
+			ADL_C_FLAGS+=" /D_DEBUG -DDEBUG ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}" #DEBUG isn't n actual normal MSVC debug flag but several common repos will use it so might as well declare
 			ADL_LIB_FLAGS+=" /DEBUG"
 			MSVC_RUNTIME+="d"
 		else

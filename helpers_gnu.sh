@@ -133,6 +133,7 @@ function setup_gnulibtool_py_autoconfwrapper(){
 
 		gnulib_tool_py_remove_nmd_makefiles;
 	fi
+	gnulib_ensure_buildaux_scripts_copied; #this has nothing to do wit autoconf but for some readon can get more failures with debug otherwise.
 }
 function gnulib_tool_py_remove_nmd_makefiles() {
 	#this taken from the normal gnulib_tool process, not sure lib/ will exist yet
