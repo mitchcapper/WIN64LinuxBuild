@@ -181,9 +181,18 @@ index ba8bbb69..3b0fe704 100644
  #include <stdlib.h>
  #include <string.h>
 diff --git a/include/wget/wget.h b/include/wget/wget.h
-index 9fd8fd23..ceac4108 100644
+index 9fd8fd23..048a9f8e 100644
 --- a/include/wget/wget.h
 +++ b/include/wget/wget.h
+@@ -2345,7 +2345,7 @@ WGETAPI void
+ WGETAPI int
+ 	wget_http_send_request(wget_http_connection *conn, wget_http_request *req) WGET_GCC_NONNULL_ALL;
+ WGETAPI ssize_t
+-	wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, int proxied) WGET_GCC_NONNULL_ALL;
++	wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, int proxied, int port) WGET_GCC_NONNULL_ALL;
+ 
+ /*
+  * Highlevel HTTP routines
 @@ -2666,6 +2666,8 @@ WGETAPI void
  WGETAPI void
  	wget_intercept_action_set_local_filename(wget_intercept_action *action, const char *local_filename) WGET_GCC_NONNULL((1));
@@ -194,10 +203,29 @@ index 9fd8fd23..ceac4108 100644
   * \ingroup libwget-plugin
   *
 diff --git a/libwget/bar.c b/libwget/bar.c
-index 463397d3..8f579ac1 100644
+index 463397d3..05753710 100644
 --- a/libwget/bar.c
 +++ b/libwget/bar.c
-@@ -648,10 +648,12 @@ void wget_bar_print(wget_bar *bar, int slot, const char *display)
+@@ -319,7 +319,8 @@ static void bar_update_slot(const wget_bar *bar, int slot)
+ 		uint64_t max, cur;
+ 		int ratio;
+ 		size_t consumed, pad;
+-
++		if (slotp->file_size == 0 && slotp->status == COMPLETE)
++			slotp->file_size = slotp->bytes_downloaded;
+ 		max = slotp->file_size;
+ 		cur = slotp->bytes_downloaded;
+ 
+@@ -523,6 +524,8 @@ void wget_bar_slot_begin(wget_bar *bar, int slot, const char *filename, int new_
+ 		slotp->numfiles++;
+ 	if (slotp->numfiles == 1) {
+ 		slotp->filename = wget_strdup(filename);
++		slotp->file_size = 0;
++		slotp->bytes_downloaded = 0;
+ 	} else {
+ 		slotp->filename = wget_aprintf("%d files", slotp->numfiles);
+ 	}
+@@ -648,10 +651,12 @@ void wget_bar_print(wget_bar *bar, int slot, const char *display)
   */
  void wget_bar_vprintf(wget_bar *bar, int slot, const char *fmt, va_list args)
  {
@@ -440,7 +468,7 @@ index 0770bcff..80f48659 100644
  }
  
 diff --git a/libwget/http.c b/libwget/http.c
-index b256c7c7..7f3f4236 100644
+index b256c7c7..824299e7 100644
 --- a/libwget/http.c
 +++ b/libwget/http.c
 @@ -29,7 +29,28 @@
@@ -588,7 +616,7 @@ index b256c7c7..7f3f4236 100644
  
  		resource[0] = '/';
  		memcpy(resource + 1, req->esc_resource.data, req->esc_resource.length + 1);
-@@ -899,13 +934,16 @@ int wget_http_send_request(wget_http_connection *conn, wget_http_request *req)
+@@ -899,18 +934,21 @@ int wget_http_send_request(wget_http_connection *conn, wget_http_request *req)
  			error_printf(_("Failed to submit HTTP2 request\n"));
  			wget_http_free_response(&ctx->resp);
  			xfree(ctx);
@@ -606,6 +634,30 @@ index b256c7c7..7f3f4236 100644
  		return 0;
  	}
  #endif
+ 
+-	if ((nbytes = wget_http_request_to_buffer(req, conn->buf, conn->proxied)) < 0) {
++	if ((nbytes = wget_http_request_to_buffer(req, conn->buf, conn->proxied, conn->port)) < 0) {
+ 		error_printf(_("Failed to create request buffer\n"));
+ 		return -1;
+ 	}
+@@ -933,7 +971,7 @@ int wget_http_send_request(wget_http_connection *conn, wget_http_request *req)
+ 	return 0;
+ }
+ 
+-ssize_t wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, int proxied)
++ssize_t wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, int proxied, int port)
+ {
+ 	char have_content_length = 0;
+ 	char check_content_length = req->body && req->body_length;
+@@ -946,6 +984,8 @@ ssize_t wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, in
+ 		wget_buffer_strcat(buf, wget_iri_scheme_get_name(req->scheme));
+ 		wget_buffer_memcat(buf, "://", 3);
+ 		wget_buffer_bufcat(buf, &req->esc_host);
++		wget_buffer_memcat(buf, ":", 1);
++		wget_buffer_printf_append(buf, "%d", port);
+ 	}
+ 	wget_buffer_memcat(buf, "/", 1);
+ 	wget_buffer_bufcat(buf, &req->esc_resource);
 diff --git a/libwget/init.c b/libwget/init.c
 index b9a67d9d..99d97c58 100644
 --- a/libwget/init.c
@@ -685,10 +737,67 @@ index b9a67d9d..99d97c58 100644
  /**
   * Global library initialization, allocating/preparing all resources.
 diff --git a/libwget/io.c b/libwget/io.c
-index a9939a58..0302f3ea 100644
+index a9939a58..ff0ec201 100644
 --- a/libwget/io.c
 +++ b/libwget/io.c
-@@ -370,9 +370,7 @@ int wget_update_file(const char *fname,
+@@ -191,6 +191,22 @@ ssize_t wget_getline(char **buf, size_t *bufsize, FILE *fp)
+ 	return getline_internal(buf, bufsize, (void *)fp, read_fp);
+ }
+ 
++#define MIN_TIMEOUT_FIX_MS 50
++static int poll_retry(struct pollfd* pfd, nfds_t nfd, int timeout, int max_retries) {
++	DWORD startTime;
++	BOOL retryTrack = timeout > 0 && timeout != INFTIM && timeout > MIN_TIMEOUT_FIX_MS;
++	if (retryTrack)
++		startTime = GetTickCount();
++	int rc = 0;
++	for (int x = 0; x < max_retries; x++) {
++		rc = poll(pfd, nfd, timeout);
++		if (rc != 0 || !retryTrack)
++			return rc;
++		int msElapsed = GetTickCount() - startTime;
++		if (msElapsed < 0 || (timeout - MIN_TIMEOUT_FIX_MS) < msElapsed)//if it got the timing within  MIN_TIMEOUT_FIX_MS of the timer consider us good
++			return rc;
++	}
++}
+ /**
+  * \param[in] fd File descriptor to wait for
+  * \param[in] timeout Max. duration in milliseconds to wait
+@@ -209,24 +225,24 @@ ssize_t wget_getline(char **buf, size_t *bufsize, FILE *fp)
+ int wget_ready_2_transfer(int fd, int timeout, int mode)
+ {
+ 	int rc = -1;
+-	struct pollfd pollfd;
++	struct pollfd poller;
+ 
+-	pollfd.fd = fd;
++	poller.fd = fd;
+ 
+-	pollfd.events = 0;
+-	pollfd.revents = 0;
++	poller.events = 0;
++	poller.revents = 0;
+ 
+ 	if (mode & WGET_IO_READABLE)
+-		pollfd.events |= POLLIN;
++		poller.events |= POLLIN;
+ 	if (mode & WGET_IO_WRITABLE)
+-		pollfd.events |= POLLOUT;
++		poller.events |= POLLOUT;
+ 
+ 	// wait for socket to be ready to read or write
+-	if ((rc = poll(&pollfd, 1, timeout)) > 0) {
++	if ((rc = poll_retry(&poller, 1, timeout, 20)) > 0) {
+ 		rc = 0;
+-		if (pollfd.revents & POLLIN)
++		if (poller.revents & POLLIN)
+ 			rc |= WGET_IO_READABLE;
+-		if (pollfd.revents & POLLOUT)
++		if (poller.revents & POLLOUT)
+ 			rc |= WGET_IO_WRITABLE;
+ 	}
+ 
+@@ -370,9 +386,7 @@ int wget_update_file(const char *fname,
  	FILE *fp;
  	const char *tmpdir, *basename;
  	int lockfd;
@@ -699,7 +808,7 @@ index a9939a58..0302f3ea 100644
  
  	// find out system temp directory
  	if (!(tmpdir = getenv("TMPDIR")) && !(tmpdir = getenv("TMP"))
-@@ -435,15 +433,17 @@ int wget_update_file(const char *fname,
+@@ -435,15 +449,17 @@ int wget_update_file(const char *fname,
  		if (fp) {
  			// read fname data
  			if (load_func(context, fp)) {
@@ -721,7 +830,7 @@ index a9939a58..0302f3ea 100644
  	if (save_func) {
  		int fd;
  		// create & open temp file to write data into with 0600 - rely on Gnulib to set correct
-@@ -451,6 +451,7 @@ int wget_update_file(const char *fname,
+@@ -451,6 +467,7 @@ int wget_update_file(const char *fname,
  		if ((fd = mkstemp(tmpfile)) == -1) {
  			close(lockfd);
  			error_printf(_("Failed to open tmpfile '%s' (%d)\n"), tmpfile, errno);
@@ -729,7 +838,7 @@ index a9939a58..0302f3ea 100644
  			return WGET_E_OPEN;
  		}
  
-@@ -460,6 +461,7 @@ int wget_update_file(const char *fname,
+@@ -460,6 +477,7 @@ int wget_update_file(const char *fname,
  			close(fd);
  			close(lockfd);
  			error_printf(_("Failed to write open '%s' (%d)\n"), tmpfile, errno);
@@ -737,7 +846,7 @@ index a9939a58..0302f3ea 100644
  			return WGET_E_OPEN;
  		}
  
-@@ -468,6 +470,7 @@ int wget_update_file(const char *fname,
+@@ -468,6 +486,7 @@ int wget_update_file(const char *fname,
  			unlink(tmpfile);
  			fclose(fp);
  			close(lockfd);
@@ -745,7 +854,7 @@ index a9939a58..0302f3ea 100644
  			return WGET_E_UNKNOWN;
  		}
  
-@@ -476,6 +479,7 @@ int wget_update_file(const char *fname,
+@@ -476,6 +495,7 @@ int wget_update_file(const char *fname,
  			unlink(tmpfile);
  			close(lockfd);
  			error_printf(_("Failed to write/close '%s' (%d)\n"), tmpfile, errno);
@@ -753,7 +862,7 @@ index a9939a58..0302f3ea 100644
  			return WGET_E_IO;
  		}
  
-@@ -484,10 +488,12 @@ int wget_update_file(const char *fname,
+@@ -484,10 +504,12 @@ int wget_update_file(const char *fname,
  			close(lockfd);
  			error_printf(_("Failed to rename '%s' to '%s' (%d)\n"), tmpfile, fname, errno);
  			error_printf(_("Take manually care for '%s'\n"), tmpfile);
@@ -1044,14 +1153,19 @@ index 40084b6c..63a709ec 100644
  	if (config.ca_file && *config.ca_file
  		&& !SSL_CTX_load_verify_locations(ctx, config.ca_file, NULL))
 diff --git a/libwget/ssl_wolfssl.c b/libwget/ssl_wolfssl.c
-index cd7e3060..69d3a10c 100644
+index cd7e3060..82dc0d02 100644
 --- a/libwget/ssl_wolfssl.c
 +++ b/libwget/ssl_wolfssl.c
-@@ -30,6 +30,30 @@
+@@ -30,6 +30,35 @@
   * https://test-sspev.verisign.com:2443/test-SSPEV-revoked-verisign.html
   *
   */
++#ifndef DEBUG_WOLFSSL
 +#include <wolfssl/options.h>
++#undef DEBUG_WOLFSSL
++#else
++#include <wolfssl/options.h>
++#endif
 +#ifdef __cplusplus
 +#define INITIALIZER(f) \
 +        static void f(void); \
@@ -1078,15 +1192,18 @@ index cd7e3060..69d3a10c 100644
  
  #include <config.h>
  
-@@ -44,6 +68,7 @@
+@@ -44,6 +73,10 @@
  #include <wget.h>
  #include "private.h"
  #include "net.h"
 +#include "filename.h"
++#ifdef _WIN32
++#include "lib/w32sock.h"
++#endif
  
  /**
   * \file
-@@ -102,6 +127,7 @@ static struct config {
+@@ -102,6 +135,7 @@ static struct config {
  	.key_type = WGET_SSL_X509_FMT_PEM,
  	.secure_protocol = "AUTO",
  	.ca_directory = "system",
@@ -1094,7 +1211,7 @@ index cd7e3060..69d3a10c 100644
  #ifdef WITH_LIBNGHTTP2
  	.alpn = "h2,http/1.1",
  #endif
-@@ -488,17 +514,23 @@ out:
+@@ -488,17 +522,23 @@ out:
  static int init;
  static wget_thread_mutex mutex;
  
@@ -1125,7 +1242,19 @@ index cd7e3060..69d3a10c 100644
  
  /*
  static void set_credentials(gnutls_certificate_credentials_t *credentials)
-@@ -618,11 +650,18 @@ void wget_ssl_init(void)
+@@ -561,6 +601,11 @@ void wget_ssl_init(void)
+ 		WOLFSSL_METHOD *method;
+ 		int min_version = -1;
+ 		const char *ciphers = NULL;
++#ifdef DEBUG_WOLFSSL
++		wget_logger* logger = wget_get_logger(WGET_LOGGER_DEBUG);
++		if (!wget_logger_is_active(logger))
++			wolfSSL_Debugging_OFF();
++#endif // DEBUG_WOLFSSL
+ 
+ 		debug_printf("WolfSSL init\n");
+ 		wolfSSL_Init();
+@@ -618,11 +663,18 @@ void wget_ssl_init(void)
  
  		if (config.check_certificate) {
  			if (!wget_strcmp(config.ca_directory, "system"))
@@ -1148,7 +1277,7 @@ index cd7e3060..69d3a10c 100644
  				goto out;
  			}
  		} else {
-@@ -794,6 +833,8 @@ static void ShowX509(WOLFSSL_X509 *x509, const char *hdr)
+@@ -794,6 +846,8 @@ static void ShowX509(WOLFSSL_X509 *x509, const char *hdr)
  		bio = wolfSSL_BIO_new(wolfSSL_BIO_s_file());
  		if (bio) {
  			wolfSSL_BIO_set_fp(bio, stdout, BIO_NOCLOSE);
@@ -1157,22 +1286,33 @@ index cd7e3060..69d3a10c 100644
  			wolfSSL_X509_print(bio, x509);
  			wolfSSL_BIO_free(bio);
  		}
-@@ -858,7 +899,14 @@ int wget_ssl_open(wget_tcp *tcp)
- 		wget_ssl_init();
+@@ -894,7 +948,7 @@ int wget_ssl_open(wget_tcp *tcp)
  
- 	hostname = tcp->ssl_hostname;
--	sockfd= tcp->sockfd;
-+	/*sockfd= tcp->sockfd;*/
-+#ifdef _WIN32
-+		   // Get Winsock's handle
-+	sockfd = _get_osfhandle(tcp->sockfd);
-+#else
-+	sockfd = tcp->sockfd;
-+#endif
-+
- 	connect_timeout = tcp->connect_timeout;
+ 	tcp->ssl_session = session;
+ //	gnutls_session_set_ptr(session, ctx);
+-	wolfSSL_set_fd(session, sockfd);
++	wolfSSL_set_fd(session, FD_TO_SOCKET(sockfd));
  
- 	if ((session = wolfSSL_new(ssl_ctx)) == NULL) {
+ 	/* make wolfSSL object nonblocking */
+ 	wolfSSL_set_using_nonblock(session, 1);
+@@ -1075,7 +1129,7 @@ void wget_ssl_close(void **session)
+  */
+ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeout)
+ {
+-	int sockfd = wolfSSL_get_fd(session);
++	int sockfd = SOCKET_TO_FD( wolfSSL_get_fd(session));
+ 	int rc;
+ 
+ 	while ((rc = wolfSSL_read(session, buf, (int) count)) < 0) {
+@@ -1148,7 +1202,7 @@ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeou
+  */
+ ssize_t wget_ssl_write_timeout(void *session, const char *buf, size_t count, int timeout)
+ {
+-	int sockfd = wolfSSL_get_fd(session);
++	int sockfd = SOCKET_TO_FD(wolfSSL_get_fd(session));
+ 	int rc;
+ 
+ 	while ((rc = wolfSSL_write(session, buf, (int) count)) < 0) {
 diff --git a/libwget/tls_session.c b/libwget/tls_session.c
 index d60b4ce2..a88a3cea 100644
 --- a/libwget/tls_session.c
@@ -1194,7 +1334,7 @@ index d60b4ce2..a88a3cea 100644
  }
  
 diff --git a/libwget/utils.c b/libwget/utils.c
-index c10c6c93..ec968f78 100644
+index c10c6c93..1e10b57d 100644
 --- a/libwget/utils.c
 +++ b/libwget/utils.c
 @@ -36,6 +36,7 @@
@@ -1205,46 +1345,66 @@ index c10c6c93..ec968f78 100644
  
  #if defined __clang__
    // silence warnings in gnulib code
-@@ -61,7 +62,38 @@
-  * This is a collections of short routines that are used with libwget and/or Wget code.
+@@ -62,6 +63,37 @@
   * They may be useful to other developers that is why they are exported.
   */
--
-+const char * wget_ssl_default_cert_dir()
+ 
++static const char * _wget_ssl_default_path(BOOL bundleNotDir)
 +{
 +#ifndef _WIN32
-+	return "/etc/ssl/certs";
++	return bundleNotDir ? NULL : "/etc/ssl/certs";
 +#else
-+	static char CERT_PATH[MAX_PATH] = {0};
-+	if (CERT_PATH[0]) //we could end up with a partial or incorrect path with multiple threads
-+		return CERT_PATH;
-+	strcpy_s(CERT_PATH, sizeof(CERT_PATH), "/etc/ssl/certs");
++	static char CERTDIR_PATH[MAX_PATH] = {0};
++	static char CERTBUNDLE_PATH[MAX_PATH] = { 0 };
++	char* buffer = bundleNotDir ? CERTBUNDLE_PATH : CERTDIR_PATH;
++	if (buffer[0]) //we could end up with a partial or incorrect path with multiple threads
++		return buffer;
++	strcpy_s(buffer, MAX_PATH, "/etc/ssl/certs");
 +
-+	if (access(CERT_PATH, F_OK)) {
++	if (access(buffer, F_OK)) {
 +		const char* progData = getenv("ProgramData");
 +		if (!progData)
 +			progData = "/ProgramData";
-+		sprintf_s(CERT_PATH, MAX_PATH, "%s%s%s%c%s%c", progData, ISSLASH(progData[strlen(progData - 1)]) ? "" : (char[]) { DIR_SEPARATOR, '\0' }, "ssl", DIR_SEPARATOR, "certs", DIR_SEPARATOR);
++		const char* dir_separator_str = (char[]){ DIR_SEPARATOR, '\0' };
++		sprintf_s(buffer, MAX_PATH, "%s%s%s%c%s%s", progData, ISSLASH(progData[strlen(progData - 1)]) ? "" : dir_separator_str, "ssl", DIR_SEPARATOR, bundleNotDir ? "ca-bundle.pem" : "certs", bundleNotDir ? "" : dir_separator_str);
 +	}
-+	return CERT_PATH;
++	return buffer;
 +#endif
 +}
++const char* wget_ssl_default_cert_dir() {
++	return _wget_ssl_default_path(FALSE);
++}
++
 +const char* wget_ssl_default_ca_bundle_path()
 +{
-+#ifndef _WIN32
-+	return NULL;
-+#else
-+	static char BUNDLE_PATH[MAX_PATH] = { 0 };
-+	if (BUNDLE_PATH[0])
-+		return BUNDLE_PATH;
-+	const char* default_dir = wget_ssl_default_cert_dir();
-+	sprintf_s(BUNDLE_PATH, MAX_PATH, "%s%s", wget_ssl_default_cert_dir(), "cert.pem");
-+	return BUNDLE_PATH;
-+#endif // !_WIN32
++	return _wget_ssl_default_path(TRUE);
++
 +}
  /**
   * \param[in] s1 String
   * \param[in] s2 String
+@@ -506,7 +538,21 @@ int wget_get_screen_size(int *width, int *height)
+ #else
+ int wget_get_screen_size(WGET_GCC_UNUSED int *width, WGET_GCC_UNUSED int *height)
+ {
++#ifdef _WIN32
++	static CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
++	static HANDLE consoleHandle = NULL;
++	if (consoleHandle == NULL)
++		consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE); //getscreensize above uses stderr however progress bar is output to stdout so we probably should be using that.....
++	if (!GetConsoleScreenBufferInfo(consoleHandle, &csbiInfo))
+ 	return -1;
++	if (width)
++		*width = csbiInfo.dwSize.X;
++	if (height)
++		*height = csbiInfo.dwSize.Y;
++	return 0;
++#else
++	return -1;
++#endif
+ }
+ #endif
+ 
 diff --git a/libwget/xml.c b/libwget/xml.c
 index f15207c3..fe49af8f 100644
 --- a/libwget/xml.c
@@ -1263,6 +1423,39 @@ index f15207c3..fe49af8f 100644
  					}
  				}
  				if (!(tok = getToken(context))) return WGET_E_XML_PARSE_ERR;
+diff --git a/src/bar.c b/src/bar.c
+index ed9ad7da..7271af6f 100644
+--- a/src/bar.c
++++ b/src/bar.c
+@@ -45,7 +45,7 @@
+ 
+ // Rate at which progress thread it updated. This is the amount of time (in ms)
+ // for which the thread will sleep before waking up and redrawing the progress
+-enum { BAR_THREAD_SLEEP_DURATION = 125 };
++enum { BAR_THREAD_SLEEP_DURATION = 125, BAR_THREAD_WINDOWS_CONSOLE_SIZE_CHANGED_EVERY_X_SLEEPS=1000/BAR_THREAD_SLEEP_DURATION};
+ 
+ static wget_bar
+ 	*bar;
+@@ -56,8 +56,19 @@ static bool
+ 
+ static void *bar_update_thread(void *p WGET_GCC_UNUSED)
+ {
++#ifdef _WIN32
++	static BYTE counter=0;
++	int lastWidth = 0;
++	int curWidth = 0;
++#endif // _WIN32
+ 	while (!terminate_thread) {
+ 		wget_bar_update(bar);
++#ifdef  _WIN32
++		if (++counter % BAR_THREAD_WINDOWS_CONSOLE_SIZE_CHANGED_EVERY_X_SLEEPS == 0) {
++			if (! wget_get_screen_size(&curWidth, NULL) && curWidth != lastWidth)
++				wget_bar_screen_resized();
++		}
++#endif //  _WIN32
+ 
+ 		wget_millisleep(BAR_THREAD_SLEEP_DURATION);
+ 	}
 diff --git a/src/blacklist.c b/src/blacklist.c
 index bb96601b..a4720e8f 100644
 --- a/src/blacklist.c
@@ -1285,10 +1478,20 @@ index bb96601b..a4720e8f 100644
  
  	// create the complete directory path
 diff --git a/src/options.c b/src/options.c
-index 55cd4019..940d2cf6 100644
+index 55cd4019..f8b8f3e2 100644
 --- a/src/options.c
 +++ b/src/options.c
-@@ -1240,6 +1240,7 @@ struct config config = {
+@@ -1223,6 +1223,9 @@ static int print_plugin_help(WGET_GCC_UNUSED option_t opt,
+ }
+ 
+ // default values for config options (if not 0 or NULL)
++/*
++	WARNING: any constant strings used here must be wget_strdup in init as we may call xfree on them later
++*/
+ struct config config = {
+ 	.auth_no_challenge = false,
+ 	.connect_timeout = -1,
+@@ -1240,6 +1243,7 @@ struct config config = {
  	.private_key_type = WGET_SSL_X509_FMT_PEM,
  	.secure_protocol = "AUTO",
  	.ca_directory = "system",
@@ -1296,7 +1499,15 @@ index 55cd4019..940d2cf6 100644
  	.cookies = 1,
  	.keep_alive = 1,
  	.use_server_timestamps = 1,
-@@ -3709,12 +3710,16 @@ int init(int argc, const char **argv)
+@@ -3314,6 +3318,7 @@ int init(int argc, const char **argv)
+ 	config.user_agent = wget_strdup(config.user_agent);
+ 	config.secure_protocol = wget_strdup(config.secure_protocol);
+ 	config.ca_directory = wget_strdup(config.ca_directory);
++	config.ca_cert = wget_strdup(config.ca_cert);
+ 	config.default_page = wget_strdup(config.default_page);
+ 	config.system_config = wget_strdup(config.system_config);
+ 
+@@ -3709,12 +3714,16 @@ int init(int argc, const char **argv)
  	wget_ssl_set_config_int(WGET_SSL_REPORT_INVALID_CERT, config.check_certificate != CHECK_CERTIFICATE_LOG_DISABLED);
  	wget_ssl_set_config_int(WGET_SSL_CHECK_HOSTNAME, config.check_hostname);
  	wget_ssl_set_config_int(WGET_SSL_CERT_TYPE, config.cert_type);
@@ -1334,7 +1545,7 @@ index b72c99ad..3cbaf766 100644
  
  				if (renamed) {
 diff --git a/src/wget.c b/src/wget.c
-index cebb5d9f..be799955 100644
+index cebb5d9f..a2c7f6c6 100644
 --- a/src/wget.c
 +++ b/src/wget.c
 @@ -1178,13 +1178,15 @@ static void convert_links(void)
@@ -1355,7 +1566,18 @@ index cebb5d9f..be799955 100644
  						}
  						if (!(fpout = fopen(conversion->filename, "wb")))
  							wget_error_printf(_("Failed to write open %s (%d)"), conversion->filename, errno);
-@@ -1380,7 +1382,10 @@ int main(int argc, const char **argv)
+@@ -1251,7 +1253,9 @@ static void print_progress_report(long long start_time)
+ 			);
+ 	}
+ }
+-
++#if  defined(_MSC_VER) && defined(_DEBUG)
++#include <crtdbg.h>
++#endif
+ int main(int argc, const char **argv)
+ {
+ 	int n, rc;
+@@ -1380,7 +1384,10 @@ int main(int argc, const char **argv)
  
  	if (config.progress == PROGRESS_TYPE_BAR) {
  		if (bar_init()) {
@@ -1367,7 +1589,17 @@ index cebb5d9f..be799955 100644
  			start_time = wget_get_timemillis();
  		}
  	}
-@@ -3126,7 +3131,7 @@ static void set_file_mtime(int fd, int64_t modified)
+@@ -1497,6 +1504,9 @@ int main(int argc, const char **argv)
+ 
+ 	// Shutdown plugin system
+ 	plugin_db_finalize(get_exit_status());
++#if  defined(_MSC_VER) && defined(_DEBUG)
++	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
++#endif //  defined(_MSC_VER) && defined(_DEBUG)
+ 
+ 	return get_exit_status();
+ }
+@@ -3126,7 +3136,7 @@ static void set_file_mtime(int fd, int64_t modified)
  	timespecs[1].tv_sec = tt;
  	timespecs[1].tv_nsec = 0;
  
@@ -1376,7 +1608,7 @@ index cebb5d9f..be799955 100644
  		error_printf (_("Failed to set file date (%d)\n"), errno);
  }
  
-@@ -3363,32 +3368,36 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
+@@ -3363,32 +3373,36 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
  		flag = O_EXCL;
  
  		if (config.backups) {
@@ -1420,7 +1652,7 @@ index cebb5d9f..be799955 100644
  			if (fd >= 0) {
  				size_t rc;
  				if ((unsigned long long) size > max_partial_content)
-@@ -3413,17 +3422,18 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
+@@ -3413,17 +3427,18 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
  		if (unlink(fname) < 0 && errno != ENOENT) {
  			error_printf(_("Failed to unlink '%s' (errno=%d)\n"), fname, errno);
  			set_exit_status(EXIT_STATUS_IO);
@@ -1441,7 +1673,7 @@ index cebb5d9f..be799955 100644
  	if (fd >= 0) {
  		ssize_t rc;
  
-@@ -3540,7 +3550,13 @@ static int get_header(wget_http_response *resp, void *context)
+@@ -3540,7 +3555,13 @@ static int get_header(wget_http_response *resp, void *context)
  		};
  		name = dest = name_allocated = get_local_filename(&iri);
  	} else {
