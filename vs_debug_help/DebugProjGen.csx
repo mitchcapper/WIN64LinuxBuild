@@ -41,16 +41,16 @@ void Main(){
 	DoFileReplace("ProjTemplate.vcxproj.filters", config, TEMPLATE_DICT, "[PROJ_NAME].vcxproj.filters");
 	var ROOT_DIR = config.GetVal("SRC_FOLDER");
 	var ALT_DEBUG_HEADER_DIR = opts.GetVal("ALT_DEBUG_HEADER_DIR");
-	var copy = new[] { "debug.c", "debug.h" };
+	var copy = new[] { "wlb_debug.c", "wlb_debug.h" };
 	foreach (var fl in copy) {
 		var dstName = fl;
-		if (fl == "debug.c" && opts.GetValBool("debug_cpp"))
-			dstName = "debug.cpp";
+		if (fl == "wlb_debug.c" && opts.GetValBool("debug_cpp"))
+			dstName = "wlb_debug.cpp";
 		var dir = ROOT_DIR;
-		if (fl == "debug.h" && String.IsNullOrWhiteSpace(ALT_DEBUG_HEADER_DIR) == false)
+		if (fl == "wlb_debug.h" && String.IsNullOrWhiteSpace(ALT_DEBUG_HEADER_DIR) == false)
 			dir = Path.Combine(dir,ALT_DEBUG_HEADER_DIR);		
 		var target = Path.Combine(dir, dstName);
-		var useSym = fl == "debug.c";
+		var useSym = fl == "wlb_debug.c";
 		if (! File.Exists(target)){
 			if (useSym)
 				File.CreateSymbolicLink(target,Path.Combine(TEMPLATE_FOLDER, fl));
@@ -152,8 +152,8 @@ Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
 	libs.Add("legacy_stdio_definitions.lib");
 
 	ArrExpandWithDefs(ROOT_DIR, libs, chk_addl_libs, true);
-	compile.Add(opts.GetValBool("debug_cpp") ? "debug.cpp" : "debug.c");
-	include.Add("debug.h");
+	compile.Add(opts.GetValBool("debug_cpp") ? "wlb_debug.cpp" : "wlb_debug.c");
+	include.Add("wlb_debug.h");
 	
 	RelativePaths(ROOT_DIR, compile);
 	RelativePaths(ROOT_DIR, include);
