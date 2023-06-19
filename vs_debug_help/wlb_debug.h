@@ -4,8 +4,18 @@
 #define DBGLOG_TERM_COLOR
 #define DBGLOG_PRINT_STDERR
 //#define DBGLOG_FILE_COLOR //ansi codes to logfile
+#define DBGLOG_ENV_CRT_REPORT_MODE_CNTRL //allows setting env vars _CRT_ASSERT_MODE _CRT_ERROR_MODE _CRT_WARN_MODE to integer values for the mode to set them to on init only applies in debug builds, _CRTDBG_MODE_FILE=1, _CRTDBG_MODE_DEBUG=2,_CRTDBG_MODE_WNDW=4 (can be multiple as well)
+#define DBGLOG_SET_CRT_REPORT_FILE_STDERR //sets the file output as stderr
+#define DBGLOG_LOG_FILE NULL
+//#define DBGLOG_DISABLE_DEBUG_ASSERT_IN_DBGINIT
 
 
+/// <summary>
+/// warning calls during or after calling this may override the returned buffer if you don't have the errcode try errno or WSAGetLastError() (for sockets)
+/// </summary>
+/// <param name="prefix"></param>
+/// <returns></returns>
+const char* dbgGetWinErr(const char* prefix, int errcode);
 
 extern void dbgInit(const char* logfile);
 extern void launchdebugger();

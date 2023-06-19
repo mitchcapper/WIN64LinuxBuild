@@ -1,4 +1,4 @@
-#include "debug.h"
+#include "wlb_debug.h"
 #include "config.h" // we need this if we have replace stdio.h with gnulibs
 #include "stdio.h"
 
@@ -18,7 +18,6 @@
 #include <debugapi.h>
 void DisableDebugAssertPopup() {
 	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
-	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 }
 void EnableDebugAssertPopup() {
 	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG | _CRTDBG_MODE_WNDW);
@@ -175,6 +174,31 @@ void _fdbglog_msg(const char* prefix_str, const char* format, va_list args) {
 	OutputDebugString("\n");
 }
 
+#ifdef _WIN32
+#define THREAD_LOCAL static __declspec( thread )
+#else
+#define THREAD_LOCAL static thread_local
+#endif
+/// <summary>
+/// warning calls during or after calling this may override the returned buffer if you don't have the errcode try errno or WSAGetLastError() (for sockets)
+/// </summary>
+/// <param name="prefix"></param>
+/// <returns></returns>
+const char* dbgGetWinErr(const char* prefix, int errcode) {
+	THREAD_LOCAL char errstr[1024] = { "" };
+	if (prefix)
+		strcpy_s(errstr, sizeof(errstr), prefix);
+	int offset = strlen(errstr);
+	if (!FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,   // flags
+		NULL,                // lpsource
+		errcode,                 // message id
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),    // languageid
+		errstr + offset,              // output buffer
+		sizeof(errstr) - offset,     // size of msgbuf, bytes
+		NULL))               // va_list of arguments
+		sprintf_s(errstr + strlen(errstr), sizeof(errstr) - strlen(errstr), " FormatMessage unable to find error code: 0x%x", errcode);
+	return errstr;
+}
 
 int _dbglog(int retval, __DbgLogType_t LogType, int lineno, const char* file, const char* func, const char* format, ...) {
 #ifdef DBGLOG_LOGGING
@@ -204,8 +228,20 @@ int _dbglog(int retval, __DbgLogType_t LogType, int lineno, const char* file, co
 	return retval;
 #endif // !1
 }
+#include <stdio.h>
+#include <stdlib.h>
 
-
+#define CRT_REPORT_MODE_NOTSET -999
+static int GetCrtReportMode(const char* env_name) {
+	const char * str = getenv(env_name);
+	if (!str)
+		return CRT_REPORT_MODE_NOTSET;
+	errno = 0;
+	long parsed = strtol(str, NULL, 0);
+	if (parsed == 0 && errno)
+		return CRT_REPORT_MODE_NOTSET;
+	return (int)parsed;
+}
 void dbgInit(const char* logfile) {
 #ifdef DBGLOG_TERM_COLOR
 	dbgSetupConsole();
@@ -215,10 +251,26 @@ void dbgInit(const char* logfile) {
 		dbgcfg.logfile = _fsopen(logfile, "w", _SH_DENYNO);
 	dlog("Starting our pid is: %d", _getpid());
 #endif
+#ifdef _DEBUG
 #ifdef DBGLOG_DISABLE_DEBUG_ASSERT_IN_DBGINIT
 	DisableDebugAssertPopup();
 #else
 	EnableDebugAssertPopup();
+#endif
+#ifdef DBGLOG_SET_CRT_REPORT_FILE_STDERR
+	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+	_CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
+#endif
+#ifdef DBGLOG_ENV_CRT_REPORT_MODE_CNTRL
+	int mode;
+	if ((mode = GetCrtReportMode("_CRT_ASSERT_MODE")) != CRT_REPORT_MODE_NOTSET)
+		_CrtSetReportMode(_CRT_ASSERT, mode);
+	if ((mode = GetCrtReportMode("_CRT_ERROR_MODE")) != CRT_REPORT_MODE_NOTSET)
+		_CrtSetReportMode(_CRT_ERROR, mode);
+	if ((mode = GetCrtReportMode("_CRT_WARN_MODE")) != CRT_REPORT_MODE_NOTSET)
+		_CrtSetReportMode(_CRT_WARN, mode);
+#endif
 #endif
 }
 #ifdef DBGLOG_TERM_COLOR
@@ -229,8 +281,6 @@ void dbgInit(const char* logfile) {
 #include <termios.h>
 #include <unistd.h>
 #endif
-#include <stdio.h>
-#include <stdlib.h>
 
 
 
