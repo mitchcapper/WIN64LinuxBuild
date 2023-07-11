@@ -1249,7 +1249,7 @@ index ac8977cfd6..1dbda1b178 100644
        struct stat st;
        result = fstatat (fd, file, &st, 0);
 diff --git a/lib/fchownat.c b/lib/fchownat.c
-index 8d00ae587c..0d4d3ff66d 100644
+index c8a016088f..72438b53cf 100644
 --- a/lib/fchownat.c
 +++ b/lib/fchownat.c
 @@ -31,6 +31,7 @@
@@ -1270,7 +1270,7 @@ index 8d00ae587c..0d4d3ff66d 100644
          if (fstatat (fd, file, &st, 0))
            return -1;
 diff --git a/lib/filename.h b/lib/filename.h
-index a2400a9dfe..eecd9a96d7 100644
+index a2400a9dfe..97cab128a3 100644
 --- a/lib/filename.h
 +++ b/lib/filename.h
 @@ -57,8 +57,12 @@ extern "C" {
@@ -1288,11 +1288,12 @@ index a2400a9dfe..eecd9a96d7 100644
    /* Internal macro: Tests whether a character is a drive letter.  */
  # define _IS_DRIVE_LETTER(C) \
      (((C) >= 'A' && (C) <= 'Z') || ((C) >= 'a' && (C) <= 'z'))
-@@ -88,15 +92,34 @@ extern "C" {
+@@ -88,15 +92,36 @@ extern "C" {
  # define IS_FILE_NAME_WITH_DIR(Filename) \
      (strchr ((Filename), '/') != NULL || strchr ((Filename), '\\') != NULL \
       || HAS_DEVICE (Filename))
 +# define LAST_SLASH_IN_PATH(str) strrpbrk(str,SLASHES)
++# define PATH_CHAR_EQ(c1, c2) ( tolower(c1) == tolower(c2) )
 +
 +	//could not find a good place to put this otherwise
 +	static const char* strrpbrk(const char* s, const char* accept) {
@@ -1321,6 +1322,7 @@ index a2400a9dfe..eecd9a96d7 100644
  # define IS_RELATIVE_FILE_NAME(Filename) (! ISSLASH ((Filename)[0]))
  # define IS_FILE_NAME_WITH_DIR(Filename) (strchr ((Filename), '/') != NULL)
 +#define LAST_SLASH_IN_PATH(str) strrchr(str,SLASHES)
++#define PATH_CHAR_EQ(c1, c2) (c1 == c2)
  #endif
  
  /* Deprecated macros.  For backward compatibility with old users of the
@@ -1519,7 +1521,7 @@ index 372965ef5f..d5d11accac 100644
        errno = ENOTDIR;
        return -1;
 diff --git a/lib/fts.c b/lib/fts.c
-index 3fffb45d70..32feac006e 100644
+index 884b84a5a1..0c3a39b2f9 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -67,7 +67,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
@@ -1588,7 +1590,7 @@ index 3fffb45d70..32feac006e 100644
                  /* GCC, you're too verbose. */
                  cp = NULL;
 diff --git a/lib/getcwd.c b/lib/getcwd.c
-index 0530630c43..199229e9cb 100644
+index 28f69133a8..8e381d18af 100644
 --- a/lib/getcwd.c
 +++ b/lib/getcwd.c
 @@ -30,7 +30,7 @@
@@ -1600,7 +1602,7 @@ index 0530630c43..199229e9cb 100644
  #include <fcntl.h> /* For AT_FDCWD on Solaris 9.  */
  
  /* If this host provides the openat function or if we're using the
-@@ -311,7 +311,7 @@ __getcwd_generic (char *buf, size_t size)
+@@ -319,7 +319,7 @@ __getcwd_generic (char *buf, size_t size)
        dirstream = __opendir (dotlist);
        if (dirstream == NULL)
          goto lose;
@@ -1609,7 +1611,7 @@ index 0530630c43..199229e9cb 100644
  #endif
        for (;;)
          {
-@@ -388,7 +388,7 @@ __getcwd_generic (char *buf, size_t size)
+@@ -396,7 +396,7 @@ __getcwd_generic (char *buf, size_t size)
                    {
                      dotlist[i++] = '.';
                      dotlist[i++] = '.';
@@ -1618,7 +1620,7 @@ index 0530630c43..199229e9cb 100644
                    }
                  while (i < dotlen);
                }
-@@ -437,7 +437,7 @@ __getcwd_generic (char *buf, size_t size)
+@@ -445,7 +445,7 @@ __getcwd_generic (char *buf, size_t size)
          }
        dirp -= namlen;
        memcpy (dirp, d->d_name, namlen);
@@ -1627,7 +1629,7 @@ index 0530630c43..199229e9cb 100644
  
        thisdev = dotdev;
        thisino = dotino;
-@@ -511,7 +511,7 @@ __getcwd_generic (char *buf, size_t size)
+@@ -519,7 +519,7 @@ __getcwd_generic (char *buf, size_t size)
      }
  
    if (dirp == &dir[allocated - 1])
@@ -1637,7 +1639,7 @@ index 0530630c43..199229e9cb 100644
  #if ! HAVE_OPENAT_SUPPORT
    if (dotlist != dots)
 diff --git a/lib/glob.c b/lib/glob.c
-index ddca1e9820..8f205c2937 100644
+index af0694eec4..c6bdb5940a 100644
 --- a/lib/glob.c
 +++ b/lib/glob.c
 @@ -49,6 +49,7 @@
@@ -1648,7 +1650,7 @@ index ddca1e9820..8f205c2937 100644
  
  #ifdef _LIBC
  # undef strdup
-@@ -321,7 +322,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -322,7 +323,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
  
    /* POSIX requires all slashes to be matched.  This means that with
       a trailing slash we must match only directories.  */
@@ -1657,7 +1659,7 @@ index ddca1e9820..8f205c2937 100644
      flags |= GLOB_ONLYDIR;
  
    if (!(flags & GLOB_DOOFFS))
-@@ -485,7 +486,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -486,7 +487,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
    oldcount = pglob->gl_pathc + pglob->gl_offs;
  
    /* Find the filename.  */
@@ -1666,7 +1668,7 @@ index ddca1e9820..8f205c2937 100644
  
  #if defined __MSDOS__ || defined WINDOWS32
    /* The case of "d:pattern".  Since ':' is not allowed in
-@@ -573,7 +574,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -574,7 +575,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
        bool drive_root = (dirlen > 1
                           && (dirname[dirlen - 1] == ':'
                               || (dirlen > 2 && dirname[dirlen - 2] == ':'
@@ -1675,7 +1677,7 @@ index ddca1e9820..8f205c2937 100644
  #else
        bool drive_root = false;
  #endif
-@@ -582,7 +583,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -583,7 +584,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
          /* "pattern/".  Expand "pattern", appending slashes.  */
          {
            int orig_flags = flags;
@@ -1684,7 +1686,7 @@ index ddca1e9820..8f205c2937 100644
              {
                /* "pattern\\/".  Remove the final backslash if it hasn't
                   been quoted.  */
-@@ -614,9 +615,9 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -615,9 +616,9 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
  
    if ((flags & (GLOB_TILDE|GLOB_TILDE_CHECK)) && dirname[0] == '~')
      {
@@ -1697,7 +1699,7 @@ index ddca1e9820..8f205c2937 100644
          {
            /* Look up home directory.  */
            char *home_dir = getenv ("HOME");
-@@ -749,7 +750,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -750,7 +751,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
  #ifndef WINDOWS32
            /* Recognize ~user as a shorthand for the specified user's home
               directory.  */
@@ -1706,7 +1708,7 @@ index ddca1e9820..8f205c2937 100644
            char *user_name;
            int malloc_user_name = 0;
            char *unescape = NULL;
-@@ -936,7 +937,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -937,7 +938,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
            if (pglob->gl_pathv[newcount] == NULL)
              goto nospace;
            p = mempcpy (pglob->gl_pathv[newcount], dirname, dirlen);
@@ -1715,7 +1717,7 @@ index ddca1e9820..8f205c2937 100644
            p[1] = '\0';
            if (__glibc_unlikely (malloc_dirname))
              free (dirname);
-@@ -1227,9 +1228,9 @@ prefix_array (const char *dirname, char **array, size_t n)
+@@ -1228,9 +1229,9 @@ prefix_array (const char *dirname, char **array, size_t n)
  {
    size_t i;
    size_t dirlen = strlen (dirname);
@@ -1727,7 +1729,7 @@ index ddca1e9820..8f205c2937 100644
      /* DIRNAME is just "/", so normal prepending would get us "//foo".
         We want "/foo" instead, so don't prepend any chars from DIRNAME.  */
      dirlen = 0;
-@@ -1237,7 +1238,7 @@ prefix_array (const char *dirname, char **array, size_t n)
+@@ -1238,7 +1239,7 @@ prefix_array (const char *dirname, char **array, size_t n)
  #if defined __MSDOS__ || defined WINDOWS32
    if (dirlen > 1)
      {
@@ -1736,7 +1738,7 @@ index ddca1e9820..8f205c2937 100644
          /* DIRNAME is "d:/".  Don't prepend the slash from DIRNAME.  */
          --dirlen;
        else if (dirname[dirlen - 1] == ':')
-@@ -1398,8 +1399,8 @@ glob_in_dir (const char *pattern, const char *directory, int flags,
+@@ -1399,8 +1400,8 @@ glob_in_dir (const char *pattern, const char *directory, int flags,
                              && !scratch_buffer_set_array_size (&s, need, 1))
                            goto memory_error;
                          char *p = mempcpy (s.data, directory, dirlen);
@@ -1950,7 +1952,7 @@ index 3ed38e159c..1d28dc29a7 100644
        struct stat st;
  
 diff --git a/lib/mountlist.c b/lib/mountlist.c
-index 6d38481284..37b330e072 100644
+index 8b06e7b7ee..b7b2ba96fc 100644
 --- a/lib/mountlist.c
 +++ b/lib/mountlist.c
 @@ -30,7 +30,7 @@
@@ -1962,7 +1964,7 @@ index 6d38481284..37b330e072 100644
  #include <unistd.h>
  
  #if HAVE_SYS_PARAM_H
-@@ -697,7 +697,7 @@ read_file_system_list (bool need_fs_type)
+@@ -704,7 +704,7 @@ read_file_system_list (bool need_fs_type)
              else
                {
                  name = xmalloc (1 + strlen (d->d_name) + 1);
@@ -2231,7 +2233,7 @@ index ac12c6da39..0ab43497be 100644
                    size_t size;
                    int len;
 diff --git a/lib/rename.c b/lib/rename.c
-index 4722f13a12..dcc3e6884c 100644
+index aa3afd8768..4f2ddd6854 100644
 --- a/lib/rename.c
 +++ b/lib/rename.c
 @@ -320,8 +320,8 @@ rpl_rename (char const *src, char const *dst)
@@ -2270,7 +2272,7 @@ index 939e58965f..400c673309 100644
      return renameat2ish (fd1, src, fd2, dst, flags);
  
 diff --git a/lib/spawni.c b/lib/spawni.c
-index cc9511fdd8..baea536b98 100644
+index 84d1fb27f6..a79311384f 100644
 --- a/lib/spawni.c
 +++ b/lib/spawni.c
 @@ -1028,7 +1028,7 @@ __spawni (pid_t *pid, const char *file,

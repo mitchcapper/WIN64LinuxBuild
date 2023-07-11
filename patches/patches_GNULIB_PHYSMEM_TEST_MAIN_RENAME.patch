@@ -1,0 +1,22 @@
+diff --git a/lib/physmem.c b/lib/physmem.c
+index f450587141..1039786f55 100644
+--- a/lib/physmem.c
++++ b/lib/physmem.c
+@@ -313,7 +313,7 @@ physmem_available (void)
+ }
+ 
+ 
+-#if DEBUG
++#if TEST
+ 
+ # include <stdio.h>
+ # include <stdlib.h>
+@@ -325,7 +325,7 @@ main (void)
+   exit (0);
+ }
+ 
+-#endif /* DEBUG */
++#endif /* TEST */
+ 
+ /*
+ Local Variables:

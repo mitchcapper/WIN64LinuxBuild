@@ -52,24 +52,20 @@ index 82522b9..4a87c17 100644
        {
  	int e = errno;
 diff --git a/lib/system.h b/lib/system.h
-index 2b3d50b..b5407b9 100644
+index 2b3d50b..2ffa88b 100644
 --- a/lib/system.h
 +++ b/lib/system.h
 @@ -245,11 +245,20 @@ extern int errno;
  # define S_IXOTH 0000001
  #endif
  
--#define MODE_WXUSR	(S_IWUSR | S_IXUSR)
--#define MODE_R		(S_IRUSR | S_IRGRP | S_IROTH)
--#define MODE_RW		(S_IWUSR | S_IWGRP | S_IWOTH | MODE_R)
--#define MODE_RWX	(S_IXUSR | S_IXGRP | S_IXOTH | MODE_RW)
--#define MODE_ALL	(S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
 +#ifndef _WIN32
-+#define MODE_WXUSR     (S_IWUSR | S_IXUSR)
-+#define MODE_R         (S_IRUSR | S_IRGRP | S_IROTH)
+ #define MODE_WXUSR     (S_IWUSR | S_IXUSR)
+ #define MODE_R         (S_IRUSR | S_IRGRP | S_IROTH)
+-#define MODE_RW		(S_IWUSR | S_IWGRP | S_IWOTH | MODE_R)
 +#define MODE_RW(S_IWUSR | S_IWGRP | S_IWOTH | MODE_R) //owner write group write, other write
-+#define MODE_RWX       (S_IXUSR | S_IXGRP | S_IXOTH | MODE_RW)
-+#define MODE_ALL       (S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
+ #define MODE_RWX       (S_IXUSR | S_IXGRP | S_IXOTH | MODE_RW)
+ #define MODE_ALL       (S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
 +#else
 +#include <sys/stat.h>
 +#define MODE_WXUSR		_S_IWRITE
@@ -81,3 +77,12 @@ index 2b3d50b..b5407b9 100644
  
  /* Include <unistd.h> before any preprocessor test of _POSIX_VERSION.  */
  #include <unistd.h>
+@@ -456,7 +465,7 @@ char *getenv ();
+ # include <grp.h>
+ #endif
+ 
+-#if MSDOS
++#if defined(MSDOS) || defined(_WIN32)
+ # include <process.h>
+ # define SET_BINARY_MODE(arc) setmode(arc, O_BINARY)
+ # define mkdir(file, mode) (mkdir) (file)

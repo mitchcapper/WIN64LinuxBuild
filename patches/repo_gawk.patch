@@ -1,0 +1,1167 @@
+diff --git a/Makefile.am b/Makefile.am
+index 9f5e40c6..aee8ff68 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -26,9 +26,11 @@
+ # This variable insures that aclocal runs
+ # correctly after changing configure.ac
+ ACLOCAL_AMFLAGS = -I m4
+-
+-AM_CFLAGS = @CFLAGS@
+-AM_LDFLAGS = @LDFLAGS@
++AUTOMAKE_OPTIONS = foreign
++topdir = @top_srcdir@
++AM_CFLAGS = @CFLAGS@ -I$(topdir)/lib
++AM_LDFLAGS = @LDFLAGS@ lib/libgawk.a
++AM_CPPFLAGS = -I$(topdir)/lib
+ 
+ # Stuff to include in the dist that doesn't need it's own
+ # Makefile.am files
+@@ -55,7 +57,8 @@ EXTRA_DIST = \
+ #
+ # Build explicitly in "." in order to build gawk first, so
+ # that `make check' without a prior `make' works.
+-SUBDIRS = support .
++    SUBDIRS = m4 lib .
++#support 
+ 
+ # Build in extension before test so that
+ # 	./configure && make check
+@@ -66,13 +69,14 @@ endif
+ 
+ # Build in awklib after in doc, since we want to extract
+ # sample files if doc/gawk.texi changed.
+-SUBDIRS += extras doc awklib po test
++SUBDIRS += extras doc awklib
++# po test
+ 
+ # what to make and install
+ bin_PROGRAMS = gawk
+ bin_SCRIPTS = gawkbug
+ include_HEADERS = gawkapi.h
+-BUILT_SOURCES = $(srcdir)/pc/Makefile.tst
++# BUILT_SOURCES = $(srcdir)/pc/Makefile.tst
+ 
+ # sources for gawk
+ base_sources = \
+@@ -108,12 +112,16 @@ base_sources = \
+ 	replace.c \
+ 	str_array.c \
+ 	symbol.c \
++	osfixes.c \
+ 	version.c
+ 
++
++#	regcomp.c
+ gawk_SOURCES = $(base_sources)
+ 
++#  support/libsupport.a
+ # Get extra libs as needed, Automake will supply LIBINTL and SOCKET_LIBS.
+-LDADD = support/libsupport.a \
++LDADD = \
+ 	$(LIBSIGSEGV) $(LIBINTL) $(SOCKET_LIBS) $(LIBREADLINE) $(LIBMPFR) \
+ 	$(LDFLAGS)
+ 
+@@ -127,7 +135,8 @@ DEFPATH='".$(PATH_SEPARATOR)$(pkgdatadir)"'
+ SHLIBEXT = "\"$(GAWKLIBEXT)"\"
+ DEFLIBPATH="\"$(pkgextensiondir)\""
+ 
+-DEFS= -DDEFPATH=$(DEFPATH) -DDEFLIBPATH=$(DEFLIBPATH) -DSHLIBEXT=$(SHLIBEXT) -DHAVE_CONFIG_H -DGAWK -DLOCALEDIR='"$(datadir)/locale"' -I"$(srcdir)/support"
++DEFS= -DDEFPATH=$(DEFPATH) -DDEFLIBPATH=$(DEFLIBPATH) -DSHLIBEXT=$(SHLIBEXT) -DHAVE_CONFIG_H -DGAWK -DLOCALEDIR='"$(datadir)/locale"'
++# -I"$(srcdir)/support"
+ 
+ # Get rid of core files when cleaning
+ CLEANFILES = core core.* $(bin_SCRIPTS)
+@@ -183,8 +192,8 @@ dist-hook:
+ 	sed -f /tmp/tmp.sed < /tmp/config.tmp > config.h ; \
+ 	$(RM) /tmp/tmp.sed /tmp/config.tmp
+ 	pwd
+-	chmod u+w "$(distdir)"/pc/config.h
+-	cp "$(srcdir)"/pc/config.h "$(distdir)"/pc/config.h
++#	chmod u+w "$(distdir)"/pc/config.h
++#	cp "$(srcdir)"/pc/config.h "$(distdir)"/pc/config.h
+ 
+ # Special rules for individual files
+ 
+@@ -196,10 +205,10 @@ $(srcdir)/command.c: command.y
+ 	$(YACC) -o $@ -p zz $<
+ 	sed 's/parse error/syntax error/g' < $@ > $@.tmp && mv $@.tmp $@
+ 
+-$(srcdir)/pc/Makefile.tst: test/Makefile.in pc/Makefile.tst.prologue pc/GenMakefileTst.awk
+-	$(AM_V_GEN)$(MKDIR_P) "$(srcdir)"/pc && \
+-	cat "$(srcdir)"/pc/Makefile.tst.prologue > "$(srcdir)"/pc/Makefile.tst && \
+-	$(AWK) -f "$(srcdir)"/pc/GenMakefileTst.awk "$(srcdir)"/test/Makefile.in >> "$(srcdir)"/pc/Makefile.tst
++# $(srcdir)/pc/Makefile.tst: test/Makefile.in pc/Makefile.tst.prologue pc/GenMakefileTst.awk
++# 	$(AM_V_GEN)$(MKDIR_P) "$(srcdir)"/pc && \
++# 	cat "$(srcdir)"/pc/Makefile.tst.prologue > "$(srcdir)"/pc/Makefile.tst && \
++# 	$(AWK) -f "$(srcdir)"/pc/GenMakefileTst.awk "$(srcdir)"/test/Makefile.in >> "$(srcdir)"/pc/Makefile.tst
+ 
+ # This is for my development & testing.
+ efence: gawk
+diff --git a/awk.h b/awk.h
+index 57d4f8bd..4adcfd4a 100644
+--- a/awk.h
++++ b/awk.h
+@@ -66,7 +66,7 @@
+ 
+ #if !defined(__SUNPRO_C)
+ #if !defined(__STDC__) || __STDC__ < 1
+-#error "gawk no longer supports non-C89 environments (no __STDC__ or __STDC__ < 1)"
++// #error "gawk no longer supports non-C89 environments (no __STDC__ or __STDC__ < 1)"
+ #endif
+ #endif
+ 
+@@ -1537,9 +1537,11 @@ extern void set_CONVFMT(void);
+ extern void set_BINMODE(void);
+ extern void set_LINT(void);
+ extern void set_TEXTDOMAIN(void);
++#ifndef _WIN32
+ extern void update_ERRNO_int(int);
+ extern void update_ERRNO_string(const char *string);
+ extern void unset_ERRNO(void);
++#endif
+ extern void update_NR(void);
+ extern void update_NF(void);
+ extern void update_FNR(void);
+@@ -1633,9 +1635,11 @@ extern int isdirpunct(int c);
+ extern void init_sockets(void);
+ extern void init_io(void);
+ extern void init_csv_records(void);
++#ifndef _WIN32
+ extern void register_input_parser(awk_input_parser_t *input_parser);
+ extern void register_output_wrapper(awk_output_wrapper_t *wrapper);
+ extern void register_two_way_processor(awk_two_way_processor_t *processor);
++#endif
+ extern void set_FNR(void);
+ extern void set_NR(void);
+ 
+diff --git a/awklib/eg/lib/pwcat.c b/awklib/eg/lib/pwcat.c
+index cfe250c3..ac9b5347 100644
+--- a/awklib/eg/lib/pwcat.c
++++ b/awklib/eg/lib/pwcat.c
+@@ -14,8 +14,9 @@
+ #endif
+ 
+ #include <stdio.h>
++#ifndef _WIN32
+ #include <pwd.h>
+-
++#endif
+ #if defined (STDC_HEADERS)
+ #include <stdlib.h>
+ #endif
+@@ -24,7 +25,7 @@ int
+ main(int argc, char **argv)
+ {
+     struct passwd *p;
+-
++#ifndef _WIN32
+     while ((p = getpwent()) != NULL)
+ #ifdef HAVE_STRUCT_PASSWD_PW_PASSWD
+         printf("%s:%s:%ld:%ld:%s:%s:%s\n",
+@@ -37,5 +38,6 @@ main(int argc, char **argv)
+ #endif
+ 
+     endpwent();
++#endif    
+     return 0;
+ }
+diff --git a/builtin.c b/builtin.c
+index e394cc34..d31f144c 100644
+--- a/builtin.c
++++ b/builtin.c
+@@ -23,13 +23,24 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+-
++#ifdef _WIN32
++#include "config.h"
++#include "osfixes.h"
++#endif
+ 
+ #include "awk.h"
+-#if defined(HAVE_FCNTL_H)
++
++
++#if defined(HAVE_FCNTL_H) || defined(_WIN32)
+ #include <fcntl.h>
+ #endif
++#ifndef _WIN32
+ #include "random.h"
++#else
++#include <stdio.h>
++#include <stdlib.h>
++#include "sys/random.h"
++#endif
+ 
+ #if defined(HAVE_POPEN_H)
+ #include "popen.h"
+@@ -67,10 +78,10 @@ static size_t mbc_byte_count(const char *ptr, size_t numchars);
+ static size_t mbc_char_count(const char *ptr, size_t numbytes);
+ 
+ /* Can declare these, since we always use the random shipped with gawk */
+-extern char *initstate(unsigned long seed, char *state, long n);
+-extern char *setstate(char *state);
+-extern long random(void);
+-extern void srandom(unsigned long seed);
++// extern char *initstate(unsigned long seed, char *state, long n);
++// extern char *setstate(char *state);
++// extern long random(void);
++// extern void srandom(unsigned long seed);
+ 
+ extern NODE **args_array;
+ extern int max_args;
+diff --git a/configure.ac b/configure.ac
+index f8a4fff4..2dc37b84 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -107,6 +107,8 @@ AC_PROG_EGREP
+ AC_PROG_YACC
+ AC_PROG_LN_S
+ AC_PROG_CC
++gl_EARLY
++
+ AC_C_VARARRAYS
+ AC_PROG_CPP
+ AC_PROG_RANLIB
+@@ -122,7 +124,7 @@ AM_PROG_AR
+ 
+ ARFLAGS=cru		# set default
+ AC_SUBST(AR)
+-
++gl_INIT
+ # This is mainly for my use during testing and development.
+ # Yes, it's a bit of a hack.
+ # Keep in sync with same code in extension/configure.ac
+@@ -174,8 +176,8 @@ dnl this only needs to be set once, since everything is in C.
+ AC_LANG([C])
+ 
+ dnl initialize GNU gettext
+-AM_GNU_GETTEXT([external])
+-AM_GNU_GETTEXT_VERSION([0.20.2])
++#AM_GNU_GETTEXT([external])
++#AM_GNU_GETTEXT_VERSION([0.20.2])
+ AM_LANGINFO_CODESET
+ gt_LC_MESSAGES
+ 
+@@ -241,50 +243,50 @@ dnl types for the argument to getsockopt, getpeername, etc.  So we
+ dnl have to test to find something that will work.
+ 
+ dnl This is no good, because passing the wrong pointer on C compilers is
+-dnl likely to only generate a warning, not an error.
+-
+-AC_DEFUN([TYPE_SOCKLEN_T],
+-[
+-   AC_CHECK_TYPE([socklen_t], ,[
+-      AC_MSG_CHECKING([for socklen_t equivalent])
+-      AC_CACHE_VAL([rsync_cv_socklen_t_equiv],
+-      [
+-         # Systems have either "struct sockaddr *" or
+-         # "void *" as the second argument to getpeername
+-         rsync_cv_socklen_t_equiv=
+-         for arg2 in "struct sockaddr" void
+-	 do
+-            for t in int size_t unsigned long "unsigned long"
+-	    do
+-               AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+-#include <sys/types.h>
+-#include <sys/socket.h>
+-
+-                  int getpeername (int, $arg2 *, $t *);
+-               ]], [[
+-                  $t len;
+-                  getpeername(0,0,&len);
+-               ]])],[
+-                  rsync_cv_socklen_t_equiv="$t"
+-                  break
+-               ],[])
+-            done
+-         done
+-
+-         if test "$rsync_cv_socklen_t_equiv" = ""
+-	 then
+-dnl		Some systems get this. Default to int.  -- ADR
+-dnl            AC_MSG_ERROR([Cannot find a type to use in place of socklen_t])
+-		rsync_cv_socklen_t_equiv=int
+-         fi
+-      ])
+-      AC_MSG_RESULT($rsync_cv_socklen_t_equiv)
+-      AC_DEFINE_UNQUOTED(socklen_t, $rsync_cv_socklen_t_equiv,
+-			[type to use in place of socklen_t if not defined])],
+-      [#include <sys/types.h>
+-#include <sys/socket.h>])
+-])
+-TYPE_SOCKLEN_T
++# dnl likely to only generate a warning, not an error.
++
++# AC_DEFUN([TYPE_SOCKLEN_T],
++# [
++#    AC_CHECK_TYPE([socklen_t], ,[
++#       AC_MSG_CHECKING([for socklen_t equivalent])
++#       AC_CACHE_VAL([rsync_cv_socklen_t_equiv],
++#       [
++#          # Systems have either "struct sockaddr *" or
++#          # "void *" as the second argument to getpeername
++#          rsync_cv_socklen_t_equiv=
++#          for arg2 in "struct sockaddr" void
++# 	 do
++#             for t in int size_t unsigned long "unsigned long"
++# 	    do
++#                AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
++# #include <sys/types.h>
++# #include <sys/socket.h>
++
++#                   int getpeername (int, $arg2 *, $t *);
++#                ]], [[
++#                   $t len;
++#                   getpeername(0,0,&len);
++#                ]])],[
++#                   rsync_cv_socklen_t_equiv="$t"
++#                   break
++#                ],[])
++#             done
++#          done
++
++#          if test "$rsync_cv_socklen_t_equiv" = ""
++# 	 then
++# dnl		Some systems get this. Default to int.  -- ADR
++# dnl            AC_MSG_ERROR([Cannot find a type to use in place of socklen_t])
++# 		rsync_cv_socklen_t_equiv=int
++#          fi
++#       ])
++#       AC_MSG_RESULT($rsync_cv_socklen_t_equiv)
++#       AC_DEFINE_UNQUOTED(socklen_t, $rsync_cv_socklen_t_equiv,
++# 			[type to use in place of socklen_t if not defined])],
++#       [#include <sys/types.h>
++# #include <sys/socket.h>])
++# ])
++# TYPE_SOCKLEN_T
+ 
+ dnl Check for C11 _Noreturn
+ GAWK_AC_NORETURN
+@@ -478,10 +480,12 @@ dylib)	GAWKLIBEXT=so ;;	# MacOS uses .dylib for shared libraries, but libtool us
+ *) GAWKLIBEXT=$acl_shlibext ;;
+ esac
+ AC_SUBST(GAWKLIBEXT)
+-
++# support/Makefile
+ AC_CONFIG_FILES([Makefile
+-	support/Makefile
++	
+ 	awklib/Makefile
++	m4/Makefile
++	lib/Makefile
+ 	doc/Makefile
+ 	extras/Makefile
+ 	po/Makefile.in
+@@ -506,9 +510,9 @@ then
+ w
+ EOF
+ 	done
+-	for i in . support
+-	do
+-		sed -e '/-O2/s///' -e '/^CFLAGS = /s//&${DEBUG} /' $i/Makefile > foo
+-		mv foo $i/Makefile
+-	done
++	# for i in . support
++	# do
++	# 	sed -e '/-O2/s///' -e '/^CFLAGS = /s//&${DEBUG} /' $i/Makefile > foo
++	# 	mv foo $i/Makefile
++	# done
+ fi
+diff --git a/custom.h b/custom.h
+index 221250b3..69a23217 100644
+--- a/custom.h
++++ b/custom.h
+@@ -110,6 +110,7 @@ typedef unsigned long long uint_fast64_t;
+ #endif
+ #endif
+ 
++#ifndef _WIN32
+ /* Junk for dfa.[ch] */
+ /* The __pure__ attribute was added in gcc 2.96.  */
+ #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96)
+@@ -123,6 +124,7 @@ typedef unsigned long long uint_fast64_t;
+ #define xicalloc xcalloc
+ #define xirealloc xrealloc
+ #define ximalloc xmalloc
++#endif
+ 
+ #ifdef USE_PERSISTENT_MALLOC
+ #include <stdlib.h>
+@@ -137,7 +139,8 @@ typedef unsigned long long uint_fast64_t;
+ #define pma_set_root(rootptr)	/* nothing */
+ #define pma_errno 0
+ #endif /* ! USE_PERSISTENT_MALLOC */
+-
++#ifndef _WIN32
+ #ifndef HAVE_STRSIGNAL
+ char * strsignal(int signal);
+ #endif /* ! HAVE_STRSIGNAL */
++#endif
+\ No newline at end of file
+diff --git a/extension/Makefile.am b/extension/Makefile.am
+index ec51377c..02f26dbb 100644
+--- a/extension/Makefile.am
++++ b/extension/Makefile.am
+@@ -54,8 +54,9 @@ MY_MODULE_FLAGS = -module -avoid-version -no-undefined
+ # On Cygwin, gettext requires that we link with -lintl
+ MY_LIBS = $(LTLIBINTL)
+ 
+-filefuncs_la_SOURCES  = filefuncs.c stack.h stack.c gawkfts.h \
+-			gawkfts.c gawkdirfd.h
++#  gawkfts.h gawkfts.c 
++filefuncs_la_SOURCES  = filefuncs.c stack.h stack.c \
++			gawkdirfd.h
+ filefuncs_la_LDFLAGS  = $(MY_MODULE_FLAGS)
+ filefuncs_la_LIBADD   = $(MY_LIBS)
+ 
+diff --git a/extension/filefuncs.c b/extension/filefuncs.c
+index e81a07bd..3b210758 100644
+--- a/extension/filefuncs.c
++++ b/extension/filefuncs.c
+@@ -96,7 +96,7 @@
+ #define _(msgid)  gettext(msgid)
+ #define N_(msgid) msgid
+ 
+-#include "gawkfts.h"
++//#include "gawkfts.h"
+ #include "stack.h"
+ 
+ #ifndef S_IFLNK
+diff --git a/extension/fnmatch.c b/extension/fnmatch.c
+index bf7d124f..01668259 100644
+--- a/extension/fnmatch.c
++++ b/extension/fnmatch.c
+@@ -56,6 +56,8 @@
+ #define __iswctype iswctype
+ #define __btowc btowc
+ #endif
++#define HAVE_FNMATCH
++#define HAVE_FNMATCH_H
+ 
+ #define _GNU_SOURCE	1	/* use GNU extensions if they're there */
+ #ifdef HAVE_FNMATCH_H
+diff --git a/gawkmisc.c b/gawkmisc.c
+index 447210cb..da94b02e 100644
+--- a/gawkmisc.c
++++ b/gawkmisc.c
+@@ -23,6 +23,10 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
++#ifdef _WIN32
++#include "config.h"
++#include "osfixes.h"
++#endif
+ 
+ #include "awk.h"
+ 
+diff --git a/io.c b/io.c
+index c595c009..cf1245bf 100644
+--- a/io.c
++++ b/io.c
+@@ -23,7 +23,12 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+-
++#include "config.h"
++#ifdef _WIN32
++#define WIN32_LEAN_AND_MEAN
++#include "Windows.h"
++#define __MINGW32__
++#endif
+ /* For OSF/1 to get struct sockaddr_storage */
+ #if defined(__osf__) && !defined(_OSF_SOURCE)
+ #define _OSF_SOURCE
+@@ -35,7 +40,7 @@
+ #undef RE_DUP_MAX	/* avoid spurious conflict w/regex.h */
+ #include <sys/param.h>
+ #endif /* HAVE_SYS_PARAM_H */
+-#ifdef HAVE_SYS_IOCTL_H
++#if defined(HAVE_SYS_IOCTL_H) || defined(_WIN32)
+ #include <sys/ioctl.h>
+ #endif /* HAVE_SYS_IOCTL_H */
+ 
+@@ -54,9 +59,9 @@
+ #include <stropts.h>
+ #endif
+ 
+-#ifdef HAVE_SOCKETS
++#if defined(HAVE_SOCKETS) || defined(_WIN32)
+ 
+-#ifdef HAVE_SYS_SOCKET_H
++#if defined(HAVE_SYS_SOCKET_H) || defined(_WIN32)
+ #include <sys/socket.h>
+ #else
+ #include <socket.h>
+@@ -70,14 +75,16 @@
+ #endif
+ 
+ #else /* ! HAVE_NETINET_IN_H */
++#ifndef _WIN32
+ #include <in.h>
++#endif
+ #endif /* HAVE_NETINET_IN_H */
+ 
+ #ifdef HAVE_NETDB_H
+ #include <netdb.h>
+ #endif /* HAVE_NETDB_H */
+ 
+-#ifdef HAVE_SYS_SELECT_H
++#if defined(HAVE_SYS_SELECT_H) || defined(_WIN32)
+ #include <sys/select.h>
+ #endif	/* HAVE_SYS_SELECT_H */
+ 
+@@ -112,6 +119,9 @@
+ #if defined(HAVE_POPEN_H)
+ #include "popen.h"
+ #endif
++#ifdef _WIN32
++#include <stdio.h>
++#endif
+ 
+ #ifndef ENFILE
+ #define ENFILE EMFILE
+@@ -125,7 +135,11 @@
+ #include <rmsdef.h>
+ #define closemaybesocket(fd)	close(fd)
+ #endif
+-
++#ifdef _WIN32
++#define SIGKILL 999
++#define SIGHUP 999
++#define SIGQUIT 999
++#endif
+ #ifdef HAVE_SOCKETS
+ 
+ #ifndef SHUT_RD
+@@ -261,7 +275,8 @@ static bool find_output_wrapper(awk_output_buf_t *outbuf);
+ static void init_output_wrapper(awk_output_buf_t *outbuf);
+ static bool find_two_way_processor(const char *name, struct redirect *rp);
+ static bool avoid_flush(const char *name);
+-
++static SOCKET valid_socket(int fd);
++static char* quote_cmd(const char* cmd);
+ static RECVALUE rs1scan(IOBUF *iop, struct recmatch *recm, SCANSTATE *state);
+ static RECVALUE rsnullscan(IOBUF *iop, struct recmatch *recm, SCANSTATE *state);
+ static RECVALUE rsrescan(IOBUF *iop, struct recmatch *recm, SCANSTATE *state);
+@@ -2561,7 +2576,7 @@ wait_any(int interesting)	/* pid of interest, if any */
+ 	int pid;
+ 	int status = 0;
+ 	struct redirect *redp;
+-#ifdef HAVE_SIGPROCMASK
++#if defined(HAVE_SIGPROCMASK) && ! defined(_WIN32)
+ 	sigset_t set, oldset;
+ 
+ 	/* I have no idea why we are blocking signals during this function... */
+@@ -2596,7 +2611,7 @@ wait_any(int interesting)	/* pid of interest, if any */
+ 	qstat = signal(SIGQUIT, SIG_IGN);
+ #endif
+ 	for (;;) {
+-# if defined(HAVE_WAITPID) && defined(WNOHANG)
++# if (defined(HAVE_WAITPID) || defined(_WIN32)) && defined(WNOHANG)
+ 		/*
+ 		 * N.B. If the caller wants status for a specific child process
+ 		 * (i.e. interesting is non-zero), then we must hang until we
+@@ -2637,7 +2652,7 @@ wait_any(int interesting)	/* pid of interest, if any */
+ }
+ 
+ /* gawk_popen --- open an IOBUF on a child process */
+-
++#define __MINGW32__
+ static IOBUF *
+ gawk_popen(const char *cmd, struct redirect *rp)
+ {
+@@ -4587,3 +4602,32 @@ avoid_flush(const char *name)
+ 	return in_PROCINFO(bufferpipe, NULL, NULL) != NULL
+ 		|| in_PROCINFO(name, bufferpipe, NULL) != NULL;
+ }
++#ifdef  _WIN32
++
++
++static char* quote_cmd(const char* cmd)
++{
++	char* quoted;
++
++	/* The command will be invoked via cmd.exe, whose behavior wrt
++	   quoted commands is to remove the first and the last quote
++	   characters, and leave the rest (including any quote characters
++	   inside the outer pair) intact.  */
++	quoted = malloc(strlen(cmd) + 2 + 1);
++	sprintf(quoted, "\"%s\"", cmd);
++
++	return quoted;
++}
++static SOCKET valid_socket(int fd)
++{
++	SOCKET s = FD_TO_SOCKET(fd);
++	int ov, ol = 4;
++
++	if (s == INVALID_SOCKET
++		|| (getsockopt(s, SOL_SOCKET, SO_TYPE, (char*)&ov, &ol) == SOCKET_ERROR
++			&& WSAGetLastError() == WSAENOTSOCK))
++		return (SOCKET)0;
++	return s;
++}
++
++#endif //  _WIN32
+diff --git a/main.c b/main.c
+index cc5ae9a7..f0f5a7ad 100644
+--- a/main.c
++++ b/main.c
+@@ -1068,10 +1068,10 @@ load_procinfo()
+ #else
+ #define getpgrp_arg() getpid()
+ #endif
+-
++#ifndef _WIN32
+ 	value = getpgrp(getpgrp_arg());
+ 	update_PROCINFO_num("pgrpid", value);
+-
++#endif
+ 	/*
+ 	 * Could put a lot of this into a table, but then there's
+ 	 * portability problems declaring all the functions. So just
+@@ -1080,7 +1080,7 @@ load_procinfo()
+ 
+ 	value = getpid();
+ 	update_PROCINFO_num("pid", value);
+-
++#ifndef _WIN32
+ 	value = getppid();
+ 	update_PROCINFO_num("ppid", value);
+ 
+@@ -1095,7 +1095,7 @@ load_procinfo()
+ 
+ 	value = getegid();
+ 	update_PROCINFO_num("egid", value);
+-
++#endif
+ 	update_PROCINFO_str("FS", current_field_sep_str());
+ 
+ #if defined (HAVE_GETGROUPS) && defined(NGROUPS_MAX) && NGROUPS_MAX > 0
+diff --git a/osfixes.c b/osfixes.c
+new file mode 100644
+index 00000000..32430ec0
+--- /dev/null
++++ b/osfixes.c
+@@ -0,0 +1,186 @@
++//shared between bash and gawk
++#include "osfixes.h"
++#ifdef _WIN32
++#include <config.h>
++#ifndef GAWK
++#include "wlb_debug.h"
++#endif
++#define __WIN32__
++
++#ifndef GAWK
++#include "term.h"
++#include "general.h"
++#endif
++#define ENV_ALLOC_CNT 1024
++#define FAKE_EXIT_STATUS_UNDEFINED 2424242 //exit codes should be 1 byte only
++#ifndef FALSE
++#define FALSE 0
++#define TRUE 1
++#endif // !FALSE
++
++static volatile long EXEC_FAKE_CUR_PID = FAKE_EXIT_STATUS_UNDEFINED;
++#ifndef GAWK
++
++
++
++HandleExec* ExecGetNew() {
++	HandleExec* exec = malloc(sizeof(HandleExec));
++	exec->actions = malloc(sizeof(posix_spawn_file_actions_t));
++	exec->attrp = malloc(sizeof(posix_spawnattr_t));
++	posix_spawn_file_actions_init(exec->actions);
++	posix_spawnattr_init(exec->attrp);
++	exec->__has_run = FALSE;
++	exec->__has_forked = FALSE;
++	exec->child_pid = 0;
++	exec->envp = NULL;
++	exec->cmd = 0;
++	exec->args = 0;
++	exec->___env_max = 0;
++	exec->___env_cur = 0;
++	exec->__had_fake_exit = FALSE;
++	exec->fake_exit_status = FAKE_EXIT_STATUS_UNDEFINED;
++	return exec;
++}
++BOOL ExecIsFakePid(pid_t pid) {
++	return (pid >= FAKE_EXIT_STATUS_UNDEFINED && pid <= EXEC_FAKE_CUR_PID);
++}
++BOOL ExecHasFakeExit(HandleExec* exec) {
++	return exec->__had_fake_exit;
++}
++void ExecSetCmdAndArgs(HandleExec* exec, const char* cmd, const char** args) {
++	exec->cmd = savestring(cmd);
++	if (args) {
++		int argCnt;
++		for (argCnt = 0; args[argCnt]; argCnt++) {
++		}
++		exec->args = malloc(sizeof(char*) * argCnt + 1);
++		for (argCnt = 0; args[argCnt]; argCnt++) {
++			exec->args[argCnt] = savestring(args[argCnt]);
++		}
++		exec->args[argCnt] = 0;
++	}
++}
++void ExecSetEnvVar(HandleExec* exec, const char** envp) {
++	int argCnt;
++	if (!envp)
++		return;
++	for (argCnt = 0; envp[argCnt]; argCnt++)
++		ExecDupeEnvVar(exec, envp[argCnt]);
++}
++void ExecSetFakeExit(HandleExec* exec, int ExitCode) {
++	if (exec->__has_run)
++		dlogfatal("ExecDoSpawn called but has already been run");
++
++	dlog("Set Fake Exit called for cmd: %s", exec->cmd);
++	exec->__has_run = TRUE;
++	exec->__had_fake_exit = TRUE;
++	exec->fake_exit_status = ExitCode;
++	exec->child_pid = InterlockedIncrement(&EXEC_FAKE_CUR_PID);
++
++}
++int ExecDoSpawn(HandleExec* exec) {
++	if (exec->__has_run)
++		dlogfatal("ExecDoSpawn called but has already been run");
++
++	exec->__has_run = TRUE;
++	if (ExecHasFakeExit(exec))
++		return 0;
++	dlog("Running spawn cmd: %s", exec->cmd);
++	return posix_spawnp(&exec->child_pid, exec->cmd, exec->actions, exec->attrp, exec->args, exec->envp);
++}
++void ExecDupeEnvVar(HandleExec* exec, const char* varLine) {
++	if (exec->___env_cur == exec->___env_max) {
++		dlog("IN DUMPENVVAR");
++		int newMax = exec->___env_max + ENV_ALLOC_CNT;
++		char** old = exec->envp;
++		exec->envp = malloc(sizeof(char*) * (newMax + 1));
++		if (old)
++			memcpy(exec->envp, old, sizeof(char*) * exec->___env_cur);
++		exec->___env_max = newMax;
++	}
++	exec->envp[exec->___env_cur++] = savestring(varLine);
++	exec->envp[exec->___env_cur] = 0;
++}
++
++static void __DupeOrUpdateEnvVarPair(HandleExec* exec, BOOL CHECK_EXISTING, const char* varName, const char* value) {
++	int sz = 1 + strlen(varName) + strlen(value) + 1;
++	char* tmp = strcpy(malloc(sz), varName);
++	strcat_s(tmp, sz, "=");
++
++	if (CHECK_EXISTING) {
++		char* findStr = tmp;
++		for (int x = 0; x < exec->___env_cur; x++) {
++			if (strcmp(exec->envp[x], findStr) == 0) {
++				strcat_s(tmp, sz, value);
++				free(exec->envp[x]);
++				exec->envp[x] = tmp;
++				return;
++			}
++		}
++
++	}
++	strcat_s(tmp, sz, value);
++	ExecDupeEnvVar(exec, tmp);
++	free(tmp);
++}
++void ExecDupeEnvVarPair(HandleExec* exec, const char* varName, const char* value) {
++	__DupeOrUpdateEnvVarPair(exec, FALSE, varName, value);
++}
++void ExecDupeOrUpdateEnvVarPair(HandleExec* exec, const char* varName, const char* value) {
++	__DupeOrUpdateEnvVarPair(exec, TRUE, varName, value);
++}
++//the original code would have already forked by now, aka this should be spanwed before the destroy
++void ExecWouldHaveForked(HandleExec* exec) {
++	exec->__has_forked = true;
++}
++void ExecDestroy(HandleExec** exec_ptr) {
++	HandleExec* exec = *exec_ptr;
++	if (exec->__has_forked && ! exec->__has_run) {
++		dlogfatal("originally we would have forked by now but we have not yet run so shouldn't be destroying");
++	}
++	posix_spawnattr_destroy(exec->attrp);
++	posix_spawn_file_actions_destroy(exec->actions);
++	for (int x = 0; x < exec->___env_cur; x++)
++		free(exec->envp[x]);
++	if (exec->envp)
++		free(exec->envp);
++	if (exec->cmd)
++		free(exec->cmd);
++	if (exec->args) {
++		for (int argCnt = 0; exec->args[argCnt]; argCnt++)
++			free(exec->args[argCnt]);
++		free(exec->args);
++	}
++
++	free(exec);
++	exec_ptr = -1;
++}
++#endif // !GAWK]6
++int kill(pid_t pid, int sig) {
++	if (sig == SIGINT)
++		return GenerateConsoleCtrlEvent(CTRL_C_EVENT, pid);//as long as we have created the process with CREATE_NEW_PROCESS_GROUP  it should
++	else {
++		printf("kill for pid: %i and sig: %i", pid, sig);
++		return -1;
++	}
++}
++
++int fchmod(int fd, mode_t mode) {
++	return 0;
++}
++unsigned int alarm(unsigned int seconds) {
++	return -1;
++}
++pid_t getpgrp(pid_t pid) {
++	return -1;
++}
++pid_t getppid() {
++	return -1;
++}
++pid_t wait(int* wstatus) {
++	return -1;
++}
++
++
++
++#endif
+diff --git a/osfixes.h b/osfixes.h
+new file mode 100644
+index 00000000..be2cbe89
+--- /dev/null
++++ b/osfixes.h
+@@ -0,0 +1,247 @@
++//shared between bash and gawk
++#pragma once
++#ifdef _WIN32
++#include <config.h>
++//with newer windows sdks the wrong header order in some files results in a SocketNotificationRetrieveEvents defined multiple times error, this is the easiest solution ive seen
++#ifndef WINSOCK_INCLUDED
++#define WINSOCK_INCLUDED 1
++#include <winsock2.h>
++#include <ws2tcpip.h>
++#endif
++
++
++
++#define TTYSTRUCT struct ttyjunked
++
++
++#define	TIOCHPCL	_IO('t', 2)		/* hang up on last close */
++#define	TIOCGETP	_IOR('t', 8,TTYSTRUCT)/* get parameters -- gtty */
++#define	TIOCSETP	_IOW('t', 9,TTYSTRUCT)/* set parameters -- stty */
++#define	TIOCSETN	_IOW('t',10,TTYSTRUCT)/* as above, but no flushtty*/
++#define	TIOCSETC	_IOW('t',17,struct tchars)/* set special characters */
++#define	TIOCGETC	_IOR('t',18,struct tchars)/* get special characters */
++#define		TANDEM		0x00000001	/* send stopc on out q full */
++#define		CBREAK		0x00000002	/* half-cooked mode */
++#define		LCASE		0x00000004	/* simulate lower case */
++#define		ECHO		0x00000008	/* enable echoing */
++#define		CRMOD		0x00000010	/* map \r to \r\n on output */
++#define		RAW		0x00000020	/* no i/o processing */
++#define		ODDP		0x00000040	/* get/send odd parity */
++#define		EVENP		0x00000080	/* get/send even parity */
++#define		ANYP		0x000000c0	/* get any parity/send none */
++#define		NLDELAY		0x00000300	/* \n delay */
++#define			NL0	0x00000000
++#define			NL1	0x00000100	/* tty 37 */
++#define			NL2	0x00000200	/* vt05 */
++#define			NL3	0x00000300
++#define		TBDELAY		0x00000c00	/* horizontal tab delay */
++#define			TAB0	0x00000000
++#define			TAB1	0x00000400	/* tty 37 */
++#define			TAB2	0x00000800
++#define		XTABS		0x00000c00	/* expand tabs on output */
++#define		CRDELAY		0x00003000	/* \r delay */
++#define			CR0	0x00000000
++#define			CR1	0x00001000	/* tn 300 */
++#define			CR2	0x00002000	/* tty 37 */
++#define			CR3	0x00003000	/* concept 100 */
++#define		VTDELAY		0x00004000	/* vertical tab delay */
++#define			FF0	0x00000000
++#define			FF1	0x00004000	/* tty 37 */
++#define		BSDELAY		0x00008000	/* \b delay */
++#define			BS0	0x00000000
++#define			BS1	0x00008000
++#define		ALLDELAY	(NLDELAY|TBDELAY|CRDELAY|VTDELAY|BSDELAY)
++#define		CRTBS		0x00010000	/* do backspacing for crt */
++#define		PRTERA		0x00020000	/* \ ... / erase */
++#define		CRTERA		0x00040000	/* " \b " to wipe out char */
++#define		TILDE		0x00080000	/* hazeltine tilde kludge */
++#define		MDMBUF		0x00100000	/* DTR/DCD hardware flow control */
++#define		LITOUT		0x00200000	/* literal output */
++#define		TOSTOP		0x00400000	/* stop background jobs on output */
++#define		FLUSHO		0x00800000	/* output being flushed (state) */
++#define		NOHANG		0x01000000	/* (no-op) was no SIGHUP on carrier drop */
++#define		L001000		0x02000000
++#define		CRTKIL		0x04000000	/* kill line with " \b " */
++#define		PASS8		0x08000000
++#define		CTLECH		0x10000000	/* echo control chars as ^X */
++#define		PENDIN		0x20000000	/* re-echo input buffer at next read */
++#define		DECCTQ		0x40000000	/* only ^Q starts after ^S */
++#define		NOFLSH		0x80000000
++#ifndef GAWK
++#include "term.h"
++#endif
++#if ! defined(tchars)
++struct   tchars {
++	char t_intrc;     /* interrupt */
++	char t_quitc;     /* quit */
++	char t_startc; /* start output */
++	char t_stopc;     /* stop output */
++	char t_eofc;        /* end-of-file */
++	char t_brkc;        /* input delimiter (like nl) */
++	 };
++#endif
++#if ! defined(ltchars)
++struct ltchars {
++	char t_suspc;  /* stop process signal */
++	char t_dsuspc; /* delayed stop process signal */
++	char t_rprntc; /* reprint line */
++	char t_flushc; /*flush output (toggles) */
++	char t_werasc; /* word erase */
++	char t_lnextc; /* literal next character */
++};
++#endif
++struct ttyjunked {
++	char    sg_ispeed;
++	char    sg_ospeed;
++	char    sg_erase;
++	char    sg_kill;
++	short   sg_flags;
++};
++#endif
++/*
++
++pdcurses provides these now 
++
++static int tgetflag (const char *name){
++  return -1;
++}
++
++static int tgetnum (){
++  return -1;
++}
++static char *tgetstr (){
++  return NULL;
++}
++
++static int tgetent(char *bp, const char *name){
++  return -1;
++}
++static int tputs(const char *str, int affcnt, int (*putc)(int)){
++  return -1;
++}
++static char *tgoto(const char *cap, int col, int row){
++  return NULL;
++}
++*/
++#define SIGALRM 14
++#if ! defined(BOOL)
++#define BOOL int
++
++#endif
++#include <spawn.h>
++#ifndef GAWK
++typedef struct HandleExec {
++	BOOL was_async;
++	pid_t child_pid;
++	char* cmd;
++	char** args;
++	int fake_exit_status;
++	posix_spawn_file_actions_t * actions;
++	posix_spawnattr_t* attrp;
++	char** envp;
++	int ___env_cur;
++	int ___env_max;
++	BOOL __has_run;
++	BOOL __has_forked;
++	BOOL __had_fake_exit;
++
++} HandleExec;
++
++HandleExec* ExecGetNew(void);
++static char* signal_names[36] = {
++	"EXIT",
++	"SIGHUP",
++	"SIGINT",
++	"SIGQUIT",
++	"SIGILL",
++	"SIGTRAP",
++	"SIGABRT",
++	"SIGEMT",
++	"SIGFPE",
++	"SIGKILL",
++	"SIGBUS",
++	"SIGSEGV",
++	"SIGSYS",
++	"SIGPIPE",
++	"SIGALRM",
++	"SIGTERM",
++	"SIGURG",
++	"SIGSTOP",
++	"SIGTSTP",
++	"SIGCONT",
++	"SIGCHLD",
++	"SIGTTIN",
++	"SIGTTOU",
++	"SIGIO",
++	"SIGXCPU",
++	"SIGXFSZ",
++	"SIGVTALRM",
++	"SIGPROF",
++	"SIGWINCH",
++	"SIGINFO",
++	"SIGUSR1",
++	"SIGUSR2",
++	"DEBUG",
++	"ERR",
++	"RETURN",
++	(char*)0x0
++};
++void ExecDupeEnvVar(HandleExec* exec, const char* varLine);
++static void __DupeOrUpdateEnvVarPair(HandleExec* exec, BOOL CHECK_EXISTING, const char* varName, const char* value);
++void ExecDupeEnvVarPair(HandleExec* exec, const char* varName, const char* value);
++void ExecDupeOrUpdateEnvVarPair(HandleExec* exec, const char* varName, const char* value);
++void ExecDestroy(HandleExec** exec_ptr);
++void ExecSetCmdAndArgs(HandleExec* exec, const char* cmd, const char** args);
++void ExecSetEnvVar(HandleExec* exec, const char** envp);
++BOOL ExecHasFakeExit(HandleExec* exec);
++void ExecSetFakeExit(HandleExec* exec, int ExitCode);
++int ExecDoSpawn(HandleExec* exec);
++#endif // !GAWK
++int kill(pid_t pid, int sig);
++int fchmod(int fd, mode_t mode);
++unsigned int alarm(unsigned int seconds);
++pid_t getpgrp(pid_t pid);
++pid_t getppid(void);
++pid_t wait(int* wstatus);
++
++#if ! defined(GAWK)
++extern char* getenv2(const char* name);
++#undef getenv
++#define getenv getenv2
++#undef _getenv
++#define _getenv _getenv2
++#undef setenv
++#define setenv setenv2
++#undef putenv
++#define putenv putenv2
++#undef unsetenv
++#define unsetenv unsetenv2
++
++#endif
++
++
++
++#ifdef _WIN32
++#ifndef WIFEXITED
++#define WIFEXITED(w)    (((w) & 0xff) == 0)
++#endif
++#ifndef WIFSIGNALED
++#define WIFSIGNALED(w)  (((w) & 0x7f) > 0 && (((w) & 0x7f) < 0x7f))
++#endif
++#ifndef WIFSTOPPED
++#define WIFSTOPPED(w)   (((w) & 0xff) == 0x7f)
++#endif
++#ifndef WEXITSTATUS
++#define WEXITSTATUS(w)  (((w) >> 8) & 0xff)
++#endif
++#ifndef WTERMSIG
++#define WTERMSIG(w)     ((w) & 0x7f)
++#endif
++#ifndef WSTOPSIG
++#define WSTOPSIG        WEXITSTATUS
++#endif
++
++
++
++
++#endif
+diff --git a/posix/gawkmisc.c b/posix/gawkmisc.c
+index 58fb520b..8619b3f3 100644
+--- a/posix/gawkmisc.c
++++ b/posix/gawkmisc.c
+@@ -25,6 +25,12 @@
+ #endif
+ #include <io.h>		/* for declaration of setmode(). */
+ #endif
++#ifdef _WIN32
++#include "config.h"
++#define WIN32_LEAN_AND_MEAN
++#include <windows.h>
++#endif // _WIN32
++#include "filename.h"
+ 
+ const char quote = '\'';
+ const char *defpath = DEFPATH;
+@@ -44,7 +50,7 @@ gawk_name(const char *filespec)
+ 	const char *p;
+ 
+ 	/* "path/name" -> "name" */
+-	p = strrchr(filespec, '/');
++	p = LAST_SLASH_IN_PATH(filespec);
+ 	return (p == NULL ? (char *) filespec : p + 1);
+ }
+ 
+@@ -149,7 +155,7 @@ optimal_bufsize(int fd, struct stat *stb)
+ int
+ ispath(const char *file)
+ {
+-	return (strchr(file, '/') != NULL);
++	return (LAST_SLASH_IN_PATH(file) != NULL);
+ }
+ 
+ /* isdirpunct --- return true if char is a directory separator */
+@@ -157,7 +163,7 @@ ispath(const char *file)
+ int
+ isdirpunct(int c)
+ {
+-	return (c == '/');
++	return ISSLASH(c);
+ }
+ 
+ /* os_close_on_exec --- set close on exec flag, print warning if fails */
+@@ -169,7 +175,7 @@ os_close_on_exec(int fd, const char *name, const char *what, const char *dir)
+ 
+ 	if (fd <= 2)	/* sanity */
+ 		return;
+-
++#ifndef _WIN32 //todo fixme cant just ignore this 
+ 	/*
+ 	 * Per POSIX, use Read/Modify/Write - get the flags,
+ 	 * add FD_CLOEXEC, set the flags back.
+@@ -190,6 +196,7 @@ os_close_on_exec(int fd, const char *name, const char *what, const char *dir)
+ 	if (fcntl(fd, F_SETFD, curflags) < 0)
+ 		warning(_("%s %s `%s': could not set close-on-exec: (fcntl F_SETFD: %s)"),
+ 			what, dir, name, strerror(errno));
++#endif			
+ }
+ 
+ /* os_isdir --- is this an fd on a directory? */
+@@ -240,11 +247,14 @@ int
+ os_is_setuid()
+ {
+ 	long uid, euid;
+-
++#ifndef _WIN32
+ 	uid = getuid();
+ 	euid = geteuid();
+ 
+ 	return (euid == 0 && euid != uid);
++#else
++	return 0;
++#endif	
+ }
+ 
+ /* os_setbinmode --- set binary mode on file */

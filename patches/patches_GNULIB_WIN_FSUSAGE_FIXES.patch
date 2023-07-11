@@ -143,10 +143,10 @@ index 9630b04e00..24cddb7e76 100644
  
  #endif
 diff --git a/lib/mountlist.c b/lib/mountlist.c
-index 6d38481284..6925e1e9d7 100644
+index 8b06e7b7ee..f7272bbdd7 100644
 --- a/lib/mountlist.c
 +++ b/lib/mountlist.c
-@@ -180,6 +180,10 @@
+@@ -187,6 +187,10 @@
     /* for Irix 6.5 */                           \
     || strcmp (Fs_type, "ignore") == 0)
  
@@ -157,7 +157,7 @@ index 6d38481284..6925e1e9d7 100644
  /* Historically, we have marked as "dummy" any file system of type "none",
     but now that programs like du need to know about bind-mounted directories,
     we grant an exception to any with "bind" in its list of mount options.
-@@ -459,6 +463,101 @@ read_file_system_list (bool need_fs_type)
+@@ -466,6 +470,101 @@ read_file_system_list (bool need_fs_type)
    struct mount_entry *me;
    struct mount_entry **mtail = &mount_list;
    (void) need_fs_type;

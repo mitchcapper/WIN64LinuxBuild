@@ -1,0 +1,176 @@
+diff --git a/awk.h b/awk.h
+index ccd16c9..dde7ee4 100644
+--- a/awk.h
++++ b/awk.h
+@@ -30,7 +30,38 @@ THIS SOFTWARE.
+ #else
+ #include <stdnoreturn.h>
+ #endif
++#ifdef _WIN32
++#ifndef WIFEXITED
++#define WIFEXITED(w)    (((w) & 0xff) == 0)
++#endif
++#ifndef WIFSIGNALED
++#define WIFSIGNALED(w)  (((w) & 0x7f) > 0 && (((w) & 0x7f) < 0x7f))
++#endif
++#ifndef WIFSTOPPED
++#define WIFSTOPPED(w)   (((w) & 0xff) == 0x7f)
++#endif
++#ifndef WEXITSTATUS
++#define WEXITSTATUS(w)  (((w) >> 8) & 0xff)
++#endif
++#ifndef WTERMSIG
++#define WTERMSIG(w)     ((w) & 0x7f)
++#endif
++#ifndef WSTOPSIG
++#define WSTOPSIG        WEXITSTATUS
++#endif
++
+ 
++/* The termination signal. Only to be accessed if WIFSIGNALED(x) is true.  */
++# ifndef WTERMSIG
++#  define WTERMSIG(x) ((x) & 0x7f)
++# endif
++#define popen _popen
++#define pclose _pclose
++#define strncasecmp _strnicmp
++#define strcasecmp _stricmp
++#define srandom srand
++#define random rand
++#endif
+ typedef double	Awkfloat;
+ 
+ /* unsigned char is more trouble than it's worth */
+diff --git a/lib.c b/lib.c
+index ebe296f..d206007 100644
+--- a/lib.c
++++ b/lib.c
+@@ -25,7 +25,9 @@ THIS SOFTWARE.
+ #define DEBUG
+ #include <stdio.h>
+ #include <string.h>
++#ifndef _WIN32
+ #include <strings.h>
++#endif
+ #include <ctype.h>
+ #include <errno.h>
+ #include <stdlib.h>
+diff --git a/makefile b/makefile
+index df966ef..1d0f86c 100644
+--- a/makefile
++++ b/makefile
+@@ -38,6 +38,7 @@ CC = $(HOSTCC)  # change this is cross-compiling.
+ # If you want something else, you're on your own.
+ # YACC = yacc -d -b awkgram
+ YACC = bison -d
++PREFIX := /usr/bin
+ 
+ OFILES = b.o main.o parse.o proctab.o tran.o lib.o run.o lex.o
+ 
+@@ -50,8 +51,8 @@ LISTING = awk.h proto.h awkgram.y lex.c b.c main.c maketab.c parse.c \
+ SHIP = README LICENSE FIXES $(SOURCE) awkgram.tab.[ch].bak makefile  \
+ 	 awk.1
+ 
+-a.out:	awkgram.tab.o $(OFILES)
+-	$(CC) $(CFLAGS) awkgram.tab.o $(OFILES) $(ALLOC)  -lm
++awk:	awkgram.tab.o $(OFILES)
++	$(CC) -o awk $(CFLAGS) awkgram.tab.o $(OFILES) $(ALLOC)
+ 
+ $(OFILES):	awk.h awkgram.tab.h proto.h
+ 
+@@ -97,10 +98,15 @@ test check:
+ 	./REGRESS
+ 
+ clean: testclean
+-	rm -f a.out *.o *.obj maketab maketab.exe *.bb *.bbg *.da *.gcov *.gcno *.gcda # proctab.c
++	rm -f a.out awk awk.exe *.o *.obj maketab maketab.exe *.bb *.bbg *.da *.gcov *.gcno *.gcda # proctab.c
+ 
+ cleaner: testclean
+-	rm -f a.out *.o *.obj maketab maketab.exe *.bb *.bbg *.da *.gcov *.gcno *.gcda proctab.c awkgram.tab.*
++	rm -f a.out awk awk.exe *.o *.obj maketab maketab.exe *.bb *.bbg *.da *.gcov *.gcno *.gcda proctab.c awkgram.tab.*
++
++.PHONY: install
++
++install: awk
++	install -m 557 -D -t "$(PREFIX)/bin" awk.exe
+ 
+ # This is a bit of a band-aid until we can invest some more time
+ # in the test suite.
+diff --git a/proto.h b/proto.h
+index a64991b..136bf4f 100644
+--- a/proto.h
++++ b/proto.h
+@@ -135,12 +135,19 @@ extern	Cell	*fieldadr(int);
+ extern	void	yyerror(const char *);
+ extern	void	bracecheck(void);
+ extern	void	bcheck2(int, int, int);
++# if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 7) || defined __clang__
++#	define WGET_GCC_PRINTF_FORMAT(a, b) __attribute__ ((format (printf, a, b)))
++#	define WGET_GCC_UNUSED __attribute__ ((unused))
++#else
++#	define WGET_GCC_PRINTF_FORMAT(a, b)
++#	define WGET_GCC_UNUSED
++#endif
+ extern	void	SYNTAX(const char *, ...)
+-    __attribute__((__format__(__printf__, 1, 2)));
++    WGET_GCC_PRINTF_FORMAT(1, 2);
+ extern	noreturn void	FATAL(const char *, ...)
+-    __attribute__((__format__(__printf__, 1, 2)));
++    WGET_GCC_PRINTF_FORMAT(1, 2);
+ extern	void	WARNING(const char *, ...)
+-    __attribute__((__format__(__printf__, 1, 2)));
++    WGET_GCC_PRINTF_FORMAT(1, 2);
+ extern	void	error(void);
+ extern	void	eprint(void);
+ extern	void	bclass(int);
+diff --git a/run.c b/run.c
+index 483b9d9..3985a61 100644
+--- a/run.c
++++ b/run.c
+@@ -36,7 +36,9 @@ THIS SOFTWARE.
+ #include <stdlib.h>
+ #include <time.h>
+ #include <sys/types.h>
++#ifndef _WIN32
+ #include <sys/wait.h>
++#endif
+ #include "awk.h"
+ #include "awkgram.tab.h"
+ 
+@@ -1830,6 +1832,7 @@ FILE *openfile(int a, const char *us, bool *pnewflag)
+ 	}
+ 	fflush(stdout);	/* force a semblance of order */
+ 	m = a;
++#ifndef _WIN32
+ 	if (a == GT) {
+ 		fp = fopen(s, "w");
+ 	} else if (a == APPEND) {
+@@ -1852,6 +1855,28 @@ FILE *openfile(int a, const char *us, bool *pnewflag)
+ 		if (fp != stdin && fp != stdout && fp != stderr)
+ 			(void) fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
+ 	}
++#else
++if (a == GT) {
++		fp = fopen(s, "wbN");
++	} else if (a == APPEND) {
++		fp = fopen(s, "abN");
++		m = GT;	/* so can mix > and >> */
++	} else if (a == '|') {	/* output pipe */
++		fp = popen(s, "wbN");
++	} else if (a == LE) {	/* input pipe */
++		fp = popen(s, "rbN");
++	} else if (a == LT) {	/* getline <file */
++		fp = strcmp(s, "-") == 0 ? stdin : fopen(s, "rbN");	/* "-" is stdin */
++	} else	/* can't happen */
++		FATAL("illegal redirection %d", a);
++	if (fp != NULL) {
++		files[i].fname = tostring(s);
++		files[i].fp = fp;
++		files[i].mode = m;
++		if (pnewflag)
++			*pnewflag = true;
++	}
++#endif	
+ 	return fp;
+ }
+ 

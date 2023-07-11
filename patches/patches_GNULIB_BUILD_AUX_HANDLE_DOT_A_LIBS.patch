@@ -1,38 +1,35 @@
 diff --git a/build-aux/ar-lib b/build-aux/ar-lib
-index 17de55e79c..aec8e78532 100755
+index 17de55e79c..33f0b676ef 100755
 --- a/build-aux/ar-lib
 +++ b/build-aux/ar-lib
-@@ -1,6 +1,13 @@
+@@ -1,6 +1,11 @@
  #! /bin/sh
  # Wrapper for Microsoft lib.exe
++set -eo pipefail
  
-+COLOR_MINOR="${COLOR_MINOR}"
-+COLOR_MINOR2="${COLOR_MINOR2}"
-+COLOR_MAJOR="${COLOR_MAJOR}"
-+COLOR_NONE="${COLOR_NONE}"
-+if [[ $DEBUG_GNU_LIB_WRAPPER -eq 1 ]]; then
-+  	echo -e "${COLOR_MINOR}GNU LIB INPUT${COLOR_NONE}: " "$@" 1>&2
++# Wrapper for compilers which do not understand '-c -o'.
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
++	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
 +fi
  me=ar-lib
  scriptversion=2019-07-04.01; # UTC
  
-@@ -29,6 +36,15 @@ scriptversion=2019-07-04.01; # UTC
+@@ -29,6 +34,14 @@ scriptversion=2019-07-04.01; # UTC
  # bugs to <bug-automake@gnu.org> or send patches to
  # <automake-patches@gnu.org>.
  
 +func_ar_run ()
 +{
-+  if [[ $DEBUG_GNU_LIB_WRAPPER -eq 1 ]]; then
-+      echo -e "${COLOR_MINOR}GNU LIB OUTPUT${COLOR_NONE}: " $AR -NOLOGO "$@" 1>&2
++  if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
++  	wrapper_exec $AR -NOLOGO "$@"
++  else
++		 exec $AR -NOLOGO "$@"
 +  fi
-+  shopt -s extglob
-+  $AR -NOLOGO "${@//'\e'\[*([0-9;])m/}" || exit $? #strip ansi color strings out
-+  shopt -u extglob
 +}
  
  # func_error message
  func_error ()
-@@ -49,6 +65,10 @@ func_file_conv ()
+@@ -49,6 +62,10 @@ func_file_conv ()
      / | /[!/]*) # absolute file, and not a UNC file
        if test -z "$file_conv"; then
  	# lazily determine how to convert abs files
@@ -43,7 +40,7 @@ index 17de55e79c..aec8e78532 100755
  	case `uname -s` in
  	  MINGW*)
  	    file_conv=mingw
-@@ -60,6 +80,7 @@ func_file_conv ()
+@@ -60,6 +77,7 @@ func_file_conv ()
  	    file_conv=wine
  	    ;;
  	esac
@@ -51,7 +48,7 @@ index 17de55e79c..aec8e78532 100755
        fi
        case $file_conv in
  	mingw)
-@@ -92,7 +113,7 @@ func_at_file ()
+@@ -92,7 +110,7 @@ func_at_file ()
  
    for member
    do
@@ -60,7 +57,7 @@ index 17de55e79c..aec8e78532 100755
    done
  }
  
-@@ -205,7 +226,7 @@ if test -n "$delete"; then
+@@ -205,7 +223,7 @@ if test -n "$delete"; then
          ;;
        *)
          func_file_conv "$1"
@@ -69,7 +66,7 @@ index 17de55e79c..aec8e78532 100755
          ;;
      esac
    done
-@@ -223,15 +244,15 @@ elif test -n "$extract"; then
+@@ -223,15 +241,15 @@ elif test -n "$extract"; then
            ;;
          *)
            func_file_conv "$1"
@@ -88,7 +85,7 @@ index 17de55e79c..aec8e78532 100755
          done
    fi
  
-@@ -262,14 +283,14 @@ elif test -n "$quick$replace"; then
+@@ -262,14 +280,14 @@ elif test -n "$quick$replace"; then
    done
  
    if test -n "$orig_archive"; then
@@ -107,27 +104,21 @@ index 17de55e79c..aec8e78532 100755
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index ba883b54aa..618a99d8d2 100755
+index ba883b54aa..56fc436ae0 100755
 --- a/build-aux/compile
 +++ b/build-aux/compile
-@@ -1,6 +1,16 @@
+@@ -1,5 +1,10 @@
  #! /bin/sh
++set -eo pipefail
++
  # Wrapper for compilers which do not understand '-c -o'.
- 
-+COLOR_MINOR="${COLOR_MINOR}"
-+COLOR_MINOR2="${COLOR_MINOR2}"
-+COLOR_MAJOR="${COLOR_MAJOR}"
-+COLOR_NONE="${COLOR_NONE}"
-+
-+
-+if [[ $DEBUG_GNU_COMPILE_WRAPPER -eq 1 ]]; then
-+  	echo -e "${COLOR_MINOR}GNU COMPILE INPUT${COLOR_NONE}: " "$@" 1>&2
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
++	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
 +fi
-+
+ 
  scriptversion=2018-03-07.03; # UTC
  
- # Copyright (C) 1999-2023 Free Software Foundation, Inc.
-@@ -49,6 +59,10 @@ func_file_conv ()
+@@ -49,6 +54,10 @@ func_file_conv ()
      / | /[!/]*) # absolute file, and not a UNC file
        if test -z "$file_conv"; then
  	# lazily determine how to convert abs files
@@ -138,7 +129,7 @@ index ba883b54aa..618a99d8d2 100755
  	case `uname -s` in
  	  MINGW*)
  	    file_conv=mingw
-@@ -61,6 +75,7 @@ func_file_conv ()
+@@ -61,6 +70,7 @@ func_file_conv ()
  	    ;;
  	esac
        fi
@@ -146,7 +137,7 @@ index ba883b54aa..618a99d8d2 100755
        case $file_conv/,$2, in
  	*,$file_conv,*)
  	  ;;
-@@ -91,37 +106,68 @@ func_cl_dashL ()
+@@ -91,37 +101,70 @@ func_cl_dashL ()
    linker_opts="$linker_opts -LIBPATH:$file"
  }
  
@@ -157,7 +148,7 @@ index ba883b54aa..618a99d8d2 100755
 +	local shared=$4
 +	FULL_LIB_NAME=''
 +
-+	local TRY_NAMES=("${lib}.lib" "${lib}lib.lib" "lib${lib}.a" "lib${lib}.lib")
++	local TRY_NAMES=("${lib}.lib" "${lib}lib.lib" "lib${lib}.a" "lib${lib}.lib" "${lib}")
 +	if $shared; then
 +		TRY_NAMES+="${lib}.dll.lib"; #prefer dynamic last
 +		#TRY_NAMES=("$lib.dll.lib" "${TRY_NAMES[@]}");
@@ -235,11 +226,13 @@ index ba883b54aa..618a99d8d2 100755
  
    if test "$found" != yes; then
 -    lib=$lib.lib
-+    lib="$lib.lib"
++	if [[ "$lib" != *.lib ]]; then
++    	lib="$lib.lib"
++	fi	
    fi
  }
  
-@@ -132,6 +178,7 @@ func_cl_wrapper ()
+@@ -132,6 +175,7 @@ func_cl_wrapper ()
    # Assume a capable shell
    lib_path=
    shared=:
@@ -247,7 +240,7 @@ index ba883b54aa..618a99d8d2 100755
    linker_opts=
    for arg
    do
-@@ -145,16 +192,21 @@ func_cl_wrapper ()
+@@ -145,16 +189,21 @@ func_cl_wrapper ()
  	  case $2 in
  	    *.o | *.[oO][bB][jJ])
  	      func_file_conv "$2"
@@ -271,7 +264,7 @@ index ba883b54aa..618a99d8d2 100755
  	-I)
  	  eat=1
  	  func_file_conv "$2" mingw
-@@ -187,6 +239,19 @@ func_cl_wrapper ()
+@@ -187,6 +236,21 @@ func_cl_wrapper ()
  	-static)
  	  shared=false
  	  ;;
@@ -282,16 +275,18 @@ index ba883b54aa..618a99d8d2 100755
 +	  fi
 +	  set x "$@" -std:"$std"
 +	  if [[ "$std" == "c11" || "$std" == "c17" ]]; then #note that MSVC never supported dynamic arrays as it never supported c99 fully and c11 made them optional.  If your configure has a dynamic array test it will fail still.
-+		STD_DECLARE="/Zc:__STDC__"
++			STD_DECLARE="/Zc:__STDC__"
 +	  fi
 +	  shift
++	  ;;
++	-[Ff][pP][iI][cC] | -[Ff][Nn][Oo]-[Pp][Ii][Cc])
 +	  ;;
 +	-W[a-zA-Z][a-zA-Z-][a-zA-Z-][a-zA-Z-][a-zA-Z-]*) #word based warnings other than all are not supported by msvc
 +	  ;;
  	-Wl,*)
  	  arg=${1#-Wl,}
  	  save_ifs="$IFS"; IFS=','
-@@ -200,6 +265,10 @@ func_cl_wrapper ()
+@@ -200,18 +264,25 @@ func_cl_wrapper ()
  	  eat=1
  	  linker_opts="$linker_opts $2"
  	  ;;
@@ -302,8 +297,12 @@ index ba883b54aa..618a99d8d2 100755
  	-*)
  	  set x "$@" "$1"
  	  shift
-@@ -209,9 +278,12 @@ func_cl_wrapper ()
- 	  set x "$@" -Tp"$file"
+ 	  ;;
+-	*.cc | *.CC | *.cxx | *.CXX | *.[cC]++)
++	*.cc | *.CC | *.cxx | *.CXX | *.[cC]++ | *.S)
+ 	  func_file_conv "$1"
+-	  set x "$@" -Tp"$file"
++	  set x "$@" -Tp "$file"
  	  shift
  	  ;;
 +	*.a)
@@ -316,17 +315,118 @@ index ba883b54aa..618a99d8d2 100755
  	  shift
  	  ;;
  	*)
-@@ -225,7 +297,12 @@ func_cl_wrapper ()
+@@ -225,8 +296,12 @@ func_cl_wrapper ()
    if test -n "$linker_opts"; then
      linker_opts="-link$linker_opts"
    fi
 -  exec "$@" $linker_opts
-+  if [[ $DEBUG_GNU_COMPILE_WRAPPER -eq 1 ]]; then
-+  	echo -e "${COLOR_MINOR}GNU COMPILE OUTPUT${COLOR_NONE}: " "$@" $STD_DECLARE $linker_opts 1>&2
+-  exit 1
++  if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
++  	wrapper_exec "$@" $STD_DECLARE $linker_opts
++  else
++		exec "$@" $STD_DECLARE $linker_opts
 +  fi
-+  shopt -s extglob
-+  exec "${@//'\e'\[*([0-9;])m/}" $STD_DECLARE ${linker_opts//'\e'\[*([0-9;])m/} #strip ansi color strings out
-+  shopt -u extglob
-   exit 1
++
  }
  
+ eat=
+diff --git a/build-aux/ld-link b/build-aux/ld-link
+new file mode 100644
+index 0000000000..3b57d4e63b
+--- /dev/null
++++ b/build-aux/ld-link
+@@ -0,0 +1,45 @@
++#!/bin/bash
++set -eo pipefail
++
++# Wrapper for compilers which do not understand '-c -o'.
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
++	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
++fi
++
++convert_from_msys_path () {
++	local WPATH=$1
++	if ! [ -z ${MSYS+x} ]; then
++		WPATH=`cygpath -m "$WPATH"`
++	fi
++	echo $WPATH
++}
++
++# with the other wrappers you can use cl or lib  as they genreally wont collide with msys but link.exe does 
++if [[ ! -v MS_LINK ]]; then
++	MS_LINK=`cygpath.exe -m "$VCToolsInstallDir"`
++	MS_LINK="${LINK_PATH}bin/HostX64/x64/link.exe"
++	if [[ ! -e "$MS_LINK" ]]; then
++		MS_LINK=`which link.exe -a | grep "MSVC" | head`
++		MS_LINK=$(convert_from_msys_path "$MS_LINK")
++	fi
++	if [[ ! -e "$MS_LINK" ]]; then
++		MS_LINK="link.exe"
++	fi
++fi
++
++for file in "$@"; do
++	if [[ $file = /[A-Za-z]/* ]]; then
++		file="${COLOR_MAJOR}\"$(convert_from_msys_path "$file")\"${COLOR_NONE}"
++	elif [[ -e "$file" ]]; then # we want to colorize above incase its the output file
++		file="${COLOR_MAJOR}\"$file\"${COLOR_NONE}"
++	fi
++	
++    set -- "$@" "$file"
++    shift
++done
++echo "HI MSLINK IS: $MS_LINK"
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
++	wrapper_exec "$MS_LINK" -NOLOGO "$@"
++else
++	exec "$MS_LINK" -NOLOGO "$@"
++fi
+diff --git a/build-aux/wrapper_helper.sh b/build-aux/wrapper_helper.sh
+new file mode 100644
+index 0000000000..22b2022db1
+--- /dev/null
++++ b/build-aux/wrapper_helper.sh
+@@ -0,0 +1,43 @@
++#!/bin/bash
++set -eo pipefail
++shopt -s inherit_errexit
++
++function clear_colors {
++	unset COLOR_MINOR COLOR_MINOR2 COLOR_MAJOR COLOR_NONE
++}
++
++CALLER_NAME=`basename ${0^^}`
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
++	if [[ $GNU_BUILD_WRAPPER_COLOR -eq 	1 ]]; then
++		COLOR_MINOR="${COLOR_MINOR:-\e[2;33m}"
++		COLOR_MINOR2="${COLOR_MINOR2:-\e[2;36m}"
++		COLOR_MAJOR="${COLOR_MAJOR:-\e[1;32m}"
++		COLOR_NONE="${COLOR_NONE:-\e[0m}"
++	else
++		clear_colors;
++	fi
++	echo -e ${COLOR_MINOR}GNU ${CALLER_NAME} INPUT${COLOR_NONE}: "$@" 1>&2
++else
++	clear_colors;
++fi
++
++
++function wrapper_exec {	
++	shopt -s extglob
++	if [[ -v GNU_BUILD_CMD_FILE ]]; then
++		LAST_PWD_FILE="${GNU_BUILD_CMD_FILE}.tmpcurdir"
++		CUR_PWD=`pwd`
++		if [[ ! -e "$LAST_PWD_FILE" || "$CUR_PWD" != "`cat $LAST_PWD_FILE`" ]]; then
++			echo -e cd "$CUR_PWD" >> "$GNU_BUILD_CMD_FILE"
++			echo -n $CUR_PWD > "$LAST_PWD_FILE"
++		fi
++		echo -e "${@//'\e'\[*([0-9;])m/}" >> "$GNU_BUILD_CMD_FILE"
++	fi
++	if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then	
++		echo -e "${COLOR_MINOR}GNU ${CALLER_NAME} OUTPUT${COLOR_NONE}: " "$@" $STD_DECLARE $linker_opts 1>&2
++	fi
++	exec "${@//'\e'\[*([0-9;])m/}"  #strip ansi color strings out
++	shopt -u extglob
++
++}
++

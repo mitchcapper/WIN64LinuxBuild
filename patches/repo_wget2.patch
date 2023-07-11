@@ -181,7 +181,7 @@ index ba8bbb69..3b0fe704 100644
  #include <stdlib.h>
  #include <string.h>
 diff --git a/include/wget/wget.h b/include/wget/wget.h
-index 9fd8fd23..048a9f8e 100644
+index cda23f5f..d2e92b84 100644
 --- a/include/wget/wget.h
 +++ b/include/wget/wget.h
 @@ -2345,7 +2345,7 @@ WGETAPI void
@@ -468,7 +468,7 @@ index 0770bcff..80f48659 100644
  }
  
 diff --git a/libwget/http.c b/libwget/http.c
-index b256c7c7..824299e7 100644
+index 06cfabf5..63d8c2f4 100644
 --- a/libwget/http.c
 +++ b/libwget/http.c
 @@ -29,7 +29,28 @@
@@ -737,10 +737,10 @@ index b9a67d9d..99d97c58 100644
  /**
   * Global library initialization, allocating/preparing all resources.
 diff --git a/libwget/io.c b/libwget/io.c
-index a9939a58..ff0ec201 100644
+index a9939a58..e0630789 100644
 --- a/libwget/io.c
 +++ b/libwget/io.c
-@@ -191,6 +191,22 @@ ssize_t wget_getline(char **buf, size_t *bufsize, FILE *fp)
+@@ -191,6 +191,23 @@ ssize_t wget_getline(char **buf, size_t *bufsize, FILE *fp)
  	return getline_internal(buf, bufsize, (void *)fp, read_fp);
  }
  
@@ -759,11 +759,12 @@ index a9939a58..ff0ec201 100644
 +		if (msElapsed < 0 || (timeout - MIN_TIMEOUT_FIX_MS) < msElapsed)//if it got the timing within  MIN_TIMEOUT_FIX_MS of the timer consider us good
 +			return rc;
 +	}
++	return rc;
 +}
  /**
   * \param[in] fd File descriptor to wait for
   * \param[in] timeout Max. duration in milliseconds to wait
-@@ -209,24 +225,24 @@ ssize_t wget_getline(char **buf, size_t *bufsize, FILE *fp)
+@@ -209,24 +226,24 @@ ssize_t wget_getline(char **buf, size_t *bufsize, FILE *fp)
  int wget_ready_2_transfer(int fd, int timeout, int mode)
  {
  	int rc = -1;
@@ -797,7 +798,7 @@ index a9939a58..ff0ec201 100644
  			rc |= WGET_IO_WRITABLE;
  	}
  
-@@ -370,9 +386,7 @@ int wget_update_file(const char *fname,
+@@ -370,9 +387,7 @@ int wget_update_file(const char *fname,
  	FILE *fp;
  	const char *tmpdir, *basename;
  	int lockfd;
@@ -808,7 +809,7 @@ index a9939a58..ff0ec201 100644
  
  	// find out system temp directory
  	if (!(tmpdir = getenv("TMPDIR")) && !(tmpdir = getenv("TMP"))
-@@ -435,15 +449,17 @@ int wget_update_file(const char *fname,
+@@ -435,15 +450,17 @@ int wget_update_file(const char *fname,
  		if (fp) {
  			// read fname data
  			if (load_func(context, fp)) {
@@ -819,9 +820,8 @@ index a9939a58..ff0ec201 100644
  				return WGET_E_UNKNOWN;
  			}
 -
--			fclose(fp);
 +			if (fp)
-+				fclose(fp);
+ 				fclose(fp);
  		}
  	}
 -
@@ -830,7 +830,7 @@ index a9939a58..ff0ec201 100644
  	if (save_func) {
  		int fd;
  		// create & open temp file to write data into with 0600 - rely on Gnulib to set correct
-@@ -451,6 +467,7 @@ int wget_update_file(const char *fname,
+@@ -451,6 +468,7 @@ int wget_update_file(const char *fname,
  		if ((fd = mkstemp(tmpfile)) == -1) {
  			close(lockfd);
  			error_printf(_("Failed to open tmpfile '%s' (%d)\n"), tmpfile, errno);
@@ -838,7 +838,7 @@ index a9939a58..ff0ec201 100644
  			return WGET_E_OPEN;
  		}
  
-@@ -460,6 +477,7 @@ int wget_update_file(const char *fname,
+@@ -460,6 +478,7 @@ int wget_update_file(const char *fname,
  			close(fd);
  			close(lockfd);
  			error_printf(_("Failed to write open '%s' (%d)\n"), tmpfile, errno);
@@ -846,7 +846,7 @@ index a9939a58..ff0ec201 100644
  			return WGET_E_OPEN;
  		}
  
-@@ -468,6 +486,7 @@ int wget_update_file(const char *fname,
+@@ -468,6 +487,7 @@ int wget_update_file(const char *fname,
  			unlink(tmpfile);
  			fclose(fp);
  			close(lockfd);
@@ -854,7 +854,7 @@ index a9939a58..ff0ec201 100644
  			return WGET_E_UNKNOWN;
  		}
  
-@@ -476,6 +495,7 @@ int wget_update_file(const char *fname,
+@@ -476,6 +496,7 @@ int wget_update_file(const char *fname,
  			unlink(tmpfile);
  			close(lockfd);
  			error_printf(_("Failed to write/close '%s' (%d)\n"), tmpfile, errno);
@@ -862,7 +862,7 @@ index a9939a58..ff0ec201 100644
  			return WGET_E_IO;
  		}
  
-@@ -484,10 +504,12 @@ int wget_update_file(const char *fname,
+@@ -484,10 +505,12 @@ int wget_update_file(const char *fname,
  			close(lockfd);
  			error_printf(_("Failed to rename '%s' to '%s' (%d)\n"), tmpfile, fname, errno);
  			error_printf(_("Take manually care for '%s'\n"), tmpfile);
@@ -1153,7 +1153,7 @@ index 40084b6c..63a709ec 100644
  	if (config.ca_file && *config.ca_file
  		&& !SSL_CTX_load_verify_locations(ctx, config.ca_file, NULL))
 diff --git a/libwget/ssl_wolfssl.c b/libwget/ssl_wolfssl.c
-index cd7e3060..82dc0d02 100644
+index 6a121fb4..8a1fc970 100644
 --- a/libwget/ssl_wolfssl.c
 +++ b/libwget/ssl_wolfssl.c
 @@ -30,6 +30,35 @@
@@ -1269,15 +1269,15 @@ index cd7e3060..82dc0d02 100644
 +				dir = NULL;
 +			else if (file && access(file, F_OK)) //yes else if, good to throw an error if neither are there, just don't want to do it if at least one exists
 +				file = NULL;
- 			/* Load client certificates into WOLFSSL_CTX */
+ 			// Load client certificates into WOLFSSL_CTX
 -			if (wolfSSL_CTX_load_verify_locations(ssl_ctx, config.ca_file, config.ca_directory) != SSL_SUCCESS) {
 -				error_printf(_("Failed to load %s, please check the file.\n"), config.ca_directory);
 +			if (wolfSSL_CTX_load_verify_locations(ssl_ctx, file, dir) != SSL_SUCCESS) {
 +				error_printf(_("Failed to load CA pem: %s or cert dir: %s, ssl verification will likely fail.\n"), config.ca_file, config.ca_directory);
  				goto out;
  			}
- 		} else {
-@@ -794,6 +846,8 @@ static void ShowX509(WOLFSSL_X509 *x509, const char *hdr)
+ 			wolfSSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
+@@ -795,6 +847,8 @@ static void ShowX509(WOLFSSL_X509 *x509, const char *hdr)
  		bio = wolfSSL_BIO_new(wolfSSL_BIO_s_file());
  		if (bio) {
  			wolfSSL_BIO_set_fp(bio, stdout, BIO_NOCLOSE);
@@ -1286,7 +1286,7 @@ index cd7e3060..82dc0d02 100644
  			wolfSSL_X509_print(bio, x509);
  			wolfSSL_BIO_free(bio);
  		}
-@@ -894,7 +948,7 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -895,7 +949,7 @@ int wget_ssl_open(wget_tcp *tcp)
  
  	tcp->ssl_session = session;
  //	gnutls_session_set_ptr(session, ctx);
@@ -1295,7 +1295,7 @@ index cd7e3060..82dc0d02 100644
  
  	/* make wolfSSL object nonblocking */
  	wolfSSL_set_using_nonblock(session, 1);
-@@ -1075,7 +1129,7 @@ void wget_ssl_close(void **session)
+@@ -1076,7 +1130,7 @@ void wget_ssl_close(void **session)
   */
  ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeout)
  {
@@ -1304,7 +1304,7 @@ index cd7e3060..82dc0d02 100644
  	int rc;
  
  	while ((rc = wolfSSL_read(session, buf, (int) count)) < 0) {
-@@ -1148,7 +1202,7 @@ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeou
+@@ -1149,7 +1203,7 @@ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeou
   */
  ssize_t wget_ssl_write_timeout(void *session, const char *buf, size_t count, int timeout)
  {
@@ -1478,7 +1478,7 @@ index bb96601b..a4720e8f 100644
  
  	// create the complete directory path
 diff --git a/src/options.c b/src/options.c
-index 55cd4019..f8b8f3e2 100644
+index 2482eb02..0670b485 100644
 --- a/src/options.c
 +++ b/src/options.c
 @@ -1223,6 +1223,9 @@ static int print_plugin_help(WGET_GCC_UNUSED option_t opt,
