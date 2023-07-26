@@ -190,11 +190,11 @@ function setup_build_env(){
 		STATIC_ADD+=" -static" #we shouldnt nneed to add -MT here
 	fi
 	if [[ $BLD_CONFIG_LOG_DEBUG_WRAPPERS -eq 1 ]]; then
-		export DEBUG_GNU_COMPILE_WRAPPER=1 DEBUG_GNU_LIB_WRAPPER=1
+		export GNU_BUILD_WRAPPER_DEBUG=1
 
 	fi
 	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT -eq 1 ]]; then
-		export COLOR_MINOR='\e[2;33m' COLOR_MINOR2='\e[2;36m' COLOR_MAJOR='\e[1;32m' COLOR_NONE='\e[0m'
+		export GNU_BUILD_WRAPPER_COLOR=1
 	fi
 	LINK_PATH=$(convert_to_universal_path "$VCToolsInstallDir")
 	LINK_PATH="${LINK_PATH}bin/HostX64/x64/link.exe"
@@ -263,7 +263,6 @@ function git_settings_to_env(){
 	done
 	export GIT_CONFIG_COUNT
 }
-
 function startcommon(){
 	SetupIgnores;
 	DoTemplateSubs;
@@ -271,11 +270,24 @@ function startcommon(){
 	unset TEMP
 	mkdir -p "$BLD_CONFIG_SRC_FOLDER"
 	cd "$BLD_CONFIG_SRC_FOLDER"
-	if [[ $CALL_CMD == "gnulib_dump_patches" ]]; then
+	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT ]]; then
+		COLOR_MINOR="${COLOR_MINOR:-\e[2;33m}"
+		COLOR_MINOR2="${COLOR_MINOR2:-\e[2;36m}"
+		COLOR_MAJOR="${COLOR_MAJOR:-\e[1;32m}"
+		COLOR_ERROR="${COLOR_ERROR:-\e[1;31m}"
+		COLOR_NONE="${COLOR_NONE:-\e[0m}"
+	else
+		COLOR_MINOR=""
+		COLOR_MINOR2=""
+		COLOR_MAJOR=""
+		COLOR_ERROR=""
+		COLOR_NONE=""	
+	fi
+	if [[ $SKIP_STEP == "gnulib_dump_patches" ]]; then
 		gnulib_dump_patches;
 		exit 0;
 	fi
-	if [[ $CALL_CMD == "gnulib_tool_py_remove_nmd_makefiles" ]]; then
+	if [[ $SKIP_STEP == "gnulib_tool_py_remove_nmd_makefiles" ]]; then
 		gnulib_tool_py_remove_nmd_makefiles;
 		exit 0;
 	fi
