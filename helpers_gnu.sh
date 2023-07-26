@@ -147,7 +147,8 @@ function gnulib_tool_py_remove_nmd_makefiles() {
 		TO_FIX=("${TO_FIX[@]}" "${BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY_ADDL_MK_FILES_FIX[@]}")
 		for fl in "${TO_FIX[@]}"; do
 			if [[ -f "${fl}" ]]; then
-				sed -i -e "$sed_eliminate_NMD" "${fl}"
+				# we grep first so we only modify files we would change 
+				(grep '@NMD@' "${fl}" &>/dev/null && sed -i -e "$sed_eliminate_NMD" "${fl}") || true
 			fi
 		done
 	fi
