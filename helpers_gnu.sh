@@ -17,7 +17,7 @@ function gnulib_switch_to_master_and_patch(){
 		sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
 	fi
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
-	git fetch
+	#git fetch
 	if [[ ! -z "$BLD_CONFIG_GNU_LIBS_BRANCH" ]]; then
 		git checkout "$BLD_CONFIG_GNU_LIBS_BRANCH"
 	fi
@@ -108,7 +108,9 @@ function gnulib_add_addl_modules_to_bootstrap(){
 		BOOT_FILE=`cat gnulib.modules | grep -v "^[A-Za-z0-9]"`;
 	else
 		#use \K to get exactly what we want here sed doesn't do \K so will just capture the group and sub that as grep doesnt do that
-		CUR_MODULES=`grep -Pzo "\n[ \t]*gnulib_modules\s*=\s*[\"'\x5c]+\K[^\"'\x5c]+" bootstrap.conf | sed 's/^ *//;s/ *$//'`
+		
+		CUR_MODULES=`grep -Pzo "\n[ \t]*gnulib_modules\s*=\s*[\"'\x5c]+\K[^\"'\x5c]+" bootstrap.conf  | sed 's/^ *//;s/ *$//' | tr -d '\0'`
+
 		BOOT_FILE=`sed -z -E "s#(\n[ \t]*gnulib_modules\s*=\s*['\"]+)[\n\x5c]*[^\"'\x5c]+#\1\nTOREPLACEZSTR\n#" bootstrap.conf  | sed ''`
 		INDENT="    "
 	fi
@@ -124,13 +126,15 @@ function gnulib_add_addl_modules_to_bootstrap(){
 }
 function setup_gnulibtool_py_autoconfwrapper(){
 	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
-
+		local TARGET_FL="${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
 		#For things like coreutils bootstrap will create the mk files we need to fix before it also then runs autoreconf so we will just use our wrapper for autoreconf, call ourselves, then call autoreconf
+		if [[ ! -e "$TARGET_FL" ]]; then
 		WRAPPER=`cat "${SCRIPT_FOLDER}/AUTORECONF_prewrapper.sh.template"`
 		WRAPPER="${WRAPPER/SCRIPT_PATH/"$CALL_SCRIPT_PATH"}"
 		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
-		echo "${WRAPPER}" > "${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
-		export AUTORECONF="${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
+			echo "${WRAPPER}" > "$TARGET_FL"
+		fi
+		export AUTORECONF="$TARGET_FL"
 
 		gnulib_tool_py_remove_nmd_makefiles;
 	fi
