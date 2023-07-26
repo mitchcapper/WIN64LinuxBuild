@@ -235,20 +235,27 @@ function configure_fixes(){
 
 }
 function git_settings_to_env(){
-	declare -a GIT_SETTINGS=("${BLD_CONFIG_GIT_SETTINGS_DEFAULT[@]}" "${BLD_CONFIG_GIT_SETTINGS_ADDL[@]}")
+	declare -a GIT_SETTINGS=("${BLD_CONFIG_GIT_SETTINGS_DEFAULT[@]}")
+	if [[ ${#BLD_CONFIG_GIT_SETTINGS_ADDL[@]} > 0 ]]; then
+		GIT_SETTINGS+=("${BLD_CONFIG_GIT_SETTINGS_ADDL[@]}")
+	fi
 	GIT_SETTING_COUNT=${#GIT_SETTINGS[@]}
-	export GIT_CONFIG_COUNT=$GIT_SETTING_COUNT
+	GIT_CONFIG_COUNT=0
 
-	for (( j=0; j<${GIT_CONFIG_COUNT}; j++ ));
-	do
+	for (( j=0; j<${GIT_SETTING_COUNT}; j++ )); do
 		SETTING="${GIT_SETTINGS[$j]}"
 		IFS=' ' read -ra KVP <<< "$SETTING"
 		NAME="${KVP[0]}"
 		VALUE="${KVP[1]}"
+		if [[ $name -eq "" ]]; then
+			continue;
+		fi
 
-		export GIT_CONFIG_KEY_${j}="$NAME"
-		export GIT_CONFIG_VALUE_${j}="$VALUE"
+		export GIT_CONFIG_KEY_${GIT_CONFIG_COUNT}="$NAME"
+		export GIT_CONFIG_VALUE_${GIT_CONFIG_COUNT}="$VALUE"
+		(( GIT_CONFIG_COUNT++ ))
 	done
+	export GIT_CONFIG_COUNT
 }
 
 function startcommon(){
