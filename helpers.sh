@@ -214,7 +214,13 @@ function msys_bins_move_end_path(){
 	fi
 	PATH="$new_path"
 }
-
+function switch_lin_path_to_back(){
+	ORIGPATH="$PATH"
+	PATH=`echo $PATH | sed -E 's#^((/[^/:]{2,}[^:]+:)*)(.+)#\3\1#'`
+}
+function restore_orig_path(){
+	PATH="$ORIGPATH"
+}
 function add_items_to_gitignore(){
 	cd $BLD_CONFIG_SRC_FOLDER
 	declare -a TO_ADD=("${BLD_CONFIG_GIT_IGNORE_DEFAULT[@]}" "${BLD_CONFIG_GIT_IGNORE_DEFAULT[@]}")
