@@ -117,15 +117,55 @@ PreInitialize(){
 	ini_read;
 }
 
-
-
+function make_install(){
 	
-	#these almost certainly wont work   normally the static and release are prefixed by something
-	STATIC_VAL=0
-	SHARE_VAL=1
-	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
-		STATIC_VAL=1
-		SHARE_VAL=0
+	$BLD_CONFIG_BUILD_MAKE_BIN install "$@"
+	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+		mkdir -p "${BLD_CONFIG_INSTALL_FOLDER}/bin"
+		find -name "*.pdb" | grep -v vc1 | xargs cp -t "${BLD_CONFIG_INSTALL_FOLDER}/bin" &>/dev/null || true
+	fi
+}
+function copy_pdbs(){
+	ex find -name "*.pdb" | grep -v vc1 | xargs cp -t "${BLD_CONFIG_INSTALL_FOLDER}/bin" &>/dev/null || true
+}
+
+declare -g ADDL_OUTPUT_MESSAGE=""
+function run_logged_make(){
+	echo "Starting logged build run sure you have a clean build as any pre-built items are not logged"
+	CMD="$BLD_CONFIG_BUILD_MAKE_BIN"
+	if [[ $# != 0 ]]; then
+		CMD="$1"
+		shift 1;
+	else
+		set - "-j1" "$@"
+	fi
+	OUTPUT_FILE=""
+	if [[ $LOG_MAKE_RUN == "make" || $LOG_MAKE_RUN == "$BLD_CONFIG_BUILD_MAKE_BIN" ]]; then
+		OUTPUT_FILE="${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
+		"$CMD" --just-print "$@" | tee "${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
+	elif [[ $LOG_MAKE_RUN == "raw" ]]; then
+		OUTPUT_FILE="${BLD_CONFIG_LOG_RAW_BUILD_FILE}"
+
+		echo "" > "$BLD_CONFIG_LOG_RAW_BUILD_FILE"
+		echo -n `pwd` > "$BLD_CONFIG_LOG_RAW_BUILD_FILE".tmpcurdir
+		old_GNU_BUILD_WRAPPER_DEBUG="$GNU_BUILD_WRAPPER_DEBUG"
+		export GNU_BUILD_WRAPPER_DEBUG=1 GNU_BUILD_CMD_FILE="${BLD_CONFIG_LOG_RAW_BUILD_FILE}"
+		ex "$CMD" "$@"
+		unset GNU_BUILD_CMD_FILE
+		export GNU_BUILD_WRAPPER_DEBUG="$old_GNU_BUILD_WRAPPER_DEBUG"
+	else
+		echo "Logged make called but the type was not preset????" 1>&2
+		exit 1
+	fi
+	
+	ADDL_OUTPUT_MESSAGE="DONE ${COLOR_MINOR}BUILD FILE${COLOR_NONE} to \"${COLOR_MAJOR}${OUTPUT_FILE}${COLOR_NONE}\" suggest also copying the env file: \"${COLOR_MAJOR}${BLD_CONFIG_LOG_CONFIG_ENV_FILE}${COLOR_NONE}\""
+	echo -e $ADDL_OUTPUT_MESSAGE
+	if [[ $LOG_MAKE_RUN == "raw" ]]; then
+		unlink "$BLD_CONFIG_LOG_RAW_BUILD_FILE".tmpcurdir
+		unset GNU_BUILD_WRAPPER_DEBUG GNU_BUILD_CMD_FILE
+	fi
+	if [[ $LOG_MAKE_CONTINUE -eq 0 ]]; then
+		exit 0
 	fi
 }
 function configure_run(){
@@ -196,14 +236,18 @@ function setup_build_env(){
 	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT -eq 1 ]]; then
 		export GNU_BUILD_WRAPPER_COLOR=1
 	fi
-	LINK_PATH=$(convert_to_universal_path "$VCToolsInstallDir")
-	LINK_PATH="${LINK_PATH}bin/HostX64/x64/link.exe"
-	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${ADL_C_FLAGS} ${CFLAGS}" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
+	CXX="${CL_PREFIX}cl.exe"
+	CL="${CL_PREFIX}cl.exe"
+	if [[ $BLD_CONFIG_BUILD_WINDOWS_COMPILE_WRAPPERS -eq 1 && $USING_GNU_COMPILE_WRAPPER -eq 0 ]]; then
+		CL="${WIN_SCRIPT_FOLDER}/wraps/cl.bat"
+		#LINK_PATH="\"${WIN_SCRIPT_FOLDER}/windows_command_wrapper.bat\" \"${LINK_PATH}\""
+		LINK_PATH="${WIN_SCRIPT_FOLDER}/wraps/link.bat"
+		#echo "LINK PATH IS: $LINK_PATH"
+		AR="${WIN_SCRIPT_FOLDER}/wraps/lib.bat"
+		STATIC_ADD="-showIncludes ${STATIC_ADD}"
+	fi
+	export CXX="${CL}" AR="$AR" CC="${CL}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
-}
-function log_make() {
-	make --just-print --always-make "$@" 1> "${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
-	echo "Make commands saved to: ${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
 }
 
 function msys_bins_move_end_path(){
@@ -320,7 +364,22 @@ function exit_out(){
 	exit $EXIT_CODE
 }
 function finalcommon(){
-	echo DONE! find binaries in: $BLD_CONFIG_INSTALL_FOLDER/bin
+	echo -e DONE! ${COLOR_MINOR}Find output binaries${COLOR_NONE} in: ${COLOR_MAJOR}$BLD_CONFIG_INSTALL_FOLDER/bin${COLOR_NONE}
+	if [[ -n "${ADDL_OUTPUT_MESSAGE}" ]]; then
+		echo -e $ADDL_OUTPUT_MESSAGE
+	fi
+	if [[ "${LOG_MAKE_RUN}" -eq "raw" && -e "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" ]]; then
+		BUILD_OUT="$BLD_CONFIG_INSTALL_FOLDER/build"
+		mkdir -p "$BUILD_OUT"
+		cp -t "$BUILD_OUT" "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" "${BLD_CONFIG_LOG_CONFIG_ENV_FILE}" &>/dev/null || true
+		CFG_PATHS=("config.h" "lib/config.h" "gnulib/config.h" "gl/config.h" "include/config.h")
+		for path in "${CFG_PATHS[@]}"; do
+			if [[ -e "$path" ]]; then
+				cp "$path" "$BUILD_OUT"
+				break
+			fi
+		done
+	fi
 	trace_final;
 	return 0;
 }
