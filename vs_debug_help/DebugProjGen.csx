@@ -111,6 +111,7 @@ Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
 	var libs = opts.GetArrVal("libraries");
 	var compile = opts.GetArrVal("compile");
 	var define = opts.GetArrVal("define");
+	define = define.Select(a=>a.StartsWith("-D") ? a.Substring(2) : a).ToList();
 	var include = opts.GetArrVal("include");
 	var exclude = opts.GetArrVal("exclude");
 	ArrExpandWildcards(ROOT_DIR,compile);
@@ -143,7 +144,7 @@ Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
 	var chk_addl_libs = new List<string>(new[] { "src/libver.a", $"src/lib{config.GetVal("BUILD_NAME")}.a", $"lib/lib{config.GetVal("BUILD_NAME")}.a", $"lib/lib{config.GetVal("BUILD_NAME").Replace("utils", "")}.a", $"src/{config.GetVal("BUILD_NAME")}.a" });
 	//lib/libcoreutils.a
 	if (config.GetTrue("GNU_LIBS_USED")) {
-		chk_addl_libs.AddRange(new[] { "gl/lib/libgnulib.a", "gnu/libgnu.a" });
+		chk_addl_libs.AddRange(new[] { "gl/lib/libgnulib.a", "gnu/libgnu.a", "lib/libgnu.a" });
 		define.Add("HAVE_CONFIG_H");
 	}
 
