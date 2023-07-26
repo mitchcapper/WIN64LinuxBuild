@@ -139,7 +139,7 @@ DoTemplateSubs(){
 	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
 		BLD_CONFIG_STATIC_RELEASE_TRIPLET_AUTO+="-static"
 	fi
-	if [[ ! $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
 		BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO="Debug"
 		BLD_CONFIG_CMAKE_BUILD_TYPE_AUTO="Debug"
 		BLD_CONFIG_STATIC_RELEASE_TRIPLET_AUTO+="-release"
@@ -163,7 +163,7 @@ DoTemplateSubs(){
 			echo $"${value}=>>${cur_val}|"
 		fi
 
-		if [[ $CALL_CMD == "export_config" ]]; then
+		if [[ $SKIP_STEP == "export_config" ]]; then
 			#TMP_VAR_NAME="BLD_CONFIG_${value}"
 			#VAL_TO=$"${!TMP_VAR_NAME}"
 			VAL_TO=`declare -p "BLD_CONFIG_${value}" | sed -E 's/declare \-\- //' | sed -E 's/^BLD_CONFIG_//'`
