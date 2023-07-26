@@ -171,7 +171,7 @@ function run_logged_make(){
 function configure_run(){
 	setup_build_env;
 	echo "Running ./configure ${config_cmd}" 1>&2
-	./configure $config_cmd  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+	#gl_cv_host_operating_system="MSYS2" ac_cv_host="x86_64-w64-msys2" ac_cv_build="x86_64-w64-msys2"
 }
 declare -g SETUP_BUILD_ENV_RUN=0
 function setup_build_env(){
@@ -181,9 +181,8 @@ function setup_build_env(){
 		echo "setup_build_env() called twice, this would cause some vars to stack to do including the prev value and also break caches" 1>&2
 		exit 1
 	fi
-	if [[ $BLD_CONFIG_ADD_WIN_ARGV_LIB -eq 1 ]]; then
-		ADL_LIB_FLAGS+=" -Xlinker setargv.obj"
-	fi
+	LINK_PATH=$(convert_to_universal_path "$VCToolsInstallDir")
+	LINK_PATH="${LINK_PATH}bin/HostX64/x64/link.exe"
 	SETUP_BUILD_ENV_RUN=1
 	CL_PREFIX=""
 	USING_GNU_COMPILE_WRAPPER=0
@@ -192,32 +191,63 @@ function setup_build_env(){
 		gnulib_ensure_buildaux_scripts_copied
 		local gnu_compile_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/compile")
 		local gnu_arlib_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ar-lib")
+		local gnu_ldlink_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ld-link")
 		CL_PREFIX="${gnu_compile_path} "
 		AR="${gnu_arlib_path} lib"
+		export MS_LINK="$LINK_PATH"
+		LINK_PATH="${gnu_ldlink_path} "
 		USING_GNU_COMPILE_WRAPPER=1
 	fi
-	config_cmd=$"--config-cache $BLD_CONFIG_CONFIG_CMD_DEFAULT $BLD_CONFIG_CONFIG_CMD_ADDL"
+	XLINKER_CMD="-Xlinker"
+	if [[ $BLD_CONFIG_BUILD_WINDOWS_COMPILE_WRAPPERS -eq 1 && $USING_GNU_COMPILE_WRAPPER -eq 0 ]]; then
+		XLINKER_CMD=""
+	fi
+	if [[ $BLD_CONFIG_ADD_WIN_ARGV_LIB -eq 1 ]]; then
+		ADL_LIB_FLAGS+=" ${XLINKER_CMD} setargv.obj"
+	fi
+	
+	config_cmd=$"$BLD_CONFIG_CONFIG_CMD_DEFAULT $BLD_CONFIG_CONFIG_CMD_ADDL"
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]]; then
 		config_cmd=$"$config_cmd $CONFIG_CMD_GNULIB_ADDL"
 
 	fi
-	
+	MSVC_DESIRED_LIB="msvcrt"
 	if [[ $BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS -eq 1 ]]; then
+		NO_DEFAULT_LIB_ARR=()
 		MSVC_RUNTIME="MD"
 		if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+			MSVC_DESIRED_LIB="libcmt"
 			MSVC_RUNTIME="MT"
 		else
-			ADL_C_FLAGS+=" /LD" #passes /dll to linker
+			#ADL_C_FLAGS+=" /LD" #passes /dll to linker
 			ADL_LIB_FLAGS+=" /DLL"
 		fi
 		if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
-			ADL_C_FLAGS+=" /D_DEBUG -DDEBUG ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}" #DEBUG isn't n actual normal MSVC debug flag but several common repos will use it so might as well declare
+			ADL_C_FLAGS+=" /D_DEBUG ${BLD_CONFIG_BUILD_DEBUG_ADDL_CFLAGS} ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}"
 			ADL_LIB_FLAGS+=" /DEBUG"
+			if [[ "$BUILD_MSVC_NO_DEFAULT_LIB" == "debug" ]]; then
+				NO_DEFAULT_LIB_ARR+=($MSVC_DESIRED_LIB)
+			fi
 			MSVC_RUNTIME+="d"
+			MSVC_DESIRED_LIB+="d"
 		else
 			ADL_C_FLAGS+=" /DNDEBUG ${BLD_CONFIG_BUILD_MSVC_CL_NDEBUG_OPTS}"
+			if [[ "$BUILD_MSVC_NO_DEFAULT_LIB" == "debug" ]]; then
+				NO_DEFAULT_LIB_ARR+=("${MSVC_DESIRED_LIB}d")
+			fi
+		fi
+		if [[ "$BUILD_MSVC_NO_DEFAULT_LIB" == "full" ]]; then
+			local ALL_LIBS=("libcmt" "libcmtd" "msvcrt" "msvcrtd")
+			for lib in "${ALL_LIBS[@]}"; do
+				if [[ "$lib" != "$MSVC_DESIRED_LIB" ]]; then
+					NO_DEFAULT_LIB_ARR+=($lib)
+				fi
+			done
 		fi
 		ADL_C_FLAGS+=" /${MSVC_RUNTIME}"
+		for lib in "${NO_DEFAULT_LIB_ARR[@]}"; do
+			ADL_C_FLAGS+=" ${XLINKER_CMD} -NODEFAULTLIB:${lib}"
+		done
 	fi
 	for warn in "${BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS[@]}"; do
 		ADL_C_FLAGS+=" /wd${warn}"
