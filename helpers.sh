@@ -72,11 +72,15 @@ apply_our_repo_patch () {
 	local PATCH_NAME="${1:-$BLD_CONFIG_BUILD_NAME}"
 	PATCH_PATH="${WIN_SCRIPT_FOLDER}/patches/repo_${PATCH_NAME}.patch"
 	if [[ -f "${PATCH_PATH}" ]]; then
-		git apply "${PATCH_PATH}"
+		git_apply_patch "${PATCH_PATH}"
 	else
 		echo "Error apply_our_repo_patch called but can't find patch at: ${PATCH_PATH}" 1>&2;
 		exit 1
 	fi
+}
+git_apply_patch () {
+	local PATCH=$1
+	ex git apply --ignore-space-change --ignore-whitespace "$PATCH"
 }
 convert_to_msys_path () {
 	local WPATH=$1
