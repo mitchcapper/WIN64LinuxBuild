@@ -3,10 +3,6 @@ set -eo pipefail -o functrace
 shopt -s inherit_errexit
 #while we could export SHELLOPTS many scripts dont work well with pipefail enabled
 
-CALL_CMD="$1"
-CALL_SCRIPT_PATH="$2"
-SCRIPT_FOLDER="$(dirname "$(readlink -f "$BASH_SOURCE")")"
-#if a env variable is completely undefined our changes wont be picked up unless past directly to the command or exported
 
 
 vcpkg_ensure_installed(){
@@ -39,6 +35,30 @@ vcpkg_remove_package(){
 
 	done
 }
+declare -g SKIP_STEP="$1"
+declare -g CALL_SCRIPT_PATH="$(readlink -f "$0")"
+declare -g SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER:-$(dirname "$(CALL_SCRIPT_PATH)")}"
+declare -g LOG_MAKE_RUN=""
+declare -g LOG_MAKE_CONTINUE=0
+
+#full allows you to run all the steps including it, or resume earlier through it rather than just it
+case "$SKIP_STEP" in
+	log_raw_build|log)
+		LOG_MAKE_RUN="raw"
+		;;
+	log_raw_build_full|log_full)
+		LOG_MAKE_RUN="raw"
+		SKIP_STEP="$2"
+		LOG_MAKE_CONTINUE=1
+		;;
+	log_make)
+		LOG_MAKE_RUN="make"
+		;;
+	log_make_full)
+		LOG_MAKE_RUN="make"
+		SKIP_STEP="$2"
+		;;
+esac
 
 
 vcpkg_install_package(){ #if the first parameter after optionally --head is a function that function will be called on install failure
@@ -395,3 +415,4 @@ function finalcommon(){
 . "$SCRIPT_FOLDER/helpers_ini.sh"
 . "$SCRIPT_FOLDER/helpers_gnu.sh"
 . "$SCRIPT_FOLDER/helpers_bashtrace.sh"
+PreInitialize;
