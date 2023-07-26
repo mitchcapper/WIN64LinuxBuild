@@ -119,12 +119,6 @@ PreInitialize(){
 
 
 
-function cmake_config_run(){
-	#echo -n "Running: cmake " 1>&2
-	#printf "%q " "$@" 1>&2
-	#echo $@
-	#echo ""
-	echo "Running cmake ${*@Q}" 1>&2
 	
 	#these almost certainly wont work   normally the static and release are prefixed by something
 	STATIC_VAL=0
@@ -133,7 +127,6 @@ function cmake_config_run(){
 		STATIC_VAL=1
 		SHARE_VAL=0
 	fi
-	cmake -G "Visual Studio 17 2022" --install-prefix "$BLD_CONFIG_INSTALL_FOLDER" -S . -B winbuild -DCMAKE_C_FLAGS_DEBUG:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_RELEASE:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_MINSIZEREL:STRING="${CFLAGS}" -DBUILD_STATIC:BOOL="${STATIC_VAL}" -DBUILD_SHARED:BOOL="${SHARE_VAL}" -DCMAKE_CONFIGURATION_TYPES:STRING="${BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO}" -DCMAKE_BUILD_TYPE:STRING="${BLD_CONFIG_CMAKE_BUILD_TYPE_AUTO}" "$@" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
 function configure_run(){
 	setup_build_env;
@@ -286,7 +279,9 @@ function startcommon(){
 	#else
 		#cd $BLD_CONFIG_BASE_FOLDER
 	#fi
-
+	if [[ -n "$BLD_CONFIG_CMAKE_STYLE" ]]; then
+		cmake_init;
+	fi
 }
 function exit_ok(){
 	trace_final
@@ -308,5 +303,6 @@ function finalcommon(){
 . "$SCRIPT_FOLDER/helpers_ini.sh"
 . "$SCRIPT_FOLDER/helpers_gnu.sh"
 . "$SCRIPT_FOLDER/helpers_vcpkg.sh"
+. "$SCRIPT_FOLDER/helpers_cmake.sh"
 . "$SCRIPT_FOLDER/helpers_bashtrace.sh"
 PreInitialize;
