@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,highlight,make,symlinks,sed,diffutils,openssl,automake,pdcurses,automake,libhsts,wolfcrypt]
+        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,highlight,make,symlinks,sed,diffutils,openssl,automake,pdcurses,automake,libhsts,wolfcrypt,awk,gawk]
     uses: ./.github/workflows/do_build.yml
     with:
       BuildPkg: ${{ matrix.BuildPkg }}
