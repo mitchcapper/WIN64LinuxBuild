@@ -150,6 +150,7 @@ DoTemplateSubs(){
 	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
 		BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO="Debug"
 		BLD_CONFIG_CMAKE_BUILD_TYPE_AUTO="Debug"
+	else
 		BLD_CONFIG_STATIC_RELEASE_TRIPLET_AUTO+="-release"
 	fi
 	
