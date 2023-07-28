@@ -1,49 +1,18 @@
 #!/bin/bash
 set -e
-set -o pipefail
-OUR_PATH="$(readlink -f "$0")";
-CALL_CMD="$1"
-SKIP_STEP="${CALL_CMD}"
-
-SCRIPT_FOLDER="$(dirname "${OUR_PATH}")"
-if [[ ! -z "$WLB_SCRIPT_FOLDER" ]]; then
-	SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER}"
-fi
-. "$SCRIPT_FOLDER/helpers.sh" "${CALL_CMD}" "${OUR_PATH}"
-
-PreInitialize;
-#BLD_CONFIG_LOG_ON_AT_INIT=0
-
+. "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
 BLD_CONFIG_BUILD_NAME="wget2";
-#BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
-#for bzip2 it doesnt use pkg-config during configure for some reason, we will just tell it we have it.
-#ac_cv_search_BZ2_bzDecompress=y 
-BLD_CONFIG_CONFIG_CMD_ADDL="--without-libidn2 --with-lzma --with-bzip2 --without-libidn --without-libdane --with-ssl=wolfssl --disable-shared --enable-static --without-gpgme LEX=/usr/bin/flex ac_cv_prog_cc_c99=" #wget2 requires c99, msvc supports c11 but not dynamic arrays so lets force it
+BLD_CONFIG_CONFIG_CMD_ADDL=(--without-libidn2 --with-lzma --with-bzip2 --without-libidn --without-libdane --with-ssl=wolfssl --disable-shared --enable-static --without-gpgme LEX=/usr/bin/flex ac_cv_prog_cc_c99=) #wget2 requires c99, msvc supports c11 but not dynamic arrays so lets force it
 BLD_CONFIG_ADD_WIN_ARGV_LIB=0
-#BLD_CONFIG_GNU_LIBS_USED=0
-#BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED=1
-
-#BLD_CONFIG_GNU_LIBS_ADDL=( "lock" )
-#BLD_CONFIG_LOG_EXPAND_VARS=1  # set this to expand vars in log - so this works well but this is the only way I found to properly log the current command in a reproducible form.  It is exceptionally slow.
-BLD_CONFIG_GNU_LIBS_ADDL=( "atexit" "pathmax" "ftruncate" "fnmatch-gnu" "fnmatch-h" "xstrndup" )
+BLD_CONFIG_GNU_LIBS_ADDL=( "atexit" "pathmax" "ftruncate" "malloca" "fnmatch-gnu" "fnmatch-h" "xstrndup" )
 BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY_ADDL_MK_FILES_FIX=( "lib/gnulib.mk" )
-BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY=1
+#BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY=0
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
-#  KEEP_OUR_CERT DEBUG_WOLFSSL
-# function fix_wolf_src(){ #not needed we have our own build now
-# 	#We have to use master to get wget2 to not ail on certain domains due to newer sigs, but need to fix this declare.  If they ever fix their compile failure will have to figoure out a better way to edit the portfile.
-# 	## so the macro this is in assigns a suffix we cant double suffix
-# 	sed -i -E 's#(0x[f0]{0,2}f0f0f0f0f0f0f0f0?)U\)#\1)#g' "${BLD_CONFIG_VCPKG_DIR}/buildtrees/wolfssl/src/head/"*"/wolfcrypt/src/aes.c"
-# 	# we also need to fix the fact we need it compiled with KEEP_OUR_CERT
-# 	PORT_FILE="${BLD_CONFIG_VCPKG_DIR}/ports/wolfssl/portfile.cmake"
-# 	sed -i -E 's#-DWOLFSSL_DES_ECB#-DSESSION_CERTS\\ -DDOPENSSL_EXTRA\\ -DKEEP_OUR_CERT\\ -DSESSION_CERTS#g' "$PORT_FILE"
-# 	vcpkg_install_package --head "wolfssl"
-	
-# }
+
 function ourmain() {
 	if [[ "$BLD_CONFIG_BUILD_DEBUG" -eq "1" ]]; then
-		BLD_CONFIG_CONFIG_CMD_ADDL+=" --enable-assert"
+		BLD_CONFIG_CONFIG_CMD_ADDL+=("--enable-assert")
 	fi
 	startcommon;
 	add_lib_pkg_config  "libpsl" "pcre2" "zlib" "libhsts" "wolfcrypt"
@@ -127,10 +96,10 @@ fi
 		./config.status
 	fi
 
-	if [[ $SKIP_STEP == "log_make" ]]; then
-		echo "RUNNING log_make"
-		log_make;  #will log all the commands make would run to a file
+	if [[ -n "${LOG_MAKE_RUN}" ]]; then
+		run_logged_make;
 	fi
+
 	if [[ $CALL_CMD == "log_undefines" ]]; then
 		FL="undefined.txt"
 		echo "Logging undefined symbols to ${FL}"
@@ -138,7 +107,7 @@ fi
 		exit 1
 	fi
 	make -j 8 || make
-	make install
+	make_install
 
 	finalcommon;
 }

@@ -1,75 +1,92 @@
 #!/bin/bash
-
-OUR_PATH="$(readlink -f "$0")";
-CALL_CMD="$1"
-
-SCRIPT_FOLDER="$(dirname "${OUR_PATH}")"
-if [[ ! -z "$WLB_SCRIPT_FOLDER" ]]; then
-	SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER}"
-fi
-. "$SCRIPT_FOLDER/helpers.sh" "${CALL_CMD}" "${OUR_PATH}"
-PreInitialize;
+set -e
+. "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
 
 BLD_CONFIG_BUILD_NAME="wget";
-BLD_CONFIG_CONFIG_CMD_ADDL="--with-ssl=openssl" #--disable-nls
+BLD_CONFIG_CONFIG_CMD_ADDL=("--with-ssl=openssl") #--disable-nls
 BLD_CONFIG_ADD_WIN_ARGV_LIB=1
-
 BLD_CONFIG_GNU_LIBS_ADDL=( "pathmax" "ftruncate" "fnmatch-gnu" "fnmatch-h" "xstrndup" )
 BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY_ADDL_MK_FILES_FIX=( "lib/gnulib.mk" )
 BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY=0
+#BLD_CONFIG_BUILD_DEBUG=1
+BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
+
 function ourmain() {
 	startcommon;
 	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
-		BLD_CONFIG_CONFIG_CMD_ADDL+=" --enable-static"
+		BLD_CONFIG_CONFIG_CMD_ADDL+=("--enable-static")
 	fi
-
+	
+	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then #if switching back they should just regen configure
+		BLD_CONFIG_CONFIG_CMD_ADDL+=("--enable-assert")
+		export CFLAGS="-DENABLE_DEBUG $CFLAGS"
+	fi	
 	add_lib_pkg_config  "libpsl" "pcre2" "zlib"
 	add_vcpkg_pkg_config  "openssl"
 
-if test 5 -gt 100
-	then
-		echo "Just move the fi down as you want to skip steps"
+if test 5 -gt 100; then
+		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
 fi
-	git clone --recurse-submodules https://git.savannah.gnu.org/git/wget.git .
-	apply_our_repo_patch;
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
+		git clone --recurse-submodules https://git.savannah.gnu.org/git/wget.git .
+		add_items_to_gitignore;
+		SKIP_STEP=""
+	fi
 
-	add_items_to_gitignore;
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
+		apply_our_repo_patch; #looks in the patches folder for  repo_BUILD_NAME.patch and if found applies it.  Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
+		SKIP_STEP=""
+	fi
+	
+	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then
+		if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib" ]]; then
+			gnulib_switch_to_master_and_patch;
+			SKIP_STEP=""
+		fi
+		cd $BLD_CONFIG_SRC_FOLDER
 
-	gnulib_add_addl_modules_to_bootstrap;
-
-	gnulib_switch_to_master_and_patch;
+		if [[ -z $SKIP_STEP || $SKIP_STEP == "bootstrap" ]]; then
+			gnulib_add_addl_modules_to_bootstrap;		
+			gnulib_ensure_buildaux_scripts_copied;
+			setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
+			./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
+			sed -i -E 's/(cat >conftest.l <<_ACEOF)/\1\n%option nounistd/' configure
+			SKIP_STEP=""
+		fi
+	fi
+	if [[ $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
+		autoreconf --symlink --verbose --install
+		SKIP_STEP="" #to do all the other steps
+	fi
+	
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "vcpkg" ]]; then
+		vcpkg_install_package "openssl"
+		SKIP_STEP=""
+	fi
+	#gnulib_tool_py_remove_nmd_makefiles
 
 	cd $BLD_CONFIG_SRC_FOLDER
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
+		configure_fixes;
+		configure_run;
+		SKIP_STEP="";
+	else
+		setup_build_env;
+	fi
 
-	setup_gnulibtool_py_autoconfwrapper
-	./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
-	# while the main configure does detect no unistd.h and properly does not include it, lex does not and when it detects it missing from itself it tries to include the C version so we modify the lex test file to include an option that it doesnt need it and everyone wins
-	sed -i -E 's/(cat >conftest.l <<_ACEOF)/\1\n%option nounistd/' configure
+	if [[ $SKIP_STEP == "makefiles" ]]; then #not empty and not setting empty as this is only a skip to step
+		./config.status
+	fi
 
-	#rm -rf libbin_nettle libbin_gnutls || true
-	#wget https://github.com/ShiftMediaProject/nettle/releases/download/nettle_3.8.1_release_20220727/libnettle_nettle_3.8.1_release_20220727_msvc17.zip -O nettle.zip
-	#mkdir -p libbin_nettle && cd libbin_nettle && unzip ../nettle.zip
-	#cd $BLD_CONFIG_SRC_FOLDER
-	#wget https://www.gnupg.org/ftp/gcrypt/gnutls/v3.7/gnutls-3.7.8-w64.zip -O gnutls.zip
-	#its naming is weird for things so lets fix it to be somewhat normalized to support #include gnutls/X  and lib as a not dll fake name
-	#mkdir -p libbin_gnutls && cd libbin_gnutls && unzip ../gnutls.zip && mv win64-build/lib/includes win64-build/lib/gnutls && mv win64-build/lib/libgnutls.dll.a win64-build/lib/libgnutls.lib
-	#this move will fail if run before (well twice before first time just subfolder;0) probably should rm it?
+	if [[ -n "${LOG_MAKE_RUN}" ]]; then
+		run_logged_make;
+	fi
 
 
-	gnulib_ensure_buildaux_scripts_copied;
+	make -j 8 || make
 
-	cd $BLD_CONFIG_SRC_FOLDER
-	configure_fixes;
-#fi
-	cd $BLD_CONFIG_SRC_FOLDER
-	vcpkg_install_package "openssl"
-
-	cd $BLD_CONFIG_SRC_FOLDER
-	configure_run;
-
-	make
-	make install
+	make_install
 
 	finalcommon;
 }
