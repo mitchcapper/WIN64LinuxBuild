@@ -30,6 +30,10 @@ int MSVCAssertTmpRestoreAll(int oldMode) {
 }
 
 void launchdebugger() {
+	if (IsDebuggerPresent()) {
+		DebugBreak();
+		return;
+	}
 	char cmd[1024];
 	int pid = _getpid();
 	char spid[50];
