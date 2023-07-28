@@ -20,6 +20,8 @@ const char* dbgGetWinErr(const char* prefix, int errcode);
 extern void dbgInit(const char* logfile);
 extern void launchdebugger();
 extern void DisableDebugAssertPopup();
+extern void EnableDebugAssertPopup();
+extern void DisableDebugAssertAtExit();
 extern void flagAppend(char* buffer, int bufferLen, int flags, const char* flag_name, int flag_val);
 int MSVCAssertTmpRestoreAll(int oldMode);
 int MSVCAssertTmpSilenceAll();
