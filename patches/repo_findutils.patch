@@ -451,7 +451,7 @@ index a7f5eb75..d8310fc7 100644
    return fd;
  }
 diff --git a/xargs/xargs.c b/xargs/xargs.c
-index bced9e73..845d24b1 100644
+index 96e8897f..5dee96ab 100644
 --- a/xargs/xargs.c
 +++ b/xargs/xargs.c
 @@ -46,10 +46,14 @@
@@ -469,7 +469,7 @@ index bced9e73..845d24b1 100644
  
  /* gnulib headers. */
  #include "closein.h"
-@@ -812,7 +816,9 @@ main (int argc, char **argv)
+@@ -816,7 +820,9 @@ main (int argc, char **argv)
    bc_state.argbuf = xmalloc (bc_ctl.arg_max + 1);
  
    /* Make sure to listen for the kids.  */
@@ -479,7 +479,7 @@ index bced9e73..845d24b1 100644
  
    if (!bc_ctl.replace_pat)
      {
-@@ -1229,7 +1235,11 @@ prep_child_for_exec (void)
+@@ -1233,7 +1239,11 @@ prep_child_for_exec (void)
    if (!keep_stdin || open_tty)
      {
        int fd;
@@ -491,7 +491,7 @@ index bced9e73..845d24b1 100644
  
        close (0);
        if ((fd = open (inputfile, O_RDONLY)) < 0)
-@@ -1274,7 +1284,11 @@ static int
+@@ -1278,7 +1288,11 @@ static int
  xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
  {
    pid_t child;
@@ -503,7 +503,7 @@ index bced9e73..845d24b1 100644
    int buf;
    size_t r;
  
-@@ -1305,7 +1319,8 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
+@@ -1309,7 +1323,8 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
  	 ./xargs -P 200 -n 20  sh -c 'echo "$@"; sleep $((1 + $RANDOM % 5))' sleeper
        */
        wait_for_proc (false, 0u);
@@ -513,7 +513,7 @@ index bced9e73..845d24b1 100644
        if (pipe (fd))
  	die (EXIT_FAILURE, errno, _("could not create pipe before fork"));
        fcntl (fd[1], F_SETFD, FD_CLOEXEC);
-@@ -1314,7 +1329,36 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
+@@ -1318,7 +1333,36 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
           try again.  */
        while ((child = fork ()) < 0 && errno == EAGAIN && procs_executing)
  	wait_for_proc (false, 1u);
@@ -550,7 +550,7 @@ index bced9e73..845d24b1 100644
        switch (child)
  	{
  	case -1:
-@@ -1364,7 +1408,7 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
+@@ -1368,7 +1412,7 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
  	default:
  	  {
  	    /* Parent */
@@ -559,7 +559,7 @@ index bced9e73..845d24b1 100644
  	  }
  
  	} /* switch (child) */
-@@ -1458,6 +1502,10 @@ static unsigned int
+@@ -1462,6 +1506,10 @@ static unsigned int
  add_proc (pid_t pid)
  {
    unsigned int i, j;
@@ -570,7 +570,7 @@ index bced9e73..845d24b1 100644
  
    /* Find an empty slot.  */
    for (i = 0; i < pids_alloc && pids[i]; i++)
-@@ -1492,6 +1540,7 @@ static void
+@@ -1496,6 +1544,7 @@ static void
  wait_for_proc (bool all, unsigned int minreap)
  {
    unsigned int reaped = 0;
@@ -578,7 +578,7 @@ index bced9e73..845d24b1 100644
  
    while (procs_executing)
      {
-@@ -1586,6 +1635,7 @@ wait_for_proc (bool all, unsigned int minreap)
+@@ -1590,6 +1639,7 @@ wait_for_proc (bool all, unsigned int minreap)
        if (WEXITSTATUS (status) != 0)
  	child_error = XARGS_EXIT_CLIENT_EXIT_NONZERO;
      }

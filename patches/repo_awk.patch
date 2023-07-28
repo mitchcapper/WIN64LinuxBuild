@@ -25,8 +25,8 @@ index ccd16c9..dde7ee4 100644
 +#ifndef WSTOPSIG
 +#define WSTOPSIG        WEXITSTATUS
 +#endif
-+
  
++
 +/* The termination signal. Only to be accessed if WIFSIGNALED(x) is true.  */
 +# ifndef WTERMSIG
 +#  define WTERMSIG(x) ((x) & 0x7f)

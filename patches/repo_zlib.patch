@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index b412dc7..8723205 100644
+index b3a58b3..705bebc 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -11,6 +11,8 @@ set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation d

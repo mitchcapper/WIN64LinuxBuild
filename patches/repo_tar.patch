@@ -80,7 +80,7 @@ index 5a0eade4..da30479f 100644
  	}
      }
 diff --git a/src/common.h b/src/common.h
-index f53af9f4..ee4a0835 100644
+index 9451e132..af084f40 100644
 --- a/src/common.h
 +++ b/src/common.h
 @@ -20,6 +20,16 @@
@@ -100,7 +100,7 @@ index f53af9f4..ee4a0835 100644
  /* The checksum field is filled with this while the checksum is computed.  */
  #define CHKBLANKS	"        "	/* 8 blanks, no null */
  
-@@ -342,6 +352,11 @@ GLOBAL bool posixly_correct;
+@@ -343,6 +353,11 @@ GLOBAL bool posixly_correct;
  
  /* File descriptor for archive file.  */
  GLOBAL int archive;
@@ -112,7 +112,7 @@ index f53af9f4..ee4a0835 100644
  
  /* Nonzero when outputting to /dev/null.  */
  GLOBAL bool dev_null_output;
-@@ -739,7 +754,9 @@ void write_error_details (char const *name, size_t status, size_t size);
+@@ -741,7 +756,9 @@ void write_error_details (char const *name, size_t status, size_t size);
  _Noreturn void write_fatal (char const *name);
  _Noreturn void write_fatal_details (char const *name, ssize_t status, size_t size);
  
@@ -123,7 +123,7 @@ index f53af9f4..ee4a0835 100644
  
  void *page_aligned_alloc (void **ptr, size_t size);
 diff --git a/src/compare.c b/src/compare.c
-index ab754059..08df13de 100644
+index 4f9824c2..a4acf9f1 100644
 --- a/src/compare.c
 +++ b/src/compare.c
 @@ -267,7 +267,7 @@ diff_link (void)
@@ -154,7 +154,7 @@ index ab754059..08df13de 100644
  #endif
  #ifdef FDFLUSH
 diff --git a/src/create.c b/src/create.c
-index 07db3f6d..0894236c 100644
+index d20178cb..cb76f68f 100644
 --- a/src/create.c
 +++ b/src/create.c
 @@ -1861,7 +1861,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
@@ -167,10 +167,10 @@ index 07db3f6d..0894236c 100644
      {
        st->link_name = areadlinkat_with_size (parentfd, name, st->stat.st_size);
 diff --git a/src/extract.c b/src/extract.c
-index aec5de69..b6de0e2a 100644
+index 314d8bc0..5c9e3b41 100644
 --- a/src/extract.c
 +++ b/src/extract.c
-@@ -1199,7 +1199,7 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
+@@ -1202,7 +1202,7 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
    /* If O_NOFOLLOW is needed but does not work, check for a symlink
       separately.  There's a race condition, but that cannot be avoided
       on hosts lacking O_NOFOLLOW.  */
@@ -179,16 +179,16 @@ index aec5de69..b6de0e2a 100644
        && overwriting_old_files && ! dereference_option)
      {
        char buf[1];
-@@ -1568,7 +1568,7 @@ extract_link (char *file_name, int typeflag)
+@@ -1560,7 +1560,7 @@ extract_link (char *file_name, MAYBE_UNUSED int typeflag)
  static int
- extract_symlink (char *file_name, int typeflag)
+ extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
  {
 -#ifdef HAVE_SYMLINK
 +#if defined HAVE_SYMLINK || defined REPLACE_SYMLINK
    bool interdir_made = false;
  
    if (! absolute_names_option
-@@ -1609,6 +1609,9 @@ extract_symlink (char *file_name, int typeflag)
+@@ -1601,6 +1601,9 @@ extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
  }
  
  #if S_IFCHR || S_IFBLK
@@ -239,7 +239,7 @@ index e0a3bc16..2bf47cff 100644
  
  void
 diff --git a/src/misc.c b/src/misc.c
-index 0a84c065..3e21cb4a 100644
+index 73c04646..d4d947f4 100644
 --- a/src/misc.c
 +++ b/src/misc.c
 @@ -1191,6 +1191,7 @@ file_removed_diag (const char *name, bool top_level,
@@ -259,7 +259,7 @@ index 0a84c065..3e21cb4a 100644
  /* Create a pipe, aborting if unsuccessful.  */
  void
 diff --git a/src/names.c b/src/names.c
-index 14541a31..fbfa26f7 100644
+index d3027379..ec07592e 100644
 --- a/src/names.c
 +++ b/src/names.c
 @@ -473,6 +473,7 @@ static gid_t cached_no_such_gid;
@@ -332,7 +332,7 @@ index 14541a31..fbfa26f7 100644
  
  
 diff --git a/src/system.c b/src/system.c
-index 2988ed08..633614d3 100644
+index 93fff885..ff35ef45 100644
 --- a/src/system.c
 +++ b/src/system.c
 @@ -16,14 +16,26 @@
@@ -404,7 +404,7 @@ index 2988ed08..633614d3 100644
  }
  
  bool
-@@ -360,6 +388,7 @@ sys_child_open_for_compress (void)
+@@ -353,6 +381,7 @@ sys_child_open_for_compress (void)
  
    signal (SIGPIPE, SIG_IGN);
    xpipe (parent_pipe);
@@ -412,7 +412,7 @@ index 2988ed08..633614d3 100644
    child_pid = xfork ();
  
    if (child_pid > 0)
-@@ -379,6 +408,8 @@ sys_child_open_for_compress (void)
+@@ -372,6 +401,8 @@ sys_child_open_for_compress (void)
    xdup2 (parent_pipe[PREAD], STDIN_FILENO);
    xclose (parent_pipe[PWRITE]);
  
@@ -421,7 +421,7 @@ index 2988ed08..633614d3 100644
    /* Check if we need a grandchild tar.  This happens only if either:
       a) the file is to be accessed by rmt: compressor doesn't know how;
       b) the file is not a plain file.  */
-@@ -393,8 +424,8 @@ sys_child_open_for_compress (void)
+@@ -386,8 +417,8 @@ sys_child_open_for_compress (void)
  	 compressor.  */
        if (strcmp (archive_name_array[0], "-"))
  	{
@@ -432,7 +432,7 @@ index 2988ed08..633614d3 100644
  	    {
  	      int saved_errno = errno;
  
-@@ -403,12 +434,56 @@ sys_child_open_for_compress (void)
+@@ -396,12 +427,56 @@ sys_child_open_for_compress (void)
  	      errno = saved_errno;
  	      open_fatal (archive_name_array[0]);
  	    }
@@ -491,7 +491,7 @@ index 2988ed08..633614d3 100644
    /* We do need a grandchild tar.  */
  
    xpipe (child_pipe);
-@@ -491,10 +566,15 @@ sys_child_open_for_compress (void)
+@@ -484,10 +559,15 @@ sys_child_open_for_compress (void)
      }
  
    wait_for_grandchild (grandchild_pid);
@@ -508,7 +508,7 @@ index 2988ed08..633614d3 100644
  {
    int i;
    const char *p, *prog = NULL;
-@@ -521,7 +601,23 @@ run_decompress_program (void)
+@@ -514,7 +594,23 @@ run_decompress_program (void)
  	      sizeof(ws.ws_wordv[0])*ws.ws_wordc);
        ws.ws_wordv[ws.ws_wordc] = (char *) "-d";
        prog = p;
@@ -532,7 +532,7 @@ index 2988ed08..633614d3 100644
        ws.ws_wordv[ws.ws_wordc] = NULL;
      }
    if (!prog)
-@@ -537,8 +633,9 @@ sys_child_open_for_uncompress (void)
+@@ -530,8 +626,9 @@ sys_child_open_for_uncompress (void)
    int child_pipe[2];
    pid_t grandchild_pid;
    pid_t child_pid;
@@ -543,7 +543,7 @@ index 2988ed08..633614d3 100644
    child_pid = xfork ();
  
    if (child_pid > 0)
-@@ -557,7 +654,7 @@ sys_child_open_for_uncompress (void)
+@@ -550,7 +647,7 @@ sys_child_open_for_uncompress (void)
  
    xdup2 (parent_pipe[PWRITE], STDOUT_FILENO);
    xclose (parent_pipe[PREAD]);
@@ -552,7 +552,7 @@ index 2988ed08..633614d3 100644
    /* Check if we need a grandchild tar.  This happens only if either:
       a) we're reading stdin: to force unblocking;
       b) the file is to be accessed by rmt: compressor doesn't know how;
-@@ -570,14 +667,35 @@ sys_child_open_for_uncompress (void)
+@@ -563,14 +660,35 @@ sys_child_open_for_uncompress (void)
        /* We don't need a grandchild tar.  Open the archive and launch the
  	 uncompressor.  */
  
@@ -592,7 +592,7 @@ index 2988ed08..633614d3 100644
    /* We do need a grandchild tar.  */
  
    xpipe (child_pipe);
-@@ -646,9 +764,10 @@ sys_child_open_for_uncompress (void)
+@@ -639,9 +757,10 @@ sys_child_open_for_uncompress (void)
    xclose (STDOUT_FILENO);
  
    wait_for_grandchild (grandchild_pid);
@@ -604,7 +604,7 @@ index 2988ed08..633614d3 100644
  
  static void
  dec_to_env (char const *envar, uintmax_t num)
-@@ -757,6 +876,7 @@ sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
+@@ -750,6 +869,7 @@ sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
    int p[2];
  
    xpipe (p);
@@ -612,7 +612,7 @@ index 2988ed08..633614d3 100644
    pipe_handler = signal (SIGPIPE, SIG_IGN);
    global_pid = xfork ();
  
-@@ -774,6 +894,24 @@ sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
+@@ -767,6 +887,24 @@ sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
  
    priv_set_restore_linkdir ();
    xexec (to_command_option);
@@ -637,7 +637,7 @@ index 2988ed08..633614d3 100644
  }
  
  void
-@@ -820,14 +958,43 @@ sys_exec_info_script (const char **archive_name, int volume_number)
+@@ -813,14 +951,43 @@ sys_exec_info_script (const char **archive_name, int volume_number)
    static void (*saved_handler) (int sig);
  
    xpipe (p);
@@ -684,7 +684,7 @@ index 2988ed08..633614d3 100644
        int rc;
        int status;
        char *buf = NULL;
-@@ -860,27 +1027,9 @@ sys_exec_info_script (const char **archive_name, int volume_number)
+@@ -853,27 +1020,9 @@ sys_exec_info_script (const char **archive_name, int volume_number)
  	    free (buf);
  	  return WEXITSTATUS (status);
  	}
@@ -712,7 +712,7 @@ index 2988ed08..633614d3 100644
  }
  
  void
-@@ -890,25 +1039,15 @@ sys_exec_checkpoint_script (const char *script_name,
+@@ -883,25 +1032,15 @@ sys_exec_checkpoint_script (const char *script_name,
  {
    pid_t pid;
    char uintbuf[UINTMAX_STRSIZE_BOUND];
@@ -744,7 +744,7 @@ index 2988ed08..633614d3 100644
    /* Child */
    setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
    setenv ("TAR_ARCHIVE", archive_name, 1);
-@@ -920,7 +1059,25 @@ sys_exec_checkpoint_script (const char *script_name,
+@@ -913,7 +1052,25 @@ sys_exec_checkpoint_script (const char *script_name,
  	  archive_format_string (current_format == DEFAULT_FORMAT ?
  				 archive_format : current_format), 1);
    priv_set_restore_linkdir ();
@@ -771,9 +771,18 @@ index 2988ed08..633614d3 100644
  
  #endif /* not MSDOS */
 diff --git a/src/tar.c b/src/tar.c
-index d65fc806..d7a54054 100644
+index 7efb0038..34c80ee5 100644
 --- a/src/tar.c
 +++ b/src/tar.c
+@@ -105,7 +105,7 @@ confirm (const char *message_action, const char *message_name)
+     {
+       if (archive == 0 || stdin_used_by)
+ 	{
+-	  confirm_file = fopen (TTY_NAME, "r");
++	  confirm_file = fopen (TTY_NAME, "rb");
+ 	  if (! confirm_file)
+ 	    open_fatal (TTY_NAME);
+ 	}
 @@ -1026,11 +1026,15 @@ decode_signal (const char *name)
      char const *name;
      int signo;
@@ -790,7 +799,18 @@ index d65fc806..d7a54054 100644
    };
    struct sigtab const *p;
    char const *s = name;
-@@ -2782,8 +2786,9 @@ main (int argc, char **argv)
+@@ -2757,6 +2761,10 @@ main (int argc, char **argv)
+   set_program_name (argv[0]);
+ #ifdef ENABLE_ERROR_PRINT_PROGNAME
+   error_print_progname = tar_print_progname;
++#endif
++#ifdef _WIN32
++  _fmode = _O_BINARY;
++  SET_BINARY_MODE(STDIN_FILENO);
+ #endif
+   setlocale (LC_ALL, "");
+   bindtextdomain (PACKAGE, LOCALEDIR);
+@@ -2782,8 +2790,9 @@ main (int argc, char **argv)
    archive_names = 0;
  
    /* System V fork+wait does not work if SIGCHLD is ignored.  */

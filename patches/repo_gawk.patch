@@ -136,7 +136,7 @@ index 57d4f8bd..4adcfd4a 100644
  extern void set_NR(void);
  
 diff --git a/awklib/eg/lib/pwcat.c b/awklib/eg/lib/pwcat.c
-index cfe250c3..ac9b5347 100644
+index cfe250c3..050ed4fe 100644
 --- a/awklib/eg/lib/pwcat.c
 +++ b/awklib/eg/lib/pwcat.c
 @@ -14,8 +14,9 @@
@@ -163,9 +163,25 @@ index cfe250c3..ac9b5347 100644
  #endif
  
      endpwent();
-+#endif    
++#endif
      return 0;
  }
+diff --git a/build-aux/ltmain.sh b/build-aux/ltmain.sh
+index 2a50d7f6..7cf8f107 100644
+--- a/build-aux/ltmain.sh
++++ b/build-aux/ltmain.sh
+@@ -3109,9 +3109,8 @@ func_convert_core_msys_to_w32 ()
+ {
+   $debug_cmd
+ 
+-  # awkward: cmd appends spaces to result
+-  func_convert_core_msys_to_w32_result=`( cmd //c echo "$1" ) 2>/dev/null |
+-    $SED -e 's/[ ]*$//' -e "$sed_naive_backslashify"`
++func_convert_core_msys_to_w32_result=$1
++
+ }
+ #end: func_convert_core_msys_to_w32
+ 
 diff --git a/builtin.c b/builtin.c
 index e394cc34..d31f144c 100644
 --- a/builtin.c
@@ -401,11 +417,72 @@ index 221250b3..69a23217 100644
  #endif /* ! HAVE_STRSIGNAL */
 +#endif
 \ No newline at end of file
+diff --git a/doc/gawktexi.in b/doc/gawktexi.in
+index 998b035e..8e072b5d 100644
+--- a/doc/gawktexi.in
++++ b/doc/gawktexi.in
+@@ -23871,8 +23871,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
+ @end ignore
+ @c file eg/lib/pwcat.c
+ #include <stdio.h>
++#ifndef _WIN32
+ #include <pwd.h>
+-
++#endif
+ @c endfile
+ @ignore
+ @c file eg/lib/pwcat.c
+@@ -23887,7 +23888,7 @@ int
+ main(int argc, char **argv)
+ @{
+     struct passwd *p;
+-
++#ifndef _WIN32
+     while ((p = getpwent()) != NULL)
+ @c endfile
+ @ignore
+@@ -23912,6 +23913,7 @@ main(int argc, char **argv)
+ @c file eg/lib/pwcat.c
+ 
+     endpwent();
++#endif    
+     return 0;
+ @}
+ @c endfile
+diff --git a/ext.c b/ext.c
+index 89b53ab5..e9840813 100644
+--- a/ext.c
++++ b/ext.c
+@@ -27,7 +27,8 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+-
++#include "config.h"
++#include "osfixes.h"
+ #include "awk.h"
+ extern SRCFILE *srcfiles;
+ 
 diff --git a/extension/Makefile.am b/extension/Makefile.am
-index ec51377c..02f26dbb 100644
+index ec51377c..f5629787 100644
 --- a/extension/Makefile.am
 +++ b/extension/Makefile.am
-@@ -54,8 +54,9 @@ MY_MODULE_FLAGS = -module -avoid-version -no-undefined
+@@ -24,8 +24,7 @@
+ 
+ ## Process this file with automake to produce Makefile.in.
+ 
+-AM_CPPFLAGS = -I$(srcdir)/..
+-
++AM_CPPFLAGS = -I$(srcdir)/.. -I$(srcdir)/../lib
+ # This variable insures that aclocal runs
+ # correctly after changing configure.ac
+ ACLOCAL_AMFLAGS = -I ../m4
+@@ -50,12 +49,13 @@ pkgextension_LTLIBRARIES =	\
+ noinst_LTLIBRARIES =	\
+ 	testext.la
+ 
+-MY_MODULE_FLAGS = -module -avoid-version -no-undefined
++MY_MODULE_FLAGS = -module -avoid-version -no-undefined -Xlinker ../lib/libgawk.a -Xlinker "/nologo"
  # On Cygwin, gettext requires that we link with -lintl
  MY_LIBS = $(LTLIBINTL)
  
@@ -417,11 +494,42 @@ index ec51377c..02f26dbb 100644
  filefuncs_la_LDFLAGS  = $(MY_MODULE_FLAGS)
  filefuncs_la_LIBADD   = $(MY_LIBS)
  
+diff --git a/extension/configure.ac b/extension/configure.ac
+index 7e07a4a0..ec5a603f 100644
+--- a/extension/configure.ac
++++ b/extension/configure.ac
+@@ -125,12 +125,12 @@ AC_CHECK_FUNCS(fdopendir fmod fnmatch getdtablesize \
+ 		gettimeofday nanosleep select statvfs \
+ 		GetSystemTimeAsFileTime strptime)
+ 
+-GAWK_FUNC_DIRFD
+-GAWK_PREREQ_DIRFD
++#GAWK_FUNC_DIRFD
++#GAWK_PREREQ_DIRFD
+ 
+ dnl checks for compiler characteristics
+ AC_C_INLINE
+-
++AH_TOP([#include "../config.h"])
+ AC_CONFIG_HEADERS([config.h:configh.in])
+ AH_BOTTOM([#include "ext_custom.h"])
+ 
 diff --git a/extension/filefuncs.c b/extension/filefuncs.c
-index e81a07bd..3b210758 100644
+index e81a07bd..7e3b2415 100644
 --- a/extension/filefuncs.c
 +++ b/extension/filefuncs.c
-@@ -96,7 +96,7 @@
+@@ -63,7 +63,9 @@
+ #endif
+ #include <unixlib.h>
+ #endif
+-
++#ifdef _WIN32
++#include <fts_.h>
++#endif
+ 
+ #include <stdio.h>
+ #include <assert.h>
+@@ -96,7 +98,7 @@
  #define _(msgid)  gettext(msgid)
  #define N_(msgid) msgid
  
@@ -430,6 +538,52 @@ index e81a07bd..3b210758 100644
  #include "stack.h"
  
  #ifndef S_IFLNK
+@@ -184,7 +186,9 @@ format_mode(unsigned long fmode)
+ 		int charval;
+ 	} ftype_map[] = {
+ 		{ S_IFREG, '-' },	/* redundant */
++#ifndef _WIN32
+ 		{ S_IFBLK, 'b' },
++#endif		
+ 		{ S_IFCHR, 'c' },
+ 		{ S_IFDIR, 'd' },
+ #ifdef S_IFSOCK
+@@ -371,7 +375,9 @@ fill_stat_array(const char *name, awk_array_t array, struct stat *sbuf)
+ 		const char *type;
+ 	} ftype_map[] = {
+ 		{ S_IFREG, "file" },
++#ifndef _WIN32
+ 		{ S_IFBLK, "blockdev" },
++#endif		
+ 		{ S_IFCHR, "chardev" },
+ 		{ S_IFDIR, "directory" },
+ #ifdef S_IFSOCK
+@@ -405,7 +411,7 @@ fill_stat_array(const char *name, awk_array_t array, struct stat *sbuf)
+ 	array_set_numeric(array, "uid", sbuf->st_uid);
+ 	array_set_numeric(array, "gid", sbuf->st_gid);
+ 	array_set_numeric(array, "size", sbuf->st_size);
+-#ifdef __MINGW32__
++#if defined(__MINGW32__) || defined(_WIN32)
+ 	array_set_numeric(array, "blocks", (double)((sbuf->st_size +
+ 		device_blocksize() - 1) / device_blocksize()));
+ #else
+@@ -414,14 +420,14 @@ fill_stat_array(const char *name, awk_array_t array, struct stat *sbuf)
+ 	array_set_numeric(array, "atime", sbuf->st_atime);
+ 	array_set_numeric(array, "mtime", sbuf->st_mtime);
+ 	array_set_numeric(array, "ctime", sbuf->st_ctime);
+-
++#ifndef _WIN32
+ 	/* for block and character devices, add rdev, major and minor numbers */
+ 	if (S_ISBLK(sbuf->st_mode) || S_ISCHR(sbuf->st_mode)) {
+ 		array_set_numeric(array, "rdev", sbuf->st_rdev);
+ 		array_set_numeric(array, "major", major(sbuf->st_rdev));
+ 		array_set_numeric(array, "minor", minor(sbuf->st_rdev));
+ 	}
+-
++#endif
+ #ifdef HAVE_STRUCT_STAT_ST_BLKSIZE
+ 	array_set_numeric(array, "blksize", sbuf->st_blksize);
+ #elif defined(__MINGW32__)
 diff --git a/extension/fnmatch.c b/extension/fnmatch.c
 index bf7d124f..01668259 100644
 --- a/extension/fnmatch.c
@@ -443,6 +597,252 @@ index bf7d124f..01668259 100644
  
  #define _GNU_SOURCE	1	/* use GNU extensions if they're there */
  #ifdef HAVE_FNMATCH_H
+diff --git a/extension/fork.c b/extension/fork.c
+index 6fa6f0fa..62980793 100644
+--- a/extension/fork.c
++++ b/extension/fork.c
+@@ -92,7 +92,9 @@ do_fork(int nargs, awk_value_t *result, struct awk_ext_func *unused)
+ 					lintwarn(ext_id, _("fork: PROCINFO is not an array!"));
+ 			} else {
+ 				array_set_numeric(procinfo.array_cookie, "pid", getpid());
++#ifndef _WIN32
+ 				array_set_numeric(procinfo.array_cookie, "ppid", getppid());
++#endif				
+ 			}
+ 		}
+ 	}
+@@ -113,7 +115,9 @@ do_waitpid(int nargs, awk_value_t *result, struct awk_ext_func *unused)
+ 	assert(result != NULL);
+ 
+ 	if (get_argument(0, AWK_NUMBER, &pid)) {
++#ifndef _WIN32
+ 		options = WNOHANG|WUNTRACED;
++#endif		
+ 		ret = waitpid(pid.num_value, NULL, options);
+ 		if (ret < 0)
+ 			update_ERRNO_int(errno);
+@@ -132,8 +136,11 @@ do_wait(int nargs, awk_value_t *result, struct awk_ext_func *unused)
+ 	int ret;
+ 
+ 	assert(result != NULL);
+-
++#ifndef _WIN32
+ 	ret = wait(NULL);
++#else
++	ret = -1;
++#endif	
+ 	if (ret < 0)
+ 		update_ERRNO_int(errno);
+ 
+@@ -142,9 +149,12 @@ do_wait(int nargs, awk_value_t *result, struct awk_ext_func *unused)
+ }
+ 
+ static awk_ext_func_t func_table[] = {
++#ifndef _WIN32
+ 	{ "fork", do_fork, 0, 0, awk_false, NULL },
+-	{ "waitpid", do_waitpid, 1, 1, awk_false, NULL },
+ 	{ "wait", do_wait, 0, 0, awk_false, NULL },
++#endif		
++	{ "waitpid", do_waitpid, 1, 1, awk_false, NULL },
++
+ };
+ 
+ /* define the dl_load function using the boilerplate macro */
+diff --git a/extension/inplace.c b/extension/inplace.c
+index dea65f61..0ab8a6d0 100644
+--- a/extension/inplace.c
++++ b/extension/inplace.c
+@@ -68,7 +68,9 @@ mkstemp (char *template)
+   return -1;
+ }
+ #endif
+-
++#ifdef _WIN32
++# define chown(x,y,z)  (0)
++#endif
+ static const gawk_api_t *api;	/* for convenience macros to work */
+ static awk_ext_id_t ext_id;
+ static const char *ext_version = "inplace extension: version 1.0";
+@@ -249,7 +251,7 @@ do_inplace_end(int nargs, awk_value_t *result, struct awk_ext_func *unused)
+ 		gawk_free(bakname);
+ 	}
+ 
+-#ifdef __MINGW32__
++#if defined(__MINGW32__) || defined(_WIN32)
+ 	unlink(filename.str_value.str);
+ #endif
+ 
+diff --git a/extension/readdir.c b/extension/readdir.c
+index 788e1d1e..f0af9a1c 100644
+--- a/extension/readdir.c
++++ b/extension/readdir.c
+@@ -51,13 +51,13 @@
+ #include <limits.h>
+ #endif
+ 
+-#ifdef HAVE_DIRENT_H
++#if defined(HAVE_DIRENT_H) || defined(_WIN32)
+ #include <dirent.h>
+ #else
+ #error Cannot compile the readdir extension on this system!
+ #endif
+ 
+-#ifdef __MINGW32__
++#if defined(__MINGW32__) || defined(_WIN32)
+ #define WIN32_LEAN_AND_MEAN
+ #include <windows.h>
+ #endif
+@@ -84,6 +84,18 @@ static awk_bool_t (*init_func)(void) = init_readdir;
+ int plugin_is_GPL_compatible;
+ 
+ /* data type for the opaque pointer: */
++static inline void *
++emalloc_real(size_t count, const char *where, const char *var, const char *file, int line)
++{
++	void *ret;
++	if (count == 0)
++		fatal(ext_id, "%s:%d: emalloc called with zero bytes", file, line);
++	ret = (void *) malloc(count);
++	if (ret == NULL)
++		fatal(ext_id, _("%s:%d:%s: %s: cannot allocate %ld bytes of memory: %s"),
++			file, line, where, var, (long) count, strerror(errno));
++	return ret;
++}
+ 
+ typedef struct open_directory {
+ 	DIR *dp;
+@@ -147,7 +159,7 @@ ftype(struct dirent *entry, const char *dirname)
+ static long long
+ get_inode(struct dirent *entry, const char *dirname)
+ {
+-#ifdef __MINGW32__
++#if defined(__MINGW32__) || defined(_WIN32)
+ 	char fname[PATH_MAX];
+ 	HANDLE fh;
+ 	BOOL ok;
+@@ -268,7 +280,7 @@ dir_can_take_file(const awk_input_buf_t *iobuf)
+  * We can assume that dir_can_take_file just returned true,
+  * and no state has changed since then.
+  */
+-
++#define	emalloc2(var,varname,ty,x,str)	(void) (var = (ty) emalloc_real((size_t)(x), str, varname, __FILE__, __LINE__))
+ static awk_bool_t
+ dir_take_control_of(awk_input_buf_t *iobuf)
+ {
+@@ -294,7 +306,7 @@ dir_take_control_of(awk_input_buf_t *iobuf)
+ 		return awk_false;
+ 	}
+ 
+-	emalloc(the_dir, open_directory_t *, sizeof(open_directory_t), "dir_take_control_of");
++	emalloc2(the_dir,"the_dir", open_directory_t *, sizeof(open_directory_t), "dir_take_control_of");
+ 	the_dir->dp = dp;
+ 	/* pre-populate the field_width struct with constant values: */
+ 	the_dir->fw.use_chars = awk_false;
+@@ -303,7 +315,7 @@ dir_take_control_of(awk_input_buf_t *iobuf)
+ 	the_dir->fw.fields[1].skip = 1;	/* single '/' separator */
+ 	the_dir->fw.fields[2].skip = 1;	/* single '/' separator */
+ 	size = sizeof(struct dirent) + 21 /* max digits in inode */ + 2 /* slashes */;
+-	emalloc(the_dir->buf, char *, size, "dir_take_control_of");
++	emalloc2(the_dir->buf,"the_dir->buf", char *, size, "dir_take_control_of");
+ 
+ 	iobuf->opaque = the_dir;
+ 	iobuf->get_record = dir_get_record;
+diff --git a/extension/rwarray.c b/extension/rwarray.c
+index ab8dc86f..1d96067e 100644
+--- a/extension/rwarray.c
++++ b/extension/rwarray.c
+@@ -43,7 +43,7 @@
+ #include <string.h>
+ #include <unistd.h>
+ 
+-#ifdef __MINGW32__
++#if defined(__MINGW32__) || defined(_WIN32)
+ #include <winsock2.h>
+ #include <stdint.h>
+ #else
+diff --git a/extension/stack.c b/extension/stack.c
+index 637378e2..2d1955ed 100644
+--- a/extension/stack.c
++++ b/extension/stack.c
+@@ -22,7 +22,7 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+-
++#include "config.h"
+ #include <stdlib.h>
+ 
+ #include "stack.h"
+diff --git a/extension/testext.c b/extension/testext.c
+index 24fe9338..c440cde8 100644
+--- a/extension/testext.c
++++ b/extension/testext.c
+@@ -45,6 +45,10 @@
+ #endif
+ 
+ #include "gawkapi.h"
++#ifdef _WIN32
++#define GAWK
++#include <osfixes.h>
++#endif
+ 
+ static const gawk_api_t *api;	/* for convenience macros to work */
+ static awk_ext_id_t ext_id;
+@@ -55,7 +59,7 @@ int plugin_is_GPL_compatible;
+ static void fill_in_array(awk_value_t *value);
+ static int populate_array(awk_array_t);
+ 
+-#ifdef __MINGW32__
++#if defined(__MINGW32__) || defined(_WIN32)
+ unsigned int
+ getuid (void)
+ {
+diff --git a/extension/time.c b/extension/time.c
+index 8d93bda7..53668e25 100644
+--- a/extension/time.c
++++ b/extension/time.c
+@@ -23,7 +23,9 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+-
++#ifdef _WIN32
++#define HAVE_CONFIG_H
++#endif
+ #ifdef HAVE_CONFIG_H
+ #include <config.h>
+ #endif
+@@ -35,7 +37,10 @@
+ #include <string.h>
+ #include <stdbool.h>
+ #include <unistd.h>
+-
++#ifdef _WIN32
++#include <sys/select.h>
++#include <sys/time.h>
++#endif
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ 
+diff --git a/gawkapi.h b/gawkapi.h
+index 3047c753..72d1109e 100644
+--- a/gawkapi.h
++++ b/gawkapi.h
+@@ -1216,4 +1216,14 @@ int dl_load(const gawk_api_t *const api_p, awk_ext_id_t id)  \
+ }
+ #endif	/* C++ */
+ 
++
++
++
++
++
++
++
++
++
++
+ #endif /* _GAWK_API_H */
 diff --git a/gawkmisc.c b/gawkmisc.c
 index 447210cb..da94b02e 100644
 --- a/gawkmisc.c
@@ -459,7 +859,7 @@ index 447210cb..da94b02e 100644
  #include "awk.h"
  
 diff --git a/io.c b/io.c
-index c595c009..cf1245bf 100644
+index c595c009..d0f1ebaf 100644
 --- a/io.c
 +++ b/io.c
 @@ -23,7 +23,12 @@
@@ -575,7 +975,43 @@ index c595c009..cf1245bf 100644
  static IOBUF *
  gawk_popen(const char *cmd, struct redirect *rp)
  {
-@@ -4587,3 +4602,32 @@ avoid_flush(const char *name)
+@@ -2955,7 +2970,7 @@ static path_info pi_awklibpath = {
+ };
+ 
+ /* init_awkpath --- split path(=$AWKPATH) into components */
+-
++extern int ExpandVarWithProgramData(char* buffer, size_t buffer_size, const char* val);
+ static void
+ init_awkpath(path_info *pi)
+ {
+@@ -2966,8 +2981,12 @@ init_awkpath(path_info *pi)
+ 	int max_path;		/* (# of allocated paths)-1 */
+ 
+ 	pi->max_pathlen = 0;
+-	if ((path = getenv(pi->envname)) == NULL || *path == '\0')
++	char buffer[_MAX_PATH];
++	if ((path = getenv(pi->envname)) == NULL || *path == '\0') {
+ 		path = pi->dfltp[0];
++		if (ExpandVarWithProgramData(buffer, sizeof(buffer), path))
++			path = buffer;
++	}
+ 
+ 	/* count number of separators */
+ 	for (max_path = 0, p = (char *) path; *p; p++)
+@@ -3051,7 +3070,11 @@ do_find_source(const char *src, struct stat *stb, int *errcode, path_info *pi)
+ 
+ 	emalloc(path, char *, pi->max_pathlen + strlen(src) + 1, "do_find_source");
+ 	for (i = 0; pi->awkpath[i] != NULL; i++) {
+-		if (strcmp(pi->awkpath[i], "./") == 0 || strcmp(pi->awkpath[i], ".") == 0)
++		if (strcmp(pi->awkpath[i], "./") == 0
++#ifdef _WIN32
++		|| strcmp(pi->awkpath[i], ".\\") == 0
++#endif
++		 || strcmp(pi->awkpath[i], ".") == 0)
+ 			*path = '\0';
+ 		else
+ 			strcpy(path, pi->awkpath[i]);
+@@ -4587,3 +4610,32 @@ avoid_flush(const char *name)
  	return in_PROCINFO(bufferpipe, NULL, NULL) != NULL
  		|| in_PROCINFO(name, bufferpipe, NULL) != NULL;
  }
@@ -609,10 +1045,56 @@ index c595c009..cf1245bf 100644
 +
 +#endif //  _WIN32
 diff --git a/main.c b/main.c
-index cc5ae9a7..f0f5a7ad 100644
+index cc5ae9a7..2f8d6905 100644
 --- a/main.c
 +++ b/main.c
-@@ -1068,10 +1068,10 @@ load_procinfo()
+@@ -33,6 +33,7 @@
+ #ifdef HAVE_MCHECK_H
+ #include <mcheck.h>
+ #endif
++#include <string.h>
+ 
+ #define DEFAULT_PROFILE		"awkprof.out"	/* where to put profile */
+ #define DEFAULT_VARFILE		"awkvars.out"	/* where to put vars */
+@@ -905,7 +906,26 @@ init_vars()
+ 		load_procinfo();
+ 	load_environ();
+ }
+-
++#define WIN32_PROGRAM_DATA_NAME "ProgramData"
++int ExpandVarWithProgramData(char* buffer, size_t buffer_size, const char * val) {
++#ifdef _WIN32
++	const char* PROG_DATA_FIND_NAME = "%"WIN32_PROGRAM_DATA_NAME"%";
++	const char* start_at = strcasestr( val, PROG_DATA_FIND_NAME);
++	if (start_at) { //expand this one env var
++		const char* prog_data_path = getenv(WIN32_PROGRAM_DATA_NAME);
++		if (!prog_data_path || !prog_data_path[0])
++			prog_data_path = "/ProgramData"; // not sure if c:/ProgramData is really any better lets just assume driveroot
++		strncpy_s(buffer, buffer_size, val, (start_at - val) / sizeof(char));
++		strcat_s(buffer, buffer_size, prog_data_path);
++		strcat_s(buffer, buffer_size, start_at + (strlen(PROG_DATA_FIND_NAME) * sizeof(char)));
++		return 1;
++	}
++	else {
++		strcpy_s(buffer, buffer_size, val);
++		return 0;
++	}
++#endif
++}
+ /* path_environ --- put path variable into environment if not already there */
+ 
+ static void
+@@ -928,6 +948,9 @@ path_environ(const char *pname, const char *dflt)
+ 	 * If original value was the empty string, set it to
+ 	 * the default value.
+ 	 */
++	char buffer[_MAX_PATH];
++	if (ExpandVarWithProgramData(buffer, sizeof(buffer), val))
++		val = buffer;
+ 	if ((*aptr)->stlen == 0) {
+ 		unref(*aptr);
+ 		*aptr = make_string(val, strlen(val));
+@@ -1068,10 +1091,10 @@ load_procinfo()
  #else
  #define getpgrp_arg() getpid()
  #endif
@@ -625,7 +1107,7 @@ index cc5ae9a7..f0f5a7ad 100644
  	/*
  	 * Could put a lot of this into a table, but then there's
  	 * portability problems declaring all the functions. So just
-@@ -1080,7 +1080,7 @@ load_procinfo()
+@@ -1080,7 +1103,7 @@ load_procinfo()
  
  	value = getpid();
  	update_PROCINFO_num("pid", value);
@@ -634,7 +1116,7 @@ index cc5ae9a7..f0f5a7ad 100644
  	value = getppid();
  	update_PROCINFO_num("ppid", value);
  
-@@ -1095,7 +1095,7 @@ load_procinfo()
+@@ -1095,7 +1118,7 @@ load_procinfo()
  
  	value = getegid();
  	update_PROCINFO_num("egid", value);
@@ -645,10 +1127,10 @@ index cc5ae9a7..f0f5a7ad 100644
  #if defined (HAVE_GETGROUPS) && defined(NGROUPS_MAX) && NGROUPS_MAX > 0
 diff --git a/osfixes.c b/osfixes.c
 new file mode 100644
-index 00000000..32430ec0
+index 00000000..f3b4fbcf
 --- /dev/null
 +++ b/osfixes.c
-@@ -0,0 +1,186 @@
+@@ -0,0 +1,276 @@
 +//shared between bash and gawk
 +#include "osfixes.h"
 +#ifdef _WIN32
@@ -662,6 +1144,7 @@ index 00000000..32430ec0
 +#include "term.h"
 +#include "general.h"
 +#endif
++#include <stdio.h>
 +#define ENV_ALLOC_CNT 1024
 +#define FAKE_EXIT_STATUS_UNDEFINED 2424242 //exit codes should be 1 byte only
 +#ifndef FALSE
@@ -806,7 +1289,96 @@ index 00000000..32430ec0
 +	free(exec);
 +	exec_ptr = -1;
 +}
-+#endif // !GAWK]6
++
++#else
++
++
++#include <winerror.h>
++#include <dlfcn.h>
++
++static DWORD last_err;
++
++void *
++dlopen (const char *file, int mode)
++{
++  char dllfn[MAX_PATH], *p;
++  HANDLE dllhandle;
++
++  if (mode != RTLD_LAZY)
++    {
++      errno = EINVAL;
++      last_err = ERROR_INVALID_PARAMETER;
++      return NULL;
++    }
++
++  /* MSDN says to be sure to use backslashes in the DLL file name.  */
++  strcpy (dllfn, file);
++  for (p = dllfn; *p; p++)
++    if (*p == '/')
++      *p = '\\';
++
++  dllhandle = LoadLibrary (dllfn);
++  if (!dllhandle)
++    last_err = GetLastError ();
++
++  return dllhandle;
++}
++
++char *
++dlerror (void)
++{
++  static char errbuf[1024];
++  DWORD ret;
++
++  if (!last_err)
++    return NULL;
++
++  ret = FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM
++		       | FORMAT_MESSAGE_IGNORE_INSERTS,
++		       NULL, last_err, 0, errbuf, sizeof (errbuf), NULL);
++  while (ret > 0 && (errbuf[ret - 1] == '\n' || errbuf[ret - 1] == '\r'))
++    --ret;
++
++  errbuf[ret] = '\0';
++  if (!ret)
++    sprintf (errbuf, "Error code %lu", last_err);
++
++  last_err = 0;
++  return errbuf;
++}
++
++int
++dlclose (void *handle)
++{
++  if (!handle || handle == INVALID_HANDLE_VALUE)
++    return -1;
++  if (!FreeLibrary (handle))
++    return -1;
++
++  return 0;
++}
++
++void *
++dlsym (void *handle, const char *name)
++{
++  FARPROC addr = NULL;
++
++  if (!handle || handle == INVALID_HANDLE_VALUE)
++    {
++      last_err = ERROR_INVALID_PARAMETER;
++      return NULL;
++    }
++
++  addr = GetProcAddress (handle, name);
++  if (!addr)
++    last_err = GetLastError ();
++
++  return (void *)addr;
++}
++
++#endif // !GAWK
++
++
 +int kill(pid_t pid, int sig) {
 +	if (sig == SIGINT)
 +		return GenerateConsoleCtrlEvent(CTRL_C_EVENT, pid);//as long as we have created the process with CREATE_NEW_PROCESS_GROUP  it should
@@ -837,14 +1409,14 @@ index 00000000..32430ec0
 +#endif
 diff --git a/osfixes.h b/osfixes.h
 new file mode 100644
-index 00000000..be2cbe89
+index 00000000..08108b21
 --- /dev/null
 +++ b/osfixes.h
-@@ -0,0 +1,247 @@
+@@ -0,0 +1,257 @@
 +//shared between bash and gawk
 +#pragma once
 +#ifdef _WIN32
-+#include <config.h>
++#include "config.h"
 +//with newer windows sdks the wrong header order in some files results in a SocketNotificationRetrieveEvents defined multiple times error, this is the easiest solution ive seen
 +#ifndef WINSOCK_INCLUDED
 +#define WINSOCK_INCLUDED 1
@@ -912,6 +1484,16 @@ index 00000000..be2cbe89
 +#define		NOFLSH		0x80000000
 +#ifndef GAWK
 +#include "term.h"
++#else
++#ifndef DLFCN_H
++#define DLFCN_H
++
++#define RTLD_LAZY 1
++extern void *dlopen (const char *, int);
++extern int   dlclose (void *);
++extern void *dlsym (void *, const char *);
++extern char *dlerror (void);
++#endif	/* DLFCN_H */
 +#endif
 +#if ! defined(tchars)
 +struct   tchars {
@@ -1165,3 +1747,22 @@ index 58fb520b..8619b3f3 100644
  }
  
  /* os_setbinmode --- set binary mode on file */
+diff --git a/replace.c b/replace.c
+index 2ff76a37..6ffdb941 100644
+--- a/replace.c
++++ b/replace.c
+@@ -29,7 +29,7 @@
+  */
+ #include "awk.h"	/* includes config.h for us */
+ 
+-
++#ifndef _WIN32
+ #ifndef HAVE_SYSTEM
+ #include "missing_d/system.c"
+ #endif /* HAVE_SYSTEM */
+@@ -118,3 +118,4 @@
+ #ifndef HAVE_STRSIGNAL
+ #include "missing_d/strsignal.c"
+ #endif
++#endif
+\ No newline at end of file

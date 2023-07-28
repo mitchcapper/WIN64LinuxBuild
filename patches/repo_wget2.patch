@@ -1,5 +1,17 @@
+diff --git a/bootstrap.conf b/bootstrap.conf
+index dce5559e..6c16296a 100644
+--- a/bootstrap.conf
++++ b/bootstrap.conf
+@@ -82,6 +82,7 @@ listen
+ lock
+ maintainer-makefile
+ malloc-posix
++malloca
+ memchr
+ mkdir
+ mkstemp
 diff --git a/examples/Makefile.am b/examples/Makefile.am
-index 838f28b5..05c39908 100644
+index 838f28b5..7b58f009 100644
 --- a/examples/Makefile.am
 +++ b/examples/Makefile.am
 @@ -14,7 +14,7 @@ noinst_PROGRAMS = \
@@ -7,192 +19,20 @@ index 838f28b5..05c39908 100644
  
  AM_CFLAGS = $(WERROR_CFLAGS) $(WARN_CFLAGS) -DMALLOC_RETURNS_NONNULL
 -AM_CPPFLAGS = -I$(top_srcdir)/include/wget \
-+AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(top_srcdir)/include/wget \
++AM_CPPFLAGS = -I$(top_srcdir)/include/wget -I$(top_srcdir)/lib -FI$(top_srcdir)/config.h \
   -DWGETVER_FILE=\"$(top_builddir)/include/wget/wgetver.h\" -DMALLOC_RETURNS_NONNULL
  AM_LDFLAGS = -no-install
  LDADD = ../libwget/libwget.la\
-diff --git a/examples/batch_loader.c b/examples/batch_loader.c
-index 6bb8515d..25f07a7b 100644
---- a/examples/batch_loader.c
-+++ b/examples/batch_loader.c
-@@ -20,7 +20,7 @@
-  * Read URLs from stdin and download into results/domain/.
-  *
-  */
--
-+#include "config.h"
- #include <stdio.h>
- #include <string.h>
- #include <errno.h>
-diff --git a/examples/check_url_types.c b/examples/check_url_types.c
-index 6639ee57..72dea444 100644
---- a/examples/check_url_types.c
-+++ b/examples/check_url_types.c
-@@ -21,7 +21,7 @@
-  * Input format is Alexa top-x, e.g. <id>,<domain>
-  *
-  */
--
-+#include "config.h"
- #include <stdio.h>
- #include <string.h>
- #ifndef _WIN32
-diff --git a/examples/getstream.c b/examples/getstream.c
-index 8840045e..23560c5d 100644
---- a/examples/getstream.c
-+++ b/examples/getstream.c
-@@ -39,7 +39,7 @@
-  * and 'make' again.
-  *
-  */
--
-+#include "config.h"
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
-diff --git a/examples/http_get.c b/examples/http_get.c
-index 2d1bb24f..fdd7944c 100644
---- a/examples/http_get.c
-+++ b/examples/http_get.c
-@@ -26,7 +26,7 @@
-  * Simple demonstration how to download an URL with high level API functions.
-  *
-  */
--
-+#include "config.h"
- #include <stdlib.h>
- #include <wget.h>
- 
-diff --git a/examples/http_get2.c b/examples/http_get2.c
-index b277e734..9dcd1df1 100644
---- a/examples/http_get2.c
-+++ b/examples/http_get2.c
-@@ -26,7 +26,7 @@
-  * Simple demonstration how to download an URI.
-  *
-  */
--
-+#include "config.h"
- #include <wget.h>
- 
- #define COOKIE_SUPPORT
-diff --git a/examples/http_multi_get.c b/examples/http_multi_get.c
-index ff98d9d0..28995329 100644
---- a/examples/http_multi_get.c
-+++ b/examples/http_multi_get.c
-@@ -28,7 +28,7 @@
-  * With HTTP/2.0: response data comes in parallel streams
-  *
-  */
--
-+#include "config.h"
- #include <stdlib.h>
- #include <wget.h>
- 
-diff --git a/examples/print_css_urls.c b/examples/print_css_urls.c
-index 0922a525..4db4cbea 100644
---- a/examples/print_css_urls.c
-+++ b/examples/print_css_urls.c
-@@ -27,7 +27,7 @@
-  * We don't care about character encoding in this example.
-  *
-  */
--
-+#include "config.h"
- #include <unistd.h>
- #include <wget.h>
- 
-diff --git a/examples/print_css_urls2.c b/examples/print_css_urls2.c
-index af0027e5..1679587c 100644
---- a/examples/print_css_urls2.c
-+++ b/examples/print_css_urls2.c
-@@ -30,7 +30,7 @@
-  * BOM see: https://www.w3.org/International/questions/qa-byte-order-mark
-  *
-  */
--
-+#include "config.h"
- #include <unistd.h>
- #include <stdlib.h>
- #include <string.h>
-diff --git a/examples/print_css_urls3.c b/examples/print_css_urls3.c
-index 9ca96c78..cba74f4a 100644
---- a/examples/print_css_urls3.c
-+++ b/examples/print_css_urls3.c
-@@ -26,7 +26,7 @@
-  * Demonstrate how to extract URIs from CSS files into a vector.
-  *
-  */
--
-+#include "config.h"
- #include <unistd.h>
- #include <stdlib.h>
- #include <string.h>
-diff --git a/examples/print_html_urls.c b/examples/print_html_urls.c
-index 7f7e9c94..52307a3d 100644
---- a/examples/print_html_urls.c
-+++ b/examples/print_html_urls.c
-@@ -27,7 +27,7 @@
-  * We don't care about character encoding in this example.
-  *
-  */
--
-+#include "config.h"
- #include <unistd.h>
- #include <wget.h>
- 
-diff --git a/examples/relative_to_absolute_url.c b/examples/relative_to_absolute_url.c
-index 8d8a47b2..48202920 100644
---- a/examples/relative_to_absolute_url.c
-+++ b/examples/relative_to_absolute_url.c
-@@ -19,7 +19,7 @@
-  *
-  * Demonstrate how to convert relative URLs into absolute URLs.
-  */
--
-+#include "config.h"
- #include <stdio.h> // printf
- #include <string.h> // strlen
- #include <wget.h>
-diff --git a/examples/websequencediagram.c b/examples/websequencediagram.c
-index c30a1604..184c383c 100644
---- a/examples/websequencediagram.c
-+++ b/examples/websequencediagram.c
-@@ -21,7 +21,7 @@
-  * Using low-level API.
-  *
-  */
--
-+#include "config.h"
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
-diff --git a/examples/websequencediagram_high.c b/examples/websequencediagram_high.c
-index ba8bbb69..3b0fe704 100644
---- a/examples/websequencediagram_high.c
-+++ b/examples/websequencediagram_high.c
-@@ -21,7 +21,7 @@
-  * Using high-level API.
-  *
-  */
--
-+#include "config.h"
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
+@@ -22,4 +22,4 @@ LDADD = ../libwget/libwget.la\
+  $(LIBMULTITHREAD) $(LIBSOCKET) $(LIBTHREAD) $(LIB_CLOCK_GETTIME) $(LIB_CRYPTO) $(LIB_GETLOGIN) \
+  $(LIB_HARD_LOCALE) $(LIB_MBRTOWC) $(LIB_NANOSLEEP) $(LIB_POLL) $(LIB_POSIX_SPAWN) $(LIB_PTHREAD_SIGMASK) \
+  $(LIB_SELECT) $(LIB_SETLOCALE) $(LIB_SETLOCALE_NULL) $(LTLIBICONV) $(LTLIBINTL) $(SERVENT_LIB) @INTL_MACOSX_LIBS@ \
+- $(LIBS)
++ $(LIBS) ../lib/libgnu.la
 diff --git a/include/wget/wget.h b/include/wget/wget.h
-index cda23f5f..d2e92b84 100644
+index 708bca49..d2e92b84 100644
 --- a/include/wget/wget.h
 +++ b/include/wget/wget.h
-@@ -2345,7 +2345,7 @@ WGETAPI void
- WGETAPI int
- 	wget_http_send_request(wget_http_connection *conn, wget_http_request *req) WGET_GCC_NONNULL_ALL;
- WGETAPI ssize_t
--	wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, int proxied) WGET_GCC_NONNULL_ALL;
-+	wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, int proxied, int port) WGET_GCC_NONNULL_ALL;
- 
- /*
-  * Highlevel HTTP routines
 @@ -2666,6 +2666,8 @@ WGETAPI void
  WGETAPI void
  	wget_intercept_action_set_local_filename(wget_intercept_action *action, const char *local_filename) WGET_GCC_NONNULL((1));
@@ -203,40 +43,31 @@ index cda23f5f..d2e92b84 100644
   * \ingroup libwget-plugin
   *
 diff --git a/libwget/bar.c b/libwget/bar.c
-index 463397d3..05753710 100644
+index a6c933b8..9674e03e 100644
 --- a/libwget/bar.c
 +++ b/libwget/bar.c
-@@ -319,7 +319,8 @@ static void bar_update_slot(const wget_bar *bar, int slot)
- 		uint64_t max, cur;
- 		int ratio;
- 		size_t consumed, pad;
--
-+		if (slotp->file_size == 0 && slotp->status == COMPLETE)
-+			slotp->file_size = slotp->bytes_downloaded;
- 		max = slotp->file_size;
- 		cur = slotp->bytes_downloaded;
+@@ -37,6 +37,7 @@
+ #include <signal.h>
+ #include <wchar.h>
  
-@@ -523,6 +524,8 @@ void wget_bar_slot_begin(wget_bar *bar, int slot, const char *filename, int new_
- 		slotp->numfiles++;
- 	if (slotp->numfiles == 1) {
- 		slotp->filename = wget_strdup(filename);
-+		slotp->file_size = 0;
-+		slotp->bytes_downloaded = 0;
- 	} else {
- 		slotp->filename = wget_aprintf("%d files", slotp->numfiles);
- 	}
-@@ -648,10 +651,12 @@ void wget_bar_print(wget_bar *bar, int slot, const char *display)
++#include <malloca.h>
+ #include <wget.h>
+ #include "private.h"
+ 
+@@ -653,10 +654,14 @@ void wget_bar_print(wget_bar *bar, int slot, const char *display)
   */
  void wget_bar_vprintf(wget_bar *bar, int slot, const char *fmt, va_list args)
  {
 -	char text[bar->max_width + 1];
 +	size_t textSize = (bar->max_width + 1);
-+	char * text = malloc(sizeof(char) * textSize);
++	char * text = malloca(sizeof(char) * textSize);
++	if (! text)
++		error_printf_exit(_("Allocation failure of malloca\n"));
  
 -	wget_vsnprintf(text, sizeof(text), fmt, args);
 +	wget_vsnprintf(text, textSize, fmt, args);
  	wget_bar_print(bar, slot, text);
-+	free(text);
++	freea(text);
  }
  
  /**
@@ -280,46 +111,15 @@ index c6d1eab1..ec8b2b0c 100644
  #endif
  
 diff --git a/libwget/dns.c b/libwget/dns.c
-index 967bddb9..5ec6a385 100644
+index 7d5b37e0..b62596a1 100644
 --- a/libwget/dns.c
 +++ b/libwget/dns.c
-@@ -19,7 +19,28 @@
-  *
-  * resolver routines
-  */
--
-+#ifdef __cplusplus
-+    #define INITIALIZER(f) \
-+        static void f(void); \
-+        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
-+        static void f(void)
-+#elif defined(_MSC_VER)
-+    #pragma section(".CRT$XCU",read)
-+    #define INITIALIZER2_(f,p) \
-+        static void f(void); \
-+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-+        __pragma(comment(linker,"/include:" p #f "_")) \
-+        static void f(void)
-+    #ifdef _WIN64
-+        #define INITIALIZER(f) INITIALIZER2_(f,"")
-+    #else
-+        #define INITIALIZER(f) INITIALIZER2_(f,"_")
-+    #endif
-+#else
-+    #define INITIALIZER(f) \
-+        static void f(void) __attribute__((constructor)); \
-+        static void f(void)
-+#endif
- #include <config.h>
- 
- #include <sys/types.h>
-@@ -68,20 +89,20 @@ static wget_dns default_dns = {
- 
+@@ -69,19 +69,20 @@ static wget_dns default_dns = {
  static bool
  	initialized;
--
--static void __attribute__((constructor)) net_init(void)
-+static void net_exit(void)
+ 
+-static void __attribute__((constructor)) dns_init(void)
++static void dns_exit(void)
  {
 -	if (!initialized) {
 -		wget_thread_mutex_init(&default_dns.mutex);
@@ -330,8 +130,8 @@ index 967bddb9..5ec6a385 100644
  	}
  }
  
--static void __attribute__((destructor)) net_exit(void)
-+INITIALIZER(net_init)
+-static void __attribute__((destructor)) dns_exit(void)
++INITIALIZER (dns_init)
  {
 -	if (initialized) {
 -		wget_thread_mutex_destroy(&default_dns.mutex);
@@ -339,21 +139,31 @@ index 967bddb9..5ec6a385 100644
 +	if (!initialized) {
 +		wget_thread_mutex_init(&default_dns.mutex);
 +		initialized = true;
-+		atexit(net_exit);
++		atexit(dns_exit);
  	}
  }
  
 diff --git a/libwget/hash_printf.c b/libwget/hash_printf.c
-index fbf7e6de..0074045d 100644
+index fbf7e6de..bf5fe08c 100644
 --- a/libwget/hash_printf.c
 +++ b/libwget/hash_printf.c
-@@ -64,16 +64,17 @@ void wget_hash_printf_hex(wget_digest_algorithm algorithm, char *out, size_t out
+@@ -29,6 +29,7 @@
+ #include <stddef.h>
+ 
+ #include <wget.h>
++#include <malloca.h>
+ #include "private.h"
+ 
+ /**
+@@ -64,16 +65,19 @@ void wget_hash_printf_hex(wget_digest_algorithm algorithm, char *out, size_t out
  	va_end(args);
  
  	if (plaintext) {
 -		unsigned char digest[wget_hash_get_len(algorithm)];
 +		size_t digestLen = wget_hash_get_len(algorithm);
-+		unsigned char * digest = malloc(digestLen * sizeof(char));
++		unsigned char * digest = malloca(digestLen * sizeof(char));
++		if (! digest)
++			error_printf_exit(_("Allocation failure of malloca\n"));
  		int rc;
  
  		if ((rc = wget_hash_fast(algorithm, plaintext, len, digest)) == 0) {
@@ -364,21 +174,31 @@ index fbf7e6de..0074045d 100644
  			error_printf(_("Failed to hash (%d)\n"), rc);
  		}
 -
-+		free(digest);
++		freea(digest);
  		xfree(plaintext);
  	}
  }
 diff --git a/libwget/hashfile.c b/libwget/hashfile.c
-index 334830f1..3f8a4e60 100644
+index 334830f1..a2482542 100644
 --- a/libwget/hashfile.c
 +++ b/libwget/hashfile.c
-@@ -787,14 +787,15 @@ int wget_hash_file_fd(const char *hashname, int fd, char *digest_hex, size_t dig
+@@ -31,6 +31,7 @@
+ #include <stdlib.h>
+ #include <fcntl.h>
+ #include <sys/stat.h>
++#include <malloca.h>
+ #ifdef HAVE_MMAP
+ #	include <sys/mman.h>
+ #endif
+@@ -787,14 +788,17 @@ int wget_hash_file_fd(const char *hashname, int fd, char *digest_hex, size_t dig
  	debug_printf("%s hashing pos %llu, length %llu...\n", hashname, (unsigned long long)offset, (unsigned long long)length);
  
  	if ((algorithm = wget_hash_get_algorithm(hashname)) != WGET_DIGTYPE_UNKNOWN) {
 -		unsigned char digest[wget_hash_get_len(algorithm)];
 +		size_t digestSize = wget_hash_get_len(algorithm);
-+		unsigned char *digest = malloc(digestSize);
++		unsigned char *digest = malloca(digestSize);
++		if (! digest)
++			error_printf_exit(_("Allocation failure of malloca\n"));
  
  #ifdef HAVE_MMAP
  		char *buf = mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, offset);
@@ -390,32 +210,32 @@ index 334830f1..3f8a4e60 100644
  				ret = WGET_E_SUCCESS;
  			}
  			munmap(buf, length);
-@@ -807,12 +808,14 @@ int wget_hash_file_fd(const char *hashname, int fd, char *digest_hex, size_t dig
+@@ -807,12 +811,14 @@ int wget_hash_file_fd(const char *hashname, int fd, char *digest_hex, size_t dig
  
  			if ((ret = wget_hash_init(&dig, algorithm))) {
  				error_printf(_("%s: Hash init failed for type '%s': %s\n"), __func__, hashname, wget_strerror(ret));
-+				free(digest);
++				freea(digest);
  				return ret;
  			}
  
  			while (length > 0 && (nbytes = read(fd, tmp, sizeof(tmp))) > 0) {
  				if ((ret = wget_hash(dig, tmp, nbytes))) {
  					error_printf(_("%s: Hash update failed: %s\n"), __func__, wget_strerror(ret));
-+					free(digest);
++					freea(digest);
  					return ret;
  				}
  
-@@ -824,19 +827,22 @@ int wget_hash_file_fd(const char *hashname, int fd, char *digest_hex, size_t dig
+@@ -824,19 +830,22 @@ int wget_hash_file_fd(const char *hashname, int fd, char *digest_hex, size_t dig
  
  			if ((ret = wget_hash_deinit(&dig, digest))) {
  				error_printf(_("%s: Hash finalization failed: %s\n"), __func__, wget_strerror(ret));
-+				free(digest);
++				freea(digest);
  				return ret;
  			}
  
  			if (nbytes < 0) {
  				error_printf(_("%s: Failed to read %llu bytes\n"), __func__, (unsigned long long)length);
-+				free(digest);
++				freea(digest);
  				return WGET_E_IO;
  			}
  
@@ -425,15 +245,23 @@ index 334830f1..3f8a4e60 100644
  #ifdef HAVE_MMAP
  		}
  #endif
-+		free(digest);
++		freea(digest);
  	}
  
  	return ret;
 diff --git a/libwget/hpkp_db.c b/libwget/hpkp_db.c
-index 0770bcff..80f48659 100644
+index 0770bcff..87a70f81 100644
 --- a/libwget/hpkp_db.c
 +++ b/libwget/hpkp_db.c
-@@ -152,7 +152,7 @@ int wget_hpkp_db_check_pubkey(wget_hpkp_db *hpkp_db, const char *host, const voi
+@@ -28,6 +28,7 @@
+ #include <ctype.h>
+ #include <sys/stat.h>
+ #include <limits.h>
++#include <malloca.h>
+ #include "private.h"
+ #include "hpkp.h"
+ 
+@@ -152,7 +153,7 @@ int wget_hpkp_db_check_pubkey(wget_hpkp_db *hpkp_db, const char *host, const voi
  
  	wget_hpkp key;
  	wget_hpkp *hpkp = NULL;
@@ -442,15 +270,17 @@ index 0770bcff..80f48659 100644
  	int subdomain = 0;
  
  	for (const char *domain = host; *domain && !hpkp; domain = strchrnul(domain, '.')) {
-@@ -170,15 +170,19 @@ int wget_hpkp_db_check_pubkey(wget_hpkp_db *hpkp_db, const char *host, const voi
+@@ -170,15 +171,21 @@ int wget_hpkp_db_check_pubkey(wget_hpkp_db *hpkp_db, const char *host, const voi
  
  	if (subdomain && !hpkp->include_subdomains)
  		return 0; // OK, found a matching super domain which isn't responsible for <host>
 -
 -	if (wget_hash_fast(WGET_DIGTYPE_SHA256, pubkey, pubkeysize, digest))
-+	char *digest = malloc(digestSize);
++	char *digest = malloca(digestSize);
++	if (! digest)
++		error_printf_exit(_("Allocation failure of malloca\n"));
 +	if (wget_hash_fast(WGET_DIGTYPE_SHA256, pubkey, pubkeysize, digest)){
-+		free(digest);
++		freea(digest);
  		return -1;
 +	}
  
@@ -459,61 +289,27 @@ index 0770bcff..80f48659 100644
  
 -	if (wget_vector_find(hpkp->pins, &pinkey) != -1)
 +	if (wget_vector_find(hpkp->pins, &pinkey) != -1){
-+		free(digest);
++		freea(digest);
  		return 1; // OK, pinned pubkey found
 -
 +	}
-+	free(digest);
++	freea(digest);
  	return -2;
  }
  
 diff --git a/libwget/http.c b/libwget/http.c
-index 06cfabf5..63d8c2f4 100644
+index 07f53b08..01fbe2cf 100644
 --- a/libwget/http.c
 +++ b/libwget/http.c
-@@ -29,7 +29,28 @@
-  * RFC 6265
-  *
-  */
--
-+#ifdef __cplusplus
-+    #define INITIALIZER(f) \
-+        static void f(void); \
-+        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
-+        static void f(void)
-+#elif defined(_MSC_VER)
-+    #pragma section(".CRT$XCU",read)
-+    #define INITIALIZER2_(f,p) \
-+        static void f(void); \
-+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-+        __pragma(comment(linker,"/include:" p #f "_")) \
-+        static void f(void)
-+    #ifdef _WIN64
-+        #define INITIALIZER(f) INITIALIZER2_(f,"")
-+    #else
-+        #define INITIALIZER(f) INITIALIZER2_(f,"_")
-+    #endif
-+#else
-+    #define INITIALIZER(f) \
-+        static void f(void) __attribute__((constructor)); \
-+        static void f(void)
-+#endif
- #include <config.h>
- 
- #include <stdio.h>
-@@ -50,6 +71,11 @@
- #include "http.h"
- #include "net.h"
- 
-+#include <stdio.h>
-+#include <stdlib.h>
-+
-+
-+
- static char
- 	abort_indicator;
- 
-@@ -64,24 +90,25 @@ static wget_thread_mutex
+@@ -41,6 +41,7 @@
+ #include <sys/socket.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
++#include <malloca.h>
+ #ifdef WITH_LIBNGHTTP2
+ 	#include <nghttp2/nghttp2.h>
+ #endif
+@@ -64,24 +65,25 @@ static wget_thread_mutex
  	hosts_mutex;
  static bool
  	initialized;
@@ -548,7 +344,7 @@ index 06cfabf5..63d8c2f4 100644
  
  /**
   * HTTP API initialization, allocating/preparing the internal resources.
-@@ -317,33 +344,35 @@ void wget_http_add_credentials(wget_http_request *req, wget_http_challenge *chal
+@@ -317,33 +319,37 @@ void wget_http_add_credentials(wget_http_request *req, wget_http_challenge *chal
  			return;
  
  		hashlen = wget_hash_get_len(hashtype);
@@ -556,9 +352,11 @@ index 06cfabf5..63d8c2f4 100644
 -		char response_digest[hashlen * 2 + 1], cnonce[16] = "";
 -
 +		size_t abufSize = hashlen * 2 + 1;
-+		char * a1buf = malloc(abufSize);
-+		char * a2buf = malloc(abufSize);
-+		char * response_digest = malloc(abufSize);
++		char * a1buf = malloca(abufSize*sizeof(char));
++		char * a2buf = malloca(abufSize*sizeof(char));
++		char * response_digest = malloca(abufSize*sizeof(char));
++		if (! a1buf || ! a2buf || ! response_digest)
++			error_printf_exit(_("Allocation failure of malloca\n"));
 +		char cnonce[16] = "";
  		// A1BUF = H(user ":" realm ":" password)
 -		wget_hash_printf_hex(hashtype, a1buf, sizeof(a1buf), "%s:%s:%s", username, realm, password);
@@ -592,36 +390,38 @@ index 06cfabf5..63d8c2f4 100644
  				"%s:%s:00000001:%s:%s:%s", a1buf, nonce, /* nc, */ cnonce, qop, a2buf);
  		}
  
-@@ -368,6 +397,10 @@ void wget_http_add_credentials(wget_http_request *req, wget_http_challenge *chal
+@@ -368,6 +374,10 @@ void wget_http_add_credentials(wget_http_request *req, wget_http_challenge *chal
  			wget_http_add_header(req, "Authorization", buf.data);
  
  		wget_buffer_deinit(&buf);
-+		free(response_digest);
-+		free(a1buf);
-+		free(a2buf);
++		freea(response_digest);
++		freea(a1buf);
++		freea(a2buf);
 +
  	}
  }
  
-@@ -845,8 +878,10 @@ int wget_http_send_request(wget_http_connection *conn, wget_http_request *req)
+@@ -845,8 +855,12 @@ int wget_http_send_request(wget_http_connection *conn, wget_http_request *req)
  	if (wget_tcp_get_protocol(conn->tcp) == WGET_PROTOCOL_HTTP_2_0) {
  		char length_str[32];
  		int n = 4 + wget_vector_size(req->headers);
 -		nghttp2_nv nvs[n], *nvp;
 -		char resource[req->esc_resource.length + 2];
-+		nghttp2_nv *nvs = malloc(sizeof(nghttp2_nv) * n);
++		nghttp2_nv *nvs = malloca(sizeof(nghttp2_nv) * n);
 +		nghttp2_nv *nvp;
 +		size_t resourceSize = req->esc_resource.length + 2;
-+		char *resource = malloc(resourceSize);
++		char *resource = malloca(resourceSize);
++		if (! nvs && ! resource)
++			error_printf_exit(_("Allocation failure of malloca\n"));
  
  		resource[0] = '/';
  		memcpy(resource + 1, req->esc_resource.data, req->esc_resource.length + 1);
-@@ -899,18 +934,21 @@ int wget_http_send_request(wget_http_connection *conn, wget_http_request *req)
+@@ -899,13 +913,16 @@ int wget_http_send_request(wget_http_connection *conn, wget_http_request *req)
  			error_printf(_("Failed to submit HTTP2 request\n"));
  			wget_http_free_response(&ctx->resp);
  			xfree(ctx);
-+			free(nvs);
-+			free(resource);
++			freea(nvs);
++			freea(resource);
  			return -1;
  		}
  
@@ -629,82 +429,16 @@ index 06cfabf5..63d8c2f4 100644
  
  		debug_printf("HTTP2 stream id %d\n", req->stream_id);
 -
-+		free(nvs);
-+		free(resource);
++		freea(nvs);
++		freea(resource);
  		return 0;
  	}
  #endif
- 
--	if ((nbytes = wget_http_request_to_buffer(req, conn->buf, conn->proxied)) < 0) {
-+	if ((nbytes = wget_http_request_to_buffer(req, conn->buf, conn->proxied, conn->port)) < 0) {
- 		error_printf(_("Failed to create request buffer\n"));
- 		return -1;
- 	}
-@@ -933,7 +971,7 @@ int wget_http_send_request(wget_http_connection *conn, wget_http_request *req)
- 	return 0;
- }
- 
--ssize_t wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, int proxied)
-+ssize_t wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, int proxied, int port)
- {
- 	char have_content_length = 0;
- 	char check_content_length = req->body && req->body_length;
-@@ -946,6 +984,8 @@ ssize_t wget_http_request_to_buffer(wget_http_request *req, wget_buffer *buf, in
- 		wget_buffer_strcat(buf, wget_iri_scheme_get_name(req->scheme));
- 		wget_buffer_memcat(buf, "://", 3);
- 		wget_buffer_bufcat(buf, &req->esc_host);
-+		wget_buffer_memcat(buf, ":", 1);
-+		wget_buffer_printf_append(buf, "%d", port);
- 	}
- 	wget_buffer_memcat(buf, "/", 1);
- 	wget_buffer_bufcat(buf, &req->esc_resource);
 diff --git a/libwget/init.c b/libwget/init.c
-index b9a67d9d..99d97c58 100644
+index b9a67d9d..6ba56432 100644
 --- a/libwget/init.c
 +++ b/libwget/init.c
-@@ -24,7 +24,28 @@
-  * 18.01.2013  Tim Ruehsen  created
-  *
-  */
--
-+#ifdef __cplusplus
-+    #define INITIALIZER(f) \
-+        static void f(void); \
-+        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
-+        static void f(void)
-+#elif defined(_MSC_VER)
-+    #pragma section(".CRT$XCU",read)
-+    #define INITIALIZER2_(f,p) \
-+        static void f(void); \
-+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-+        __pragma(comment(linker,"/include:" p #f "_")) \
-+        static void f(void)
-+    #ifdef _WIN64
-+        #define INITIALIZER(f) INITIALIZER2_(f,"")
-+    #else
-+        #define INITIALIZER(f) INITIALIZER2_(f,"_")
-+    #endif
-+#else
-+    #define INITIALIZER(f) \
-+        static void f(void) __attribute__((constructor)); \
-+        static void f(void)
-+#endif
- #include <config.h>
- 
- #include <stdarg.h>
-@@ -32,6 +53,11 @@
- #include <wget.h>
- #include "private.h"
- 
-+#include <stdio.h>
-+#include <stdlib.h>
-+
-+
-+
- static struct config {
- 	char
- 		*cookie_file;
-@@ -49,22 +75,21 @@ static wget_dns_cache *dns_cache;
+@@ -49,22 +49,21 @@ static wget_dns_cache *dns_cache;
  static int global_initialized;
  static wget_thread_mutex _mutex;
  static bool initialized;
@@ -737,124 +471,63 @@ index b9a67d9d..99d97c58 100644
  /**
   * Global library initialization, allocating/preparing all resources.
 diff --git a/libwget/io.c b/libwget/io.c
-index a9939a58..e0630789 100644
+index 62b4082b..43833066 100644
 --- a/libwget/io.c
 +++ b/libwget/io.c
-@@ -191,6 +191,23 @@ ssize_t wget_getline(char **buf, size_t *bufsize, FILE *fp)
- 	return getline_internal(buf, bufsize, (void *)fp, read_fp);
- }
+@@ -35,6 +35,7 @@
+ #include <sys/file.h>
+ #include <errno.h>
+ #include <poll.h>
++#include <malloca.h>
+ #include "dirname.h"
  
-+#define MIN_TIMEOUT_FIX_MS 50
-+static int poll_retry(struct pollfd* pfd, nfds_t nfd, int timeout, int max_retries) {
-+	DWORD startTime;
-+	BOOL retryTrack = timeout > 0 && timeout != INFTIM && timeout > MIN_TIMEOUT_FIX_MS;
-+	if (retryTrack)
-+		startTime = GetTickCount();
-+	int rc = 0;
-+	for (int x = 0; x < max_retries; x++) {
-+		rc = poll(pfd, nfd, timeout);
-+		if (rc != 0 || !retryTrack)
-+			return rc;
-+		int msElapsed = GetTickCount() - startTime;
-+		if (msElapsed < 0 || (timeout - MIN_TIMEOUT_FIX_MS) < msElapsed)//if it got the timing within  MIN_TIMEOUT_FIX_MS of the timer consider us good
-+			return rc;
-+	}
-+	return rc;
-+}
- /**
-  * \param[in] fd File descriptor to wait for
-  * \param[in] timeout Max. duration in milliseconds to wait
-@@ -209,24 +226,24 @@ ssize_t wget_getline(char **buf, size_t *bufsize, FILE *fp)
- int wget_ready_2_transfer(int fd, int timeout, int mode)
- {
- 	int rc = -1;
--	struct pollfd pollfd;
-+	struct pollfd poller;
- 
--	pollfd.fd = fd;
-+	poller.fd = fd;
- 
--	pollfd.events = 0;
--	pollfd.revents = 0;
-+	poller.events = 0;
-+	poller.revents = 0;
- 
- 	if (mode & WGET_IO_READABLE)
--		pollfd.events |= POLLIN;
-+		poller.events |= POLLIN;
- 	if (mode & WGET_IO_WRITABLE)
--		pollfd.events |= POLLOUT;
-+		poller.events |= POLLOUT;
- 
- 	// wait for socket to be ready to read or write
--	if ((rc = poll(&pollfd, 1, timeout)) > 0) {
-+	if ((rc = poll_retry(&poller, 1, timeout, 20)) > 0) {
- 		rc = 0;
--		if (pollfd.revents & POLLIN)
-+		if (poller.revents & POLLIN)
- 			rc |= WGET_IO_READABLE;
--		if (pollfd.revents & POLLOUT)
-+		if (poller.revents & POLLOUT)
- 			rc |= WGET_IO_WRITABLE;
- 	}
- 
-@@ -370,9 +387,7 @@ int wget_update_file(const char *fname,
- 	FILE *fp;
+ #include <wget.h>
+@@ -398,8 +399,7 @@ int wget_update_file(const char *fname,
  	const char *tmpdir, *basename;
  	int lockfd;
--
+ 
 -	char tmpfile[strlen(fname) + 6 + 1];
 -	wget_snprintf(tmpfile, sizeof(tmpfile), "%sXXXXXX", fname);
 +	size_t tmpSize = strlen(fname) + 6 + 1;
  
  	// find out system temp directory
  	if (!(tmpdir = getenv("TMPDIR")) && !(tmpdir = getenv("TMP"))
-@@ -435,15 +450,17 @@ int wget_update_file(const char *fname,
- 		if (fp) {
- 			// read fname data
- 			if (load_func(context, fp)) {
--				fclose(fp);
-+				if (! fclose(fp))
-+					fp = NULL;
- 				close(lockfd);
- 				return WGET_E_UNKNOWN;
- 			}
--
-+			if (fp)
- 				fclose(fp);
+@@ -471,6 +471,10 @@ int wget_update_file(const char *fname,
  		}
  	}
--
-+	char * tmpfile = malloc(tmpSize);
+ 
++	char * tmpfile = malloca(tmpSize*sizeof(char));
++	if (! tmpfile)
++		error_printf_exit(_("Allocation failure of malloca\n"));
 +	wget_snprintf(tmpfile, tmpSize, "%sXXXXXX", fname);
  	if (save_func) {
  		int fd;
  		// create & open temp file to write data into with 0600 - rely on Gnulib to set correct
-@@ -451,6 +468,7 @@ int wget_update_file(const char *fname,
+@@ -478,6 +482,7 @@ int wget_update_file(const char *fname,
  		if ((fd = mkstemp(tmpfile)) == -1) {
  			close(lockfd);
  			error_printf(_("Failed to open tmpfile '%s' (%d)\n"), tmpfile, errno);
-+			free(tmpfile);
++			freea(tmpfile);
  			return WGET_E_OPEN;
  		}
  
-@@ -460,6 +478,7 @@ int wget_update_file(const char *fname,
+@@ -487,6 +492,7 @@ int wget_update_file(const char *fname,
  			close(fd);
  			close(lockfd);
  			error_printf(_("Failed to write open '%s' (%d)\n"), tmpfile, errno);
-+			free(tmpfile);
++			freea(tmpfile);
  			return WGET_E_OPEN;
  		}
  
-@@ -468,6 +487,7 @@ int wget_update_file(const char *fname,
+@@ -495,6 +501,7 @@ int wget_update_file(const char *fname,
  			unlink(tmpfile);
  			fclose(fp);
  			close(lockfd);
-+			free(tmpfile);
++			freea(tmpfile);
  			return WGET_E_UNKNOWN;
  		}
  
-@@ -476,6 +496,7 @@ int wget_update_file(const char *fname,
+@@ -503,6 +510,7 @@ int wget_update_file(const char *fname,
  			unlink(tmpfile);
  			close(lockfd);
  			error_printf(_("Failed to write/close '%s' (%d)\n"), tmpfile, errno);
@@ -862,145 +535,151 @@ index a9939a58..e0630789 100644
  			return WGET_E_IO;
  		}
  
-@@ -484,10 +505,12 @@ int wget_update_file(const char *fname,
+@@ -511,10 +519,12 @@ int wget_update_file(const char *fname,
  			close(lockfd);
  			error_printf(_("Failed to rename '%s' to '%s' (%d)\n"), tmpfile, fname, errno);
  			error_printf(_("Take manually care for '%s'\n"), tmpfile);
-+			free(tmpfile);
++			freea(tmpfile);
  			return WGET_E_IO;
  		}
  
  		debug_printf("Successfully updated '%s'.\n", fname);
-+		free(tmpfile);
++		freea(tmpfile);
  	}
  
  	close(lockfd);
 diff --git a/libwget/iri.c b/libwget/iri.c
-index ee513645..ce486f50 100644
+index ee513645..e8d7de2d 100644
 --- a/libwget/iri.c
 +++ b/libwget/iri.c
-@@ -874,7 +874,8 @@ const char *wget_iri_relative_to_abs(const wget_iri *base, const char *val, size
+@@ -33,6 +33,7 @@
+ 
+ #include <string.h>
+ #include <errno.h>
++#include <malloca.h>
+ #include "c-ctype.h"
+ 
+ #include <wget.h>
+@@ -874,7 +875,10 @@ const char *wget_iri_relative_to_abs(const wget_iri *base, const char *val, size
  
  	if (*val == '/') {
  		if (base) {
 -			char path[len + 1];
 +			size_t pathSize = len + 1;
-+			char * path = malloc(pathSize*sizeof(char));
++			char * path = malloca(pathSize*sizeof(char));
++			if (! path)
++				error_printf_exit(_("Allocation failure of malloca\n"));
  
  			// strlcpy or snprintf are ineffective here since they do strlen(val), which might be large
  			wget_strscpy(path, val, len + 1);
-@@ -900,6 +901,7 @@ const char *wget_iri_relative_to_abs(const wget_iri *base, const char *val, size
+@@ -900,6 +904,7 @@ const char *wget_iri_relative_to_abs(const wget_iri *base, const char *val, size
  				wget_buffer_strcat(buf, path);
  				debug_printf("*2 %s\n", buf->data);
  			}
-+			free(path);
++			freea(path);
  		} else {
  			return NULL;
  		}
 diff --git a/libwget/ocsp.c b/libwget/ocsp.c
-index 78378bf8..708fd2a8 100644
+index 78378bf8..6dd4016e 100644
 --- a/libwget/ocsp.c
 +++ b/libwget/ocsp.c
-@@ -509,8 +509,9 @@ int wget_ocsp_db_load(wget_ocsp_db *ocsp_db)
+@@ -33,7 +33,7 @@
+ #include <ctype.h>
+ #include <time.h>
+ #include <errno.h>
+-
++#include <malloca.h>
+ #include <wget.h>
+ #include "private.h"
+ 
+@@ -509,8 +509,11 @@ int wget_ocsp_db_load(wget_ocsp_db *ocsp_db)
  	if (!ocsp_db->fname || !*ocsp_db->fname)
  		return -1;
  
 -	char fname_hosts[strlen(ocsp_db->fname) + 6 + 1];
 -	wget_snprintf(fname_hosts, sizeof(fname_hosts), "%s_hosts", ocsp_db->fname);
 +	size_t fnameSize = strlen(ocsp_db->fname) + 6 + 1;
-+	char * fname_hosts = malloc(fnameSize*sizeof(char));
++	char * fname_hosts = malloca(fnameSize*sizeof(char));
++	if (! fname_hosts)
++		error_printf_exit(_("Allocation failure of malloca\n"));
 +	wget_snprintf(fname_hosts, fnameSize, "%s_hosts", ocsp_db->fname);
  
  	if ((ret = wget_update_file(fname_hosts, ocsp_db_load_hosts, NULL, ocsp_db)))
  		error_printf(_("Failed to read OCSP hosts\n"));
-@@ -522,7 +523,7 @@ int wget_ocsp_db_load(wget_ocsp_db *ocsp_db)
- 		ret = -1;
+@@ -523,6 +526,7 @@ int wget_ocsp_db_load(wget_ocsp_db *ocsp_db)
  	} else
  		debug_printf("Fetched OCSP fingerprints from '%s'\n", ocsp_db->fname);
--
-+	free(fname_hosts);
+ 
++	freea(fname_hosts);
  	return ret;
  }
  
-@@ -602,8 +603,9 @@ int wget_ocsp_db_save(wget_ocsp_db *ocsp_db)
+@@ -602,8 +606,11 @@ int wget_ocsp_db_save(wget_ocsp_db *ocsp_db)
  	if (!ocsp_db || !ocsp_db->fname || !*ocsp_db->fname)
  		return -1;
  
 -	char fname_hosts[strlen(ocsp_db->fname) + 6 + 1];
 -	wget_snprintf(fname_hosts, sizeof(fname_hosts), "%s_hosts", ocsp_db->fname);
 +	size_t fnameSize = strlen(ocsp_db->fname) + 6 + 1;
-+	char * fname_hosts = malloc(fnameSize*sizeof(char));
++	char * fname_hosts = malloca(fnameSize*sizeof(char));
++	if (! fname_hosts)
++		error_printf_exit(_("Allocation failure of malloca\n"));
 +	wget_snprintf(fname_hosts, fnameSize, "%s_hosts", ocsp_db->fname);
  
  	if ((ret = wget_update_file(fname_hosts, ocsp_db_load_hosts, ocsp_db_save_hosts, ocsp_db)))
  		error_printf(_("Failed to write to OCSP hosts to '%s'\n"), fname_hosts);
-@@ -615,7 +617,7 @@ int wget_ocsp_db_save(wget_ocsp_db *ocsp_db)
- 		ret = -1;
+@@ -616,6 +623,7 @@ int wget_ocsp_db_save(wget_ocsp_db *ocsp_db)
  	} else
  		debug_printf("Saved OCSP fingerprints to '%s'\n", ocsp_db->fname);
--
-+	free(fname_hosts);
+ 
++	freea(fname_hosts);
  	return ret;
  }
  
 diff --git a/libwget/private.h b/libwget/private.h
-index 246c68d4..dd131391 100644
+index c58df693..4a1488ac 100644
 --- a/libwget/private.h
 +++ b/libwget/private.h
-@@ -33,10 +33,14 @@
- #include <stdarg.h> // needed for va_list
+@@ -68,4 +68,33 @@
+ #define debug_write wget_debug_write
  
- // gnulib convenience header for libintl.h, turn of annoying warnings
-+#ifdef __GNUC__ //most unknown pragmas are ignored but this header is included a good bit so lets silence them
- #pragma GCC diagnostic push
- #pragma GCC diagnostic ignored "-Wundef"
-+#endif // __GNUC__
- #include <gettext.h>
-+#ifdef __GNUC__
- #pragma GCC diagnostic pop
-+#endif // __GNUC__
  
- #ifdef ENABLE_NLS
- #	define _(STRING) gettext(STRING)
-diff --git a/libwget/random.c b/libwget/random.c
-index 31eaa65b..1cd660d4 100644
---- a/libwget/random.c
-+++ b/libwget/random.c
-@@ -24,10 +24,32 @@
-  * 22.01.2016  Tim Ruehsen  created
-  *
-  */
--
++
 +#ifdef __cplusplus
 +    #define INITIALIZER(f) \
 +        static void f(void); \
 +        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
 +        static void f(void)
 +#elif defined(_MSC_VER)
-+    #pragma section(".CRT$XCU",read)
++#define ___old_read read
++#undef read
++#pragma section(".CRT$XCU",read)
++#define read ___old_read
 +    #define INITIALIZER2_(f,p) \
 +        static void f(void); \
-+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-+        __pragma(comment(linker,"/include:" p #f "_")) \
++        __declspec(allocate(".CRT$XCU")) void (*f##__constructor__)(void) = f; \
++        __pragma(comment(linker,"/include:" p #f "__constructor__")) \
 +        static void f(void)
 +    #ifdef _WIN64
 +        #define INITIALIZER(f) INITIALIZER2_(f,"")
 +    #else
 +        #define INITIALIZER(f) INITIALIZER2_(f,"_")
 +    #endif
++#pragma data_seg()
 +#else
 +    #define INITIALIZER(f) \
 +        static void f(void) __attribute__((constructor)); \
 +        static void f(void)
 +#endif
- #include <config.h>
- 
- #include <stddef.h>
-+#include <stdio.h>
- #include <stdlib.h>
- #include <unistd.h>
- #include <time.h>
-@@ -52,20 +74,20 @@ static char statebuf[64];
++
++
+ #endif /* LIBWGET_PRIVATE_H */
+diff --git a/libwget/random.c b/libwget/random.c
+index 31eaa65b..6702d43e 100644
+--- a/libwget/random.c
++++ b/libwget/random.c
+@@ -52,20 +52,20 @@ static char statebuf[64];
  static struct random_data state;
  static wget_thread_mutex mutex;
  static bool initialized;
@@ -1031,7 +710,7 @@ index 31eaa65b..1cd660d4 100644
  }
  
 diff --git a/libwget/ssl_gnutls.c b/libwget/ssl_gnutls.c
-index 1836351b..fabf13fc 100644
+index 6a4d7fc6..ba98b32c 100644
 --- a/libwget/ssl_gnutls.c
 +++ b/libwget/ssl_gnutls.c
 @@ -124,6 +124,7 @@ static struct config {
@@ -1061,41 +740,10 @@ index 1836351b..fabf13fc 100644
  				if ((dir = opendir(config.ca_directory))) {
  					struct dirent *dp;
 diff --git a/libwget/ssl_openssl.c b/libwget/ssl_openssl.c
-index 40084b6c..63a709ec 100644
+index 53293609..267bd226 100644
 --- a/libwget/ssl_openssl.c
 +++ b/libwget/ssl_openssl.c
-@@ -21,7 +21,29 @@
-  *
-  * Author: Ander Juaristi
-  */
--
-+#define __WINCRYPT_H__
-+#ifdef __cplusplus
-+    #define INITIALIZER(f) \
-+        static void f(void); \
-+        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
-+        static void f(void)
-+#elif defined(_MSC_VER)
-+    #pragma section(".CRT$XCU",read)
-+    #define INITIALIZER2_(f,p) \
-+        static void f(void); \
-+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-+        __pragma(comment(linker,"/include:" p #f "_")) \
-+        static void f(void)
-+    #ifdef _WIN64
-+        #define INITIALIZER(f) INITIALIZER2_(f,"")
-+    #else
-+        #define INITIALIZER(f) INITIALIZER2_(f,"_")
-+    #endif
-+#else
-+    #define INITIALIZER(f) \
-+        static void f(void) __attribute__((constructor)); \
-+        static void f(void)
-+#endif
- #include <config.h>
- 
- #include <dirent.h>
-@@ -110,6 +132,7 @@ static struct config
+@@ -110,6 +110,7 @@ static struct config
  	.key_type = WGET_SSL_X509_FMT_PEM,
  	.secure_protocol = "AUTO",
  	.ca_directory = "system",
@@ -1103,7 +751,7 @@ index 40084b6c..63a709ec 100644
  #ifdef WITH_LIBNGHTTP2
  	.alpn = "h2,http/1.1"
  #endif
-@@ -124,7 +147,13 @@ static int ssl_userdata_idx;
+@@ -124,7 +125,13 @@ static int ssl_userdata_idx;
  /*
   * Constructor & destructor
   */
@@ -1118,7 +766,7 @@ index 40084b6c..63a709ec 100644
  {
  	if (!mutex)
  		wget_thread_mutex_init(&mutex);
-@@ -136,14 +165,9 @@ static void __attribute__ ((constructor)) tls_init(void)
+@@ -136,14 +143,9 @@ static void __attribute__ ((constructor)) tls_init(void)
  		NULL,     /* dup_func */
  		NULL      /* free_func */
  	);
@@ -1134,7 +782,7 @@ index 40084b6c..63a709ec 100644
  
  /*
   * SSL/TLS configuration functions
-@@ -469,7 +493,7 @@ static int openssl_load_trust_files(SSL_CTX *ctx, const char *dir)
+@@ -469,7 +471,7 @@ static int openssl_load_trust_files(SSL_CTX *ctx, const char *dir)
  			goto end;
  		}
  
@@ -1143,7 +791,7 @@ index 40084b6c..63a709ec 100644
  		info_printf(_("OpenSSL: Could not load certificates from default paths. Falling back to '%s'."), dir);
  	}
  
-@@ -1281,6 +1305,8 @@ static int openssl_init(SSL_CTX *ctx)
+@@ -1281,6 +1283,8 @@ static int openssl_init(SSL_CTX *ctx)
  		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
  	}
  
@@ -1153,10 +801,10 @@ index 40084b6c..63a709ec 100644
  	if (config.ca_file && *config.ca_file
  		&& !SSL_CTX_load_verify_locations(ctx, config.ca_file, NULL))
 diff --git a/libwget/ssl_wolfssl.c b/libwget/ssl_wolfssl.c
-index 6a121fb4..8a1fc970 100644
+index 7e6c8b22..fd51dade 100644
 --- a/libwget/ssl_wolfssl.c
 +++ b/libwget/ssl_wolfssl.c
-@@ -30,6 +30,35 @@
+@@ -30,6 +30,12 @@
   * https://test-sspev.verisign.com:2443/test-SSPEV-revoked-verisign.html
   *
   */
@@ -1166,44 +814,10 @@ index 6a121fb4..8a1fc970 100644
 +#else
 +#include <wolfssl/options.h>
 +#endif
-+#ifdef __cplusplus
-+#define INITIALIZER(f) \
-+        static void f(void); \
-+        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
-+        static void f(void)
-+#elif defined(_MSC_VER)
-+#pragma section(".CRT$XCU",read)
-+#define INITIALIZER2_(f,p) \
-+        static void f(void); \
-+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-+        __pragma(comment(linker,"/include:" p #f "_")) \
-+        static void f(void)
-+#ifdef _WIN64
-+#define INITIALIZER(f) INITIALIZER2_(f,"")
-+#else
-+#define INITIALIZER(f) INITIALIZER2_(f,"_")
-+#endif
-+#else
-+#define INITIALIZER(f) \
-+        static void f(void) __attribute__((constructor)); \
-+        static void f(void)
-+#endif
-+
  
  #include <config.h>
  
-@@ -44,6 +73,10 @@
- #include <wget.h>
- #include "private.h"
- #include "net.h"
-+#include "filename.h"
-+#ifdef _WIN32
-+#include "lib/w32sock.h"
-+#endif
- 
- /**
-  * \file
-@@ -102,6 +135,7 @@ static struct config {
+@@ -110,6 +116,7 @@ static struct config {
  	.key_type = WGET_SSL_X509_FMT_PEM,
  	.secure_protocol = "AUTO",
  	.ca_directory = "system",
@@ -1211,7 +825,7 @@ index 6a121fb4..8a1fc970 100644
  #ifdef WITH_LIBNGHTTP2
  	.alpn = "h2,http/1.1",
  #endif
-@@ -488,17 +522,23 @@ out:
+@@ -496,17 +503,23 @@ out:
  static int init;
  static wget_thread_mutex mutex;
  
@@ -1242,19 +856,7 @@ index 6a121fb4..8a1fc970 100644
  
  /*
  static void set_credentials(gnutls_certificate_credentials_t *credentials)
-@@ -561,6 +601,11 @@ void wget_ssl_init(void)
- 		WOLFSSL_METHOD *method;
- 		int min_version = -1;
- 		const char *ciphers = NULL;
-+#ifdef DEBUG_WOLFSSL
-+		wget_logger* logger = wget_get_logger(WGET_LOGGER_DEBUG);
-+		if (!wget_logger_is_active(logger))
-+			wolfSSL_Debugging_OFF();
-+#endif // DEBUG_WOLFSSL
- 
- 		debug_printf("WolfSSL init\n");
- 		wolfSSL_Init();
-@@ -618,11 +663,18 @@ void wget_ssl_init(void)
+@@ -631,11 +644,18 @@ void wget_ssl_init(void)
  
  		if (config.check_certificate) {
  			if (!wget_strcmp(config.ca_directory, "system"))
@@ -1277,64 +879,37 @@ index 6a121fb4..8a1fc970 100644
  				goto out;
  			}
  			wolfSSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
-@@ -795,6 +847,8 @@ static void ShowX509(WOLFSSL_X509 *x509, const char *hdr)
- 		bio = wolfSSL_BIO_new(wolfSSL_BIO_s_file());
- 		if (bio) {
- 			wolfSSL_BIO_set_fp(bio, stdout, BIO_NOCLOSE);
-+			wget_logger* logger = wget_get_logger(WGET_LOGGER_DEBUG);
-+			if (wget_logger_is_active(logger))
- 			wolfSSL_X509_print(bio, x509);
- 			wolfSSL_BIO_free(bio);
- 		}
-@@ -895,7 +949,7 @@ int wget_ssl_open(wget_tcp *tcp)
- 
- 	tcp->ssl_session = session;
- //	gnutls_session_set_ptr(session, ctx);
--	wolfSSL_set_fd(session, sockfd);
-+	wolfSSL_set_fd(session, FD_TO_SOCKET(sockfd));
- 
- 	/* make wolfSSL object nonblocking */
- 	wolfSSL_set_using_nonblock(session, 1);
-@@ -1076,7 +1130,7 @@ void wget_ssl_close(void **session)
-  */
- ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeout)
- {
--	int sockfd = wolfSSL_get_fd(session);
-+	int sockfd = SOCKET_TO_FD( wolfSSL_get_fd(session));
- 	int rc;
- 
- 	while ((rc = wolfSSL_read(session, buf, (int) count)) < 0) {
-@@ -1149,7 +1203,7 @@ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeou
-  */
- ssize_t wget_ssl_write_timeout(void *session, const char *buf, size_t count, int timeout)
- {
--	int sockfd = wolfSSL_get_fd(session);
-+	int sockfd = SOCKET_TO_FD(wolfSSL_get_fd(session));
- 	int rc;
- 
- 	while ((rc = wolfSSL_write(session, buf, (int) count)) < 0) {
 diff --git a/libwget/tls_session.c b/libwget/tls_session.c
-index d60b4ce2..a88a3cea 100644
+index d60b4ce2..ad38e355 100644
 --- a/libwget/tls_session.c
 +++ b/libwget/tls_session.c
-@@ -365,12 +365,13 @@ static int tls_session_save(void *_fp, const void *_tls_session, WGET_GCC_UNUSED
- {
+@@ -35,6 +35,7 @@
+ #include <sys/stat.h>
+ #include <sys/file.h>
+ 
++#include <malloca.h>
+ #include <wget.h>
+ #include "private.h"
+ 
+@@ -366,11 +367,15 @@ static int tls_session_save(void *_fp, const void *_tls_session, WGET_GCC_UNUSED
  	FILE *fp = _fp;
  	const wget_tls_session *tls_session = _tls_session;
--
+ 
 -	char session_b64[wget_base64_get_encoded_length(tls_session->data_size)];
 +	size_t sessionSize = wget_base64_get_encoded_length(tls_session->data_size);
-+	char *session_b64 = malloc(sessionSize);
++	char *session_b64 = malloca(sessionSize);
++	if (! session_b64)
++		error_printf_exit(_("Allocation failure of malloca\n"));
  
  	wget_base64_encode(session_b64, (const char *) tls_session->data, tls_session->data_size);
  
  	wget_fprintf(fp, "%s %lld %lld %s\n", tls_session->host, (long long)tls_session->created, (long long)tls_session->maxage, session_b64);
-+	free(session_b64);
++	freea(session_b64);
  	return 0;
  }
  
 diff --git a/libwget/utils.c b/libwget/utils.c
-index c10c6c93..1e10b57d 100644
+index 06824e9f..82be0131 100644
 --- a/libwget/utils.c
 +++ b/libwget/utils.c
 @@ -36,6 +36,7 @@
@@ -1383,102 +958,68 @@ index c10c6c93..1e10b57d 100644
  /**
   * \param[in] s1 String
   * \param[in] s2 String
-@@ -506,7 +538,21 @@ int wget_get_screen_size(int *width, int *height)
- #else
- int wget_get_screen_size(WGET_GCC_UNUSED int *width, WGET_GCC_UNUSED int *height)
- {
-+#ifdef _WIN32
-+	static CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
-+	static HANDLE consoleHandle = NULL;
-+	if (consoleHandle == NULL)
-+		consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE); //getscreensize above uses stderr however progress bar is output to stdout so we probably should be using that.....
-+	if (!GetConsoleScreenBufferInfo(consoleHandle, &csbiInfo))
- 	return -1;
-+	if (width)
-+		*width = csbiInfo.dwSize.X;
-+	if (height)
-+		*height = csbiInfo.dwSize.Y;
-+	return 0;
-+#else
-+	return -1;
-+#endif
- }
- #endif
- 
 diff --git a/libwget/xml.c b/libwget/xml.c
-index f15207c3..fe49af8f 100644
+index f15207c3..bed2e2eb 100644
 --- a/libwget/xml.c
 +++ b/libwget/xml.c
-@@ -535,10 +535,12 @@ static int parseXML(const char *dir, xml_context *context)
+@@ -40,6 +40,7 @@
+ #include <string.h>
+ #include <fcntl.h>
+ #include <sys/stat.h>
++#include <malloca.h>
+ #ifdef HAVE_MMAP
+ #include <sys/mman.h>
+ #endif
+@@ -535,10 +536,15 @@ static int parseXML(const char *dir, xml_context *context)
  					if (!(context->hints & XML_HINT_HTML))
  						context->callback(context->user_ctx, XML_FLG_END, directory, NULL, NULL, 0, 0);
  					else {
 -						char tag[context->token_len + 1]; // we need to \0 terminate tok
 +						size_t tagSize = context->token_len + 1;
-+						char *tag = malloc(tagSize); // we need to \0 terminate tok
++						char *tag = malloca(tagSize); // we need to \0 terminate tok
++						if (! tag)
++							error_printf_exit(_("Allocation failure of malloca\n"));
++
  						memcpy(tag, tok, context->token_len);
  						tag[context->token_len] = 0;
  						context->callback(context->user_ctx, XML_FLG_END, tag, NULL, NULL, 0, 0);
-+						free(tag);
++						freea(tag);
  					}
  				}
  				if (!(tok = getToken(context))) return WGET_E_XML_PARSE_ERR;
-diff --git a/src/bar.c b/src/bar.c
-index ed9ad7da..7271af6f 100644
---- a/src/bar.c
-+++ b/src/bar.c
-@@ -45,7 +45,7 @@
- 
- // Rate at which progress thread it updated. This is the amount of time (in ms)
- // for which the thread will sleep before waking up and redrawing the progress
--enum { BAR_THREAD_SLEEP_DURATION = 125 };
-+enum { BAR_THREAD_SLEEP_DURATION = 125, BAR_THREAD_WINDOWS_CONSOLE_SIZE_CHANGED_EVERY_X_SLEEPS=1000/BAR_THREAD_SLEEP_DURATION};
- 
- static wget_bar
- 	*bar;
-@@ -56,8 +56,19 @@ static bool
- 
- static void *bar_update_thread(void *p WGET_GCC_UNUSED)
- {
-+#ifdef _WIN32
-+	static BYTE counter=0;
-+	int lastWidth = 0;
-+	int curWidth = 0;
-+#endif // _WIN32
- 	while (!terminate_thread) {
- 		wget_bar_update(bar);
-+#ifdef  _WIN32
-+		if (++counter % BAR_THREAD_WINDOWS_CONSOLE_SIZE_CHANGED_EVERY_X_SLEEPS == 0) {
-+			if (! wget_get_screen_size(&curWidth, NULL) && curWidth != lastWidth)
-+				wget_bar_screen_resized();
-+		}
-+#endif //  _WIN32
- 
- 		wget_millisleep(BAR_THREAD_SLEEP_DURATION);
- 	}
 diff --git a/src/blacklist.c b/src/blacklist.c
-index bb96601b..a4720e8f 100644
+index bb96601b..51e173b5 100644
 --- a/src/blacklist.c
 +++ b/src/blacklist.c
-@@ -132,13 +132,15 @@ static char * get_local_filename_real(const wget_iri *iri)
+@@ -30,6 +30,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include <malloca.h>
+ #include <wget.h>
+ 
+ #include "wget_main.h"
+@@ -132,13 +133,17 @@ static char * get_local_filename_real(const wget_iri *iri)
  
  	// do the filename escaping here
  	if (config.restrict_file_names) {
 -		char fname_esc[buf.length * 3 + 1];
 +		size_t fnameSize = buf.length * 3 + 1;
-+		char * fname_esc = malloc(fnameSize);
++		char * fname_esc = malloca(fnameSize);
++		if (! fname_esc)
++			error_printf_exit(_("Allocation failure of malloca\n"));
  
  		if (wget_restrict_file_name(fname, fname_esc, config.restrict_file_names) != fname) {
  			// escaping was really done, replace fname
  			wget_buffer_strcpy(&buf, fname_esc);
  			fname = buf.data;
  		}
-+		free(fname_esc);
++		freea(fname_esc);
  	}
  
  	// create the complete directory path
 diff --git a/src/options.c b/src/options.c
-index 2482eb02..0670b485 100644
+index 3fbf3f58..751673ed 100644
 --- a/src/options.c
 +++ b/src/options.c
 @@ -1223,6 +1223,9 @@ static int print_plugin_help(WGET_GCC_UNUSED option_t opt,
@@ -1507,54 +1048,59 @@ index 2482eb02..0670b485 100644
  	config.default_page = wget_strdup(config.default_page);
  	config.system_config = wget_strdup(config.system_config);
  
-@@ -3709,12 +3714,16 @@ int init(int argc, const char **argv)
- 	wget_ssl_set_config_int(WGET_SSL_REPORT_INVALID_CERT, config.check_certificate != CHECK_CERTIFICATE_LOG_DISABLED);
- 	wget_ssl_set_config_int(WGET_SSL_CHECK_HOSTNAME, config.check_hostname);
- 	wget_ssl_set_config_int(WGET_SSL_CERT_TYPE, config.cert_type);
-+#ifdef WITH_LIBDANE
- 	wget_ssl_set_config_int(WGET_SSL_DANE, config.dane);
-+#endif
- 	wget_ssl_set_config_int(WGET_SSL_KEY_TYPE, config.private_key_type);
- 	wget_ssl_set_config_int(WGET_SSL_PRINT_INFO, config.debug);
- 	wget_ssl_set_config_int(WGET_SSL_OCSP, config.ocsp);
-+#ifndef WITH_LIBWOLFCRYPT
- 	wget_ssl_set_config_int(WGET_SSL_OCSP_DATE, config.ocsp_date);
- 	wget_ssl_set_config_int(WGET_SSL_OCSP_NONCE, config.ocsp_nonce);
-+#endif
- 	wget_ssl_set_config_int(WGET_SSL_OCSP_STAPLING, config.ocsp_stapling);
- 	wget_ssl_set_config_string(WGET_SSL_OCSP_SERVER, config.ocsp_server);
- 	wget_ssl_set_config_string(WGET_SSL_SECURE_PROTOCOL, config.secure_protocol);
 diff --git a/src/utils.c b/src/utils.c
-index b72c99ad..3cbaf766 100644
+index b72c99ad..fda4d6fc 100644
 --- a/src/utils.c
 +++ b/src/utils.c
-@@ -62,11 +62,13 @@ void mkdir_path(const char *_fname, bool is_file)
+@@ -27,6 +27,7 @@
+ #include <errno.h>
+ #include <string.h>
+ #include <glob.h>
++#include <malloca.h>
+ 
+ #include "wget_main.h"
+ #include "wget_utils.h"
+@@ -62,11 +63,15 @@ void mkdir_path(const char *_fname, bool is_file)
  				int renamed = 0;
  
  				for (int fnum = 1; fnum <= 999 && !renamed; fnum++) {
 -					char dst[strlen(fname) + 1 + 32];
 +					size_t dstSize = strlen(fname) + 1 + 32;
-+					char * dst = malloc(dstSize*sizeof(char));
++					char * dst = malloca(dstSize*sizeof(char));
++					if (! dst)
++						error_printf_exit(_("Allocation failure of malloca\n"));
  
 -					wget_snprintf(dst, sizeof(dst), "%s.%d", fname, fnum);
 +					wget_snprintf(dst, dstSize, "%s.%d", fname, fnum);
  					if (access(dst, F_OK) != 0 && rename(fname, dst) == 0)
  						renamed = 1;
-+					free(dst);
++					freea(dst);
  				}
  
  				if (renamed) {
 diff --git a/src/wget.c b/src/wget.c
-index cebb5d9f..a2c7f6c6 100644
+index d98e1aeb..93a6aceb 100644
 --- a/src/wget.c
 +++ b/src/wget.c
-@@ -1178,13 +1178,15 @@ static void convert_links(void)
+@@ -43,6 +43,7 @@
+ #include <regex.h>
+ #include <sys/stat.h>
+ #include <locale.h>
++#include <malloca.h>
+ 
+ #ifdef _WIN32
+ #include <windows.h> // GetFileAttributes()
+@@ -1178,13 +1179,19 @@ static void convert_links(void)
  					// conversion takes place, write to disk
  					if (!fpout) {
  						if (config.backup_converted) {
 -							char dstfile[strlen(conversion->filename) + 5 + 1];
 +							size_t dstfileSize = strlen(conversion->filename) + 5 + 1;
-+							char * dstfile = malloc(dstfileSize*sizeof(char));
++							char * dstfile = malloca(dstfileSize*sizeof(char));
++							if (! dstfile) {
++								wget_error_printf(_("Allocation failure of malloca\n"));
++								continue;
++							}
  
 -							wget_snprintf(dstfile, sizeof(dstfile), "%s.orig", conversion->filename);
 +							wget_snprintf(dstfile, dstfileSize, "%s.orig", conversion->filename);
@@ -1562,60 +1108,35 @@ index cebb5d9f..a2c7f6c6 100644
  							if (rename(conversion->filename, dstfile) == -1) {
  								wget_error_printf(_("Failed to rename %s to %s (%d)"), conversion->filename, dstfile, errno);
  							}
-+							free (dstfile);
++							freea (dstfile);
  						}
  						if (!(fpout = fopen(conversion->filename, "wb")))
  							wget_error_printf(_("Failed to write open %s (%d)"), conversion->filename, errno);
-@@ -1251,7 +1253,9 @@ static void print_progress_report(long long start_time)
- 			);
- 	}
- }
--
-+#if  defined(_MSC_VER) && defined(_DEBUG)
-+#include <crtdbg.h>
-+#endif
- int main(int argc, const char **argv)
- {
- 	int n, rc;
-@@ -1380,7 +1384,10 @@ int main(int argc, const char **argv)
- 
- 	if (config.progress == PROGRESS_TYPE_BAR) {
- 		if (bar_init()) {
--			wget_logger_set_stream(wget_get_logger(WGET_LOGGER_INFO), NULL);
-+			wget_logger* logger = wget_get_logger(WGET_LOGGER_INFO);
-+			if (config.debug && wget_logger_is_active(logger))
-+				wget_info_printf("INFO logger being disabled as --progress=bar enabled\n");
-+			wget_logger_set_stream(logger, NULL);
- 			start_time = wget_get_timemillis();
+@@ -1373,6 +1380,12 @@ int main(int argc, const char **argv)
+ 			config.progress = PROGRESS_TYPE_NONE;
  		}
  	}
-@@ -1497,6 +1504,9 @@ int main(int argc, const char **argv)
++	int is_tty = isatty(STDOUT_FILENO);
++#ifdef _WIN32 //if the windows console doesn't support VT codes treat it as if it wasnt a tty
++	DWORD mode;
++	if (! GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &mode) || (mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0)
++		is_tty=0;
++#endif
  
- 	// Shutdown plugin system
- 	plugin_db_finalize(get_exit_status());
-+#if  defined(_MSC_VER) && defined(_DEBUG)
-+	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
-+#endif //  defined(_MSC_VER) && defined(_DEBUG)
- 
- 	return get_exit_status();
- }
-@@ -3126,7 +3136,7 @@ static void set_file_mtime(int fd, int64_t modified)
- 	timespecs[1].tv_sec = tt;
- 	timespecs[1].tv_nsec = 0;
- 
--	if (futimens(fd, timespecs) == -1)
-+	if (! isatty(fd) && futimens(fd, timespecs) == -1)
- 		error_printf (_("Failed to set file date (%d)\n"), errno);
- }
- 
-@@ -3363,32 +3373,36 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
+ 	if (config.progress != PROGRESS_TYPE_NONE && !isatty(STDOUT_FILENO) && !config.force_progress) {
+ 		config.progress = PROGRESS_TYPE_NONE;
+@@ -3369,32 +3382,46 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
  		flag = O_EXCL;
  
  		if (config.backups) {
 -			char src[fname_length + 1], dst[fname_length + 1];
 +			size_t fnameSize = fname_length + 1;
-+			char * src = malloc(fnameSize*sizeof(char));
-+			char * dst = malloc(fnameSize*sizeof(char));
++			char * src = malloca(fnameSize*sizeof(char));
++			char * dst = malloca(fnameSize*sizeof(char));
++			if (! src || ! dst) {
++				error_printf(_("Allocation failure of malloca\n"));
++				return WGET_E_MEMORY;
++			}			
  
  			for (int it = config.backups; it > 0; it--) {
  				if (it > 1)
@@ -1630,17 +1151,22 @@ index cebb5d9f..a2c7f6c6 100644
  				if (rename(src, dst) == -1 && errno != ENOENT)
  					error_printf(_("Failed to rename %s to %s (errno=%d)\n"), src, dst, errno);
  			}
-+			free(src);
-+			free(dst);
++			freea(src);
++			freea(dst);
  		}
  	}
  
  	// create the complete directory path
  	mkdir_path((char *) fname, true);
--
+ 
 -	char unique[fname_length + 1];
 +	size_t uniqueSize = fname_length + 1;
-+	char * unique = malloc(uniqueSize*sizeof(char));
++	char * unique = malloca(uniqueSize*sizeof(char));
++	if (! unique) {
++		error_printf(_("Allocation failure of malloca\n"));
++		set_exit_status(EXIT_STATUS_IO);
++		return WGET_E_MEMORY;
++	}	
  	*unique = 0;
  
  	// Load partial content
@@ -1652,11 +1178,11 @@ index cebb5d9f..a2c7f6c6 100644
  			if (fd >= 0) {
  				size_t rc;
  				if ((unsigned long long) size > max_partial_content)
-@@ -3413,17 +3427,18 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
+@@ -3419,17 +3446,19 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
  		if (unlink(fname) < 0 && errno != ENOENT) {
  			error_printf(_("Failed to unlink '%s' (errno=%d)\n"), fname, errno);
  			set_exit_status(EXIT_STATUS_IO);
-+			free(unique);
++			freea(unique);
  			return -1;
  		}
  	}
@@ -1668,23 +1194,8 @@ index cebb5d9f..a2c7f6c6 100644
  
  	// Store the "actual" file name (with any extensions that were added present)
  	*actual_file_name = wget_strdup(unique[0] ? unique : fname);
--
-+	free(unique);
+ 
++	freea(unique);
  	if (fd >= 0) {
  		ssize_t rc;
  
-@@ -3540,7 +3555,13 @@ static int get_header(wget_http_response *resp, void *context)
- 		};
- 		name = dest = name_allocated = get_local_filename(&iri);
- 	} else {
--		name = dest = config.output_document ? config.output_document : ctx->job->blacklist_entry->local_filename;
-+		if (!config.output_document) {
-+			dest = ctx->job->blacklist_entry->local_filename;// the blacklist entry can be freed if it is updated by prepare_file ad then name is pointed to unalloced memory,  instead name should stay null here and we will read it from the blacklist entry(wihhc may be updated) later
-+			name = NULL;//should already be nll but to be safe
-+		}
-+		else
-+			dest = name = config.output_document;
-+
- 	}
- 
- 	if (dest
