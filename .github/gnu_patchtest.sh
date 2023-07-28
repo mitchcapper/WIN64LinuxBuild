@@ -1,15 +1,7 @@
 #!/bin/bash
-OUR_PATH="$(readlink -f "$0")";
-CALL_CMD="$1" # should be branch or patch or all_patch
 PATCH_NAME="$2"
 
-SCRIPT_FOLDER="$(dirname "${OUR_PATH}")"
-if [[ ! -z "$WLB_SCRIPT_FOLDER" ]]; then
-	SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER}"
-fi
-. "$SCRIPT_FOLDER/helpers.sh" "${CALL_CMD}" "${OUR_PATH}"
-
-PreInitialize;
+. "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
 BLD_CONFIG_BUILD_NAME="gnulib";
 BLD_CONFIG_LOG_FILE_AUTOTAIL=0;
@@ -24,7 +16,7 @@ function ourmain() {
 	git checkout master --quiet
 	git branch master -u upstream/master
 	git pull
-	TEST_WHAT="$CALL_CMD"
+	TEST_WHAT="$SKIP_STEP"
 	BRANCH_NAME="ours_${PATCH_NAME,,}"
 
 	if [[ "$TEST_WHAT" == "patch" ]]; then
