@@ -82,7 +82,7 @@ function trace_final(){
 function ex(){
 	local PARAMS=("${@:2}")
 	EX_CUR_CMD="$1 ${PARAMS[@]@Q}"
-	echo "EX Running $EX_CUR_CMD"
+	echo "EX Running $EX_CUR_CMD" >&2
 	echo "$EX_CUR_CMD" >&3
 	"$@"
 	EX_CUR_CMD=""

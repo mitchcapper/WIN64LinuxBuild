@@ -128,10 +128,18 @@ ini_read(){
 	fi
 }
 
-
+function _DoTemplateSub(){
+	local VAR_NAME="$1"
+	declare -n cur_val="$VAR_NAME"
+	for sub_value in "${TEMPLATE_SUB_ORDER[@]}"; do
+		declare -n replace_with="BLD_CONFIG_$sub_value"
+		cur_val=${cur_val//\[$sub_value\]/$replace_with}
+	done
+}
 DoTemplateSubs(){
 	INI_OUT=""
-	TEMPLATE_SUB_ORDER+=("STATIC_RELEASE_TRIPLET_AUTO" "CMAKE_BUILD_TARGET_AUTO")
+	local VAR_ARRAY_START_REGEX="^[ ]*\("	
+	TEMPLATE_SUB_ORDER+=("STATIC_RELEASE_TRIPLET_AUTO" "CMAKE_BUILD_TARGET_AUTO")	
 	BLD_CONFIG_STATIC_RELEASE_TRIPLET_AUTO=""
 	BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO="Release"
 	BLD_CONFIG_CMAKE_BUILD_TYPE_AUTO="MinSizeRel"
@@ -145,27 +153,48 @@ DoTemplateSubs(){
 		BLD_CONFIG_STATIC_RELEASE_TRIPLET_AUTO+="-release"
 	fi
 	
-	for value in "${TEMPLATE_SUB_ORDER[@]}"
-	do
-		declare -n cur_val="BLD_CONFIG_$value"
-		for sub_value in "${TEMPLATE_SUB_ORDER[@]}"
-		do
-			declare -n replace_with="BLD_CONFIG_$sub_value"
-			cur_val=${cur_val//\[$sub_value\]/$replace_with}
-		done
-		if [[ ${OPTION_TYPES["$value"]} -eq 1 ]]; then
-			eval "declare -g -a BLD_CONFIG_$value=$cur_val"
+	for value in "${TEMPLATE_SUB_ORDER[@]}"; do
+		local var_name="BLD_CONFIG_$value"
+		# if [[ (var_is_array "$var_name") ]]; then
+		# 	local var_val=
+		# 	for i in ${!array[@]}; do
+		# 	_DoTemplateSub
+		
+		# else
+		# 	_DoTemplateSub "$var_name"
+		# fi
+		declare -n cur_val="$var_name"
+		local IS_ARRAY="$(var_is_array $var_name)";
+		if [[ $IS_ARRAY != "0" || $cur_val == *"["* ]]; then
+			for sub_value in "${TEMPLATE_SUB_ORDER[@]}"; do
+				declare -n replace_with="BLD_CONFIG_$sub_value"
+				if [[ $IS_ARRAY == "0" ]]; then
+					cur_val=${cur_val//\[$sub_value\]/$replace_with}
+				else
+					cur_val=("${cur_val[@]//\[$sub_value\]/$replace_with}")
+				fi
+			done
+		fi
+		if [[ ${OPTION_TYPES["$value"]} -eq 1 && $IS_ARRAY == "0" ]]; then #if it is supposed to be an array but isn't quite yet
+
+			if [[ "$cur_val" =~ $VAR_ARRAY_START_REGEX ]]; then #if its a string starting with a parens assuming we can eval to an array
+				eval "declare -g -a BLD_CONFIG_$value=$cur_val"
+			else #its not an array so transform to an array
+				if [[ "$var_name" == "BLD_CONFIG_CONFIG_CMD_DEFAULT" || "$var_name" == "BLD_CONFIG_CONFIG_CMD_ADDL" ]]; then
+					make_array_if_str "$var_name"
+				else
+					echo "Likely an error the variable: $var_name is supposed to be an array but it seeems to be a strin its value is: $cur_val"
+					exit 1
+				fi
+			fi
 		fi
 	done
-	for value in "${TEMPLATE_SUB_ORDER[@]}"
-	do
+	for value in "${TEMPLATE_SUB_ORDER[@]}"; do
 		if [[ $BLD_CONFIG_PRINT_VARS_AT_START -eq 1 ]]; then
 			echo $"${value}=>>${cur_val}|"
 		fi
 
 		if [[ $SKIP_STEP == "export_config" ]]; then
-			#TMP_VAR_NAME="BLD_CONFIG_${value}"
-			#VAL_TO=$"${!TMP_VAR_NAME}"
 			VAL_TO=`declare -p "BLD_CONFIG_${value}" | sed -E 's/declare \-\- //' | sed -E 's/^BLD_CONFIG_//'`
 			if [[ "$VAL_TO" =~ "declare -a" ]]; then
 				VAL_TO=`echo "$VAL_TO" | sed -E 's/\[[0-9]{1,2}\]=//g'  | sed -E 's/declare \-a //' | sed -E 's/^BLD_CONFIG_//'`

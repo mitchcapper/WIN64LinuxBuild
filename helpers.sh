@@ -170,10 +170,40 @@ function run_logged_make(){
 }
 function configure_run(){
 	setup_build_env;
-	echo "Running ./configure ${config_cmd}" 1>&2
 	#gl_cv_host_operating_system="MSYS2" ac_cv_host="x86_64-w64-msys2" ac_cv_build="x86_64-w64-msys2"
+	ex ./configure "${FULL_CONFIG_CMD_ARR[@]}"  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
 declare -g SETUP_BUILD_ENV_RUN=0
+
+#sometimes we may update a command args from taking a users string to taking an array to fix escape issues, rather than require all scripts update right away we can use this to convert
+
+function var_is_array(){
+	local VAR_NAME=$1
+	if [[ ! -v "$VAR_NAME" ]]; then
+		echo 0
+	fi
+	local dec_stmt="$(declare -p $VAR_NAME)"
+	[[ "${dec_stmt:0:10}" == 'declare -a' ]] && echo 1 || echo 0;
+}
+
+#This function was designed to convert variables we used to keep as strings (say command args) now store as arrays for better quoting support.  Ironically this function is able to break strings up slightly better than the default bash word splitting when passed to a function, so things that previously wouldn't work in a string will work here
+function make_array_if_str(){
+	local VAR_NAME=$1
+	if [[ ! -v "$VAR_NAME" ]]; then
+		return;
+	fi
+	if [[ "$(var_is_array $VAR_NAME)" != "1" ]]; then
+		if [[ "${!VAR_NAME}" != "" ]]; then
+			eval "array=(${!VAR_NAME})"
+		else
+			declare -a array=()
+		fi
+		declare -g $VAR_NAME=""
+		declare -g -a $VAR_NAME
+		declare -n ref_var="$VAR_NAME"
+		ref_var=("${array[@]}")
+	fi
+}
 function setup_build_env(){
 	ADL_LIB_FLAGS=""
 	ADL_C_FLAGS=""
@@ -205,11 +235,10 @@ function setup_build_env(){
 	if [[ $BLD_CONFIG_ADD_WIN_ARGV_LIB -eq 1 ]]; then
 		ADL_LIB_FLAGS+=" ${XLINKER_CMD} setargv.obj"
 	fi
-	
-	config_cmd=$"$BLD_CONFIG_CONFIG_CMD_DEFAULT $BLD_CONFIG_CONFIG_CMD_ADDL"
-	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]]; then
-		config_cmd=$"$config_cmd $CONFIG_CMD_GNULIB_ADDL"
 
+	declare -g -a FULL_CONFIG_CMD_ARR=("${BLD_CONFIG_CONFIG_CMD_DEFAULT[@]}" "${BLD_CONFIG_CONFIG_CMD_ADDL[@]}")
+	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]]; then
+		FULL_CONFIG_CMD_ARR=("${FULL_CONFIG_CMD_ARR[@]}" "${CONFIG_CMD_GNULIB_ADDL[@]}")
 	fi
 	MSVC_DESIRED_LIB="msvcrt"
 	if [[ $BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS -eq 1 ]]; then
@@ -276,7 +305,7 @@ function setup_build_env(){
 		AR="${WIN_SCRIPT_FOLDER}/wraps/lib.bat"
 		STATIC_ADD="-showIncludes ${STATIC_ADD}"
 	fi
-	export CXX="${CL}" AR="$AR" CC="${CL}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
+	export CXX="${CL}" AR="$AR" CC="${CL}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADDL_LIBS}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
 }
 
@@ -304,13 +333,25 @@ function add_items_to_gitignore(){
 
 function configure_fixes(){
 	cd $BLD_CONFIG_SRC_FOLDER
-	if [[ $BLD_CONFIG_CONFIG_BYPASS_FILESYSTEM_LIST_FAIL -eq 1 ]]; then
-		sed -i -E "s/^.+read list of mounted file systems.+$/echo 'Skipping FS Test fail'/" configure
+	if [[ -e "build-aux/config.guess" ]]; then #while for the most part we can just use configure --host overrides for this, incase somewthing else calls the guess we have this
+		echo -e  "#!/bin/sh\necho $BLD_CONFIG_FORCE_BUILD_ID" > build-aux/config.guess
 	fi
-	if [[ $BLD_CONFIG_CONFIG_GETHOSTNAME_FIX -eq 1 ]]; then
-		#so while we will have GETHOSTNAME due to winsock it still wants to use the gnulib module which is fine, but with this set to comment outtrue it only redefined gethostname to use the rpl_gethostname but doesn't include the lib
-		sed -i -E "s/GL_COND_OBJ_GETHOSTNAME_TRUE='#'/GL_COND_OBJ_GETHOSTNAME_TRUE=' '/g" configure
+	if [[ -e configure ]]; then
+		cp configure _configure
+		if [[ $BLD_CONFIG_CONFIG_BYPASS_FILESYSTEM_LIST_FAIL -eq 1 ]]; then
+			sed -i -E "s/^.+read list of mounted file systems.+$/echo 'Skipping FS Test fail'/" _configure
+		fi
+		if [[ $BLD_CONFIG_CONFIG_GETHOSTNAME_FIX -eq 1 ]]; then
+			#so while we will have GETHOSTNAME due to winsock it still wants to use the gnulib module which is fine, but with this set to comment outtrue it only redefined gethostname to use the rpl_gethostname but doesn't include the lib
+			sed -i -E "s/GL_COND_OBJ_GETHOSTNAME_TRUE='#'/GL_COND_OBJ_GETHOSTNAME_TRUE=' '/g" _configure
+		fi
+		#some things incorrectly harvest strings up to the \n but literally leave a CR bare in the configure file this screws you if you try to edit it at all as many editors will change a bare CR to a CL adding a new line
+		sed -i -E 's#\r##g' _configure
+		if ! cmp -s "configure" "_configure"; then
+			mv _configure configure
+		fi
 	fi
+	
 
 
 }
@@ -338,6 +379,9 @@ function git_settings_to_env(){
 	export GIT_CONFIG_COUNT
 }
 function startcommon(){
+	# need to do these early before everything else
+
+
 	SetupIgnores;
 	DoTemplateSubs;
 	unset TMP
@@ -367,17 +411,8 @@ function startcommon(){
 	fi
 	trace_init;
 
-	#echo DEFAULT GIT SETTINGS ${BLD_CONFIG_GIT_SETTINGS_DEFAULT[@]} and other array: "${BLD_CONFIG_GIT_SETTINGS_ADDL[@]}"
-
-	#echo GIT SSETTINGSS IS:  ${GIT_SETTINGS[@]}
-
 	git_settings_to_env;
 
-	#if [ -d "$BLD_CONFIG_SRC_FOLDER" ]; then
-		#cd $BLD_CONFIG_SRC_FOLDER
-	#else
-		#cd $BLD_CONFIG_BASE_FOLDER
-	#fi
 	if [[ -n "$BLD_CONFIG_CMAKE_STYLE" ]]; then
 		cmake_init;
 	fi
