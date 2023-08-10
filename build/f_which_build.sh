@@ -3,7 +3,7 @@ set -e
 . "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
 BLD_CONFIG_BUILD_NAME="which";
-BLD_CONFIG_CONFIG_CMD_ADDL="" #--disable-nls --enable-static
+BLD_CONFIG_CONFIG_CMD_ADDL="--enable-maintainer-mode"
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 #BLD_CONFIG_BUILD_DEBUG=1
 BLD_CONFIG_GNU_LIBS_USED=0
@@ -20,17 +20,19 @@ fi
 	fi
 
 	cd $BLD_CONFIG_SRC_FOLDER
+	export CWAUTOMACROSPREFIX="$BLD_CONFIG_SRC_FOLDER"
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "cwmacros" ]]; then
 		git clone https://github.com/CarloWood/cwautomacros.git cwautomacros
 		cd cwautomacros
 		make install
-		rm  /usr/share/cwautomacros/scripts/depcomp.sh #we want autogen newer one
+		rm  $CWAUTOMACROSPREFIX/share/cwautomacros/scripts/depcomp.sh #we want autogen newer one
 		cd $BLD_CONFIG_SRC_FOLDER
 	fi
 
 	if [[ -z $SKIP_STEP ||  $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
 		gnulib_ensure_buildaux_scripts_copied;
 		./autogen.sh
+		unset PREFIX
 		SKIP_STEP=""
 	fi
 
