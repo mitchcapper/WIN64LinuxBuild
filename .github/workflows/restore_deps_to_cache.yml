@@ -123,7 +123,8 @@ jobs:
         workflow: tool_${{ steps.vars.outputs.Dep7Name }}_build.yml
 
     - name: Save Cache
-      if: steps.cachecheck.outputs.cache-hit != 'true'
+      # make sure we have at least one item to cache
+      if: ${{ steps.vars.outputs.Dep1Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       uses: actions/cache/save@v3
       with:
         path: |
