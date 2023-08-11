@@ -1,0 +1,15 @@
+name: grep Tool Build
+on:
+  push:
+    branches-ignore:
+      - trash
+  schedule:
+    - cron: '30 5 * * *'
+
+jobs:
+  build:
+    uses: ./.github/workflows/tool_build.yml
+    with:
+      ToolName: grep
+      RequiredDeps: |
+        pcre2

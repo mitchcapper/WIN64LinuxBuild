@@ -1,0 +1,135 @@
+name: __incl_restore_deps
+# Deps are across workflows we need to really run a singular step multiple times in one job which isn't really doable. while jobs can be generated dynamically you can't have multiple jobs contribute to the same cache.  We could store the deps into the artifacts for the job but that would just polute artifacts. Instead this script will download up to N deps in one job and save to a specific cache name.
+
+on:
+  workflow_call:
+    inputs:
+      #if buildpkg is "script" then only the script is executed no deps or other items handled
+      BuildPkg:
+        required: true
+        type: string
+      RequiredDeps:
+        required: false
+        type: string
+        description: 'multi-line scalar for any required artifacts or empty string for none'
+        default: ""
+
+jobs:
+  build:
+    name:  DEP Download
+    runs-on: windows-2022
+    environment: main
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+    - name: Check Existing Cache
+      id: cachecheck
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          d:/artifacts
+        key: ${{ inputs.BuildPkg }}
+        lookup-only: true
+    
+    - uses: actions/checkout@v3.1.0
+      if: steps.cachecheck.outputs.cache-hit != 'true'
+      with:
+        submodules: true
+
+    - name: Set Variables
+      shell: powershell
+      id: vars
+      if: steps.cachecheck.outputs.cache-hit != 'true'
+      env:
+        DEPS: "${{ inputs.RequiredDeps }}"
+      run: ${{ github.workspace }}\.github\set_dep_vars.ps1
+
+    - name: Download Artifact ${{ steps.vars.outputs.Dep1Name }}
+      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      if: ${{ steps.vars.outputs.Dep1Name && steps.cachecheck.outputs.cache-hit != 'true' }}
+      with:
+        name: ${{ steps.vars.outputs.Dep1Name }}
+        path: d:/artifacts
+        name_prefix: WLB-
+        workflow_conclusion: "success"
+        skip_unpack: true
+        workflow: tool_${{ steps.vars.outputs.Dep1Name }}_build.yml
+
+    - name: Download Artifact ${{ steps.vars.outputs.Dep2Name }}
+      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      if: ${{ steps.vars.outputs.Dep2Name && steps.cachecheck.outputs.cache-hit != 'true' }}
+      with:
+        name: ${{ steps.vars.outputs.Dep2Name }}
+        path: d:/artifacts
+        name_prefix: WLB-
+        workflow_conclusion: "success"
+        skip_unpack: true
+        workflow: tool_${{ steps.vars.outputs.Dep2Name }}_build.yml
+
+    - name: Download Artifact ${{ steps.vars.outputs.Dep3Name }}
+      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      if: ${{ steps.vars.outputs.Dep3Name && steps.cachecheck.outputs.cache-hit != 'true' }}
+      with:
+        name: ${{ steps.vars.outputs.Dep3Name }}
+        path: d:/artifacts
+        name_prefix: WLB-
+        workflow_conclusion: "success"
+        skip_unpack: true
+        workflow: tool_${{ steps.vars.outputs.Dep3Name }}_build.yml
+
+    - name: Download Artifact ${{ steps.vars.outputs.Dep4Name }}
+      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      if: ${{ steps.vars.outputs.Dep4Name && steps.cachecheck.outputs.cache-hit != 'true' }}
+      with:
+        name: ${{ steps.vars.outputs.Dep4Name }}
+        path: d:/artifacts
+        name_prefix: WLB-
+        workflow_conclusion: "success"
+        skip_unpack: true
+        workflow: tool_${{ steps.vars.outputs.Dep4Name }}_build.yml
+
+    - name: Download Artifact ${{ steps.vars.outputs.Dep5Name }}
+      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      if: ${{ steps.vars.outputs.Dep5Name && steps.cachecheck.outputs.cache-hit != 'true' }}
+      with:
+        name: ${{ steps.vars.outputs.Dep5Name }}
+        path: d:/artifacts
+        name_prefix: WLB-
+        workflow_conclusion: "success"
+        skip_unpack: true
+        workflow: tool_${{ steps.vars.outputs.Dep5Name }}_build.yml
+
+    - name: Download Artifact ${{ steps.vars.outputs.Dep6Name }}
+      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      if: ${{ steps.vars.outputs.Dep6Name && steps.cachecheck.outputs.cache-hit != 'true' }}
+      with:
+        name: ${{ steps.vars.outputs.Dep6Name }}
+        path: d:/artifacts
+        name_prefix: WLB-
+        workflow_conclusion: "success"
+        skip_unpack: true
+        workflow: tool_${{ steps.vars.outputs.Dep6Name }}_build.yml
+
+    - name: Download Artifact ${{ steps.vars.outputs.Dep7Name }}
+      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      if: ${{ steps.vars.outputs.Dep7Name && steps.cachecheck.outputs.cache-hit != 'true' }}
+      with:
+        name: ${{ steps.vars.outputs.Dep7Name }}
+        path: d:/artifacts
+        name_prefix: WLB-
+        workflow_conclusion: "success"
+        skip_unpack: true
+        workflow: tool_${{ steps.vars.outputs.Dep7Name }}_build.yml
+
+    - name: Save Cache
+      if: steps.cachecheck.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v3
+      with:
+        path: |
+          d:/artifacts
+        key: ${{ inputs.BuildPkg }}
+    # - name: Debug Session
+    #   if: ${{ failure() }}
+    #   run: D:/a/docs/docs/.github/debug_ssh_start.ps1
+    #   #run: pwd && dir

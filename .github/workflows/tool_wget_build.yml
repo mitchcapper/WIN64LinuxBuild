@@ -1,0 +1,17 @@
+name: wget Tool Build
+on:
+  push:
+    branches-ignore:
+      - trash
+  schedule:
+    - cron: '30 5 * * *'
+
+jobs:
+  build:
+    uses: ./.github/workflows/tool_build.yml
+    with:
+      ToolName: wget
+      RequiredDeps: |
+        pcre2
+        libpsl
+        zlib

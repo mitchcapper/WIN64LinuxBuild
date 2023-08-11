@@ -1,4 +1,4 @@
-name: do_build
+name: __incl_primary_build_script
 on:
   workflow_call:
     inputs:
@@ -80,18 +80,25 @@ jobs:
 
 
 
+#previously we built all in one workflow now with them as individual workflows we download differently
 
-
-      - name: Download Required Artifacts
-        uses: mitchcapper/action-download-artifact@c026c9be4097d153332e6cd0974d140ba22cd6cc
+      # - name: Download Required Artifacts
+      #   uses: mitchcapper/action-download-artifact@c026c9be4097d153332e6cd0974d140ba22cd6cc
+      #   if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
+      #   with:
+      #     name: ${{ inputs.RequiredDeps }}
+      #     path: d:/artifacts
+      #     name_prefix: WLB-
+      #     run_id: ${{ github.run_id }}
+      #     workflow_conclusion: "success"
+          
+      - name: Restore Existing Dep Cache
         if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
+        uses: actions/cache/restore@v3
         with:
-          name: ${{ inputs.RequiredDeps }}
-          path: d:/artifacts
-          name_prefix: WLB-
-          run_id: ${{ github.run_id }}
-          workflow_conclusion: ""
-
+          path: |
+            d:/artifacts
+          key: ${{ inputs.BuildPkg }}
 
 
       - name: MSBuild Setup
@@ -124,7 +131,7 @@ jobs:
 #          find /c/ > d:/c_all_files.txt
 #      need to do vs pwoershell so cant use msys powershell
 
-      - name: Unpack Artifacts
+      - name: Unpack / Move Artifacts
         if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
         run: ${{env.WLB_SCRIPT_FOLDER}}/.github/move_dl_artifacts.ps1
 

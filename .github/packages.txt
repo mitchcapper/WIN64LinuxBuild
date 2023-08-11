@@ -1,0 +1,25 @@
+automake
+awk
+coreutils
+diffutils
+findutils
+gawk
+grep: pcre2
+gzip
+highlight
+libhsts
+libpsl
+make
+openssl
+patch
+pcre2
+pdcurses
+sed
+symlinks
+tar
+wget: pcre2 libpsl zlib
+wget2: pcre2 libpsl zlib libhsts wolfcrypt
+which
+wolfcrypt
+zlib
+zstd

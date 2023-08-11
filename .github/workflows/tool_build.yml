@@ -1,0 +1,37 @@
+name: __incl_tool_build
+
+on:
+  workflow_call:
+    inputs:
+      ToolName:
+        required: true
+        type: string
+      RequiredDeps:
+        required: false
+        type: string
+        description: 'multi-line scalar for any required artifacts or empty string for none'
+        default: ""
+
+env:
+  CI_REQ_DOTNET_SDK_VER: 6.0.401
+  NUKE_TELEMETRY_OPTOUT: 1
+  MSYS: "winsymlinks:native wincmdln"
+  MSYS2_ARG_CONV_EXCL: "*"
+  MSYS2_PATH_TYPE: inherit
+  WLB_BASE_FOLDER: "d:/WLB"
+  MSYSTEM: UCRT64
+  MSYS_PATH: d:/msys64
+
+jobs:
+  deps:
+    uses: ./.github/workflows/restore_deps_to_cache.yml
+    with:
+      BuildPkg: ${{ inputs.ToolName }}
+      RequiredDeps: ${{ inputs.RequiredDeps }}
+
+  build:
+    uses: ./.github/workflows/do_build.yml
+    needs: deps
+    with:
+      BuildPkg: ${{ inputs.ToolName }}
+      RequiredDeps: ${{ inputs.RequiredDeps }}
