@@ -1079,7 +1079,7 @@ index b72c99ad..fda4d6fc 100644
  
  				if (renamed) {
 diff --git a/src/wget.c b/src/wget.c
-index d98e1aeb..93a6aceb 100644
+index d98e1aeb..c42d4b86 100644
 --- a/src/wget.c
 +++ b/src/wget.c
 @@ -43,6 +43,7 @@
@@ -1112,7 +1112,7 @@ index d98e1aeb..93a6aceb 100644
  						}
  						if (!(fpout = fopen(conversion->filename, "wb")))
  							wget_error_printf(_("Failed to write open %s (%d)"), conversion->filename, errno);
-@@ -1373,6 +1380,12 @@ int main(int argc, const char **argv)
+@@ -1373,8 +1380,14 @@ int main(int argc, const char **argv)
  			config.progress = PROGRESS_TYPE_NONE;
  		}
  	}
@@ -1123,8 +1123,11 @@ index d98e1aeb..93a6aceb 100644
 +		is_tty=0;
 +#endif
  
- 	if (config.progress != PROGRESS_TYPE_NONE && !isatty(STDOUT_FILENO) && !config.force_progress) {
+-	if (config.progress != PROGRESS_TYPE_NONE && !isatty(STDOUT_FILENO) && !config.force_progress) {
++	if (config.progress != PROGRESS_TYPE_NONE && !is_tty && !config.force_progress) {
  		config.progress = PROGRESS_TYPE_NONE;
+ 	}
+ 
 @@ -3369,32 +3382,46 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
  		flag = O_EXCL;
  
