@@ -1,8 +1,25 @@
+diff --git a/src/system.h b/src/system.h
+index 7a7e914..8e8b980 100644
+--- a/src/system.h
++++ b/src/system.h
+@@ -29,6 +29,12 @@
+ #include <stat-macros.h>
+ #include <stat-time.h>
+ #include <timespec.h>
++#ifdef _WIN32
++#ifndef _TIMESPEC_TYPEDEF
++typedef struct timespec timespec;
++#define _TIMESPEC_TYPEDEF
++#endif
++#endif
+ 
+ #ifndef STAT_BLOCKSIZE
+ # if HAVE_STRUCT_STAT_ST_BLKSIZE
 diff --git a/src/util.c b/src/util.c
-index ea4a2b8..a471dcc 100644
+index db3ceba..ad65f2b 100644
 --- a/src/util.c
 +++ b/src/util.c
-@@ -280,7 +280,9 @@ process_signals (void)
+@@ -281,7 +281,9 @@ process_signals (void)
        if (stops)
          {
            stop_signal_count = stops - 1;

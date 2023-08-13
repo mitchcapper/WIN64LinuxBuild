@@ -104,7 +104,7 @@ index 17de55e79c..33f0b676ef 100755
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index ba883b54aa..56fc436ae0 100755
+index ba883b54aa..4e9157a535 100755
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,5 +1,10 @@
@@ -240,7 +240,7 @@ index ba883b54aa..56fc436ae0 100755
    linker_opts=
    for arg
    do
-@@ -145,16 +189,21 @@ func_cl_wrapper ()
+@@ -145,16 +189,32 @@ func_cl_wrapper ()
  	  case $2 in
  	    *.o | *.[oO][bB][jJ])
  	      func_file_conv "$2"
@@ -261,10 +261,21 @@ index ba883b54aa..56fc436ae0 100755
 +	  	set x "$@" -FI${COLOR_MINOR}"$2"${COLOR_NONE}
 +	  	shift
 +		;;
++	-x)
++	  eat=1
++	  LANG=$2
++	  if [[ "$LANG" == "c" ]]; then
++	  	LANG="-TC"
++	  elif [[ "$LANG" == "c++" ]]; then
++	  	LANG="-TP"
++	  fi
++	  set x "$@" "$LANG"
++	  shift
++	  ;;
  	-I)
  	  eat=1
  	  func_file_conv "$2" mingw
-@@ -187,6 +236,21 @@ func_cl_wrapper ()
+@@ -187,6 +247,21 @@ func_cl_wrapper ()
  	-static)
  	  shared=false
  	  ;;
@@ -286,7 +297,7 @@ index ba883b54aa..56fc436ae0 100755
  	-Wl,*)
  	  arg=${1#-Wl,}
  	  save_ifs="$IFS"; IFS=','
-@@ -200,18 +264,25 @@ func_cl_wrapper ()
+@@ -200,18 +275,25 @@ func_cl_wrapper ()
  	  eat=1
  	  linker_opts="$linker_opts $2"
  	  ;;
@@ -315,7 +326,7 @@ index ba883b54aa..56fc436ae0 100755
  	  shift
  	  ;;
  	*)
-@@ -225,8 +296,12 @@ func_cl_wrapper ()
+@@ -225,8 +307,12 @@ func_cl_wrapper ()
    if test -n "$linker_opts"; then
      linker_opts="-link$linker_opts"
    fi

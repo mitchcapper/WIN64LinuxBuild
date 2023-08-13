@@ -1175,7 +1175,7 @@ index 0344f1c44c..65a2675ae9 100644
  
  #ifdef __cplusplus
 diff --git a/lib/exclude.c b/lib/exclude.c
-index 7bd0ec8c71..9d794ad6a1 100644
+index 15f238e09c..4cf9d64fc1 100644
 --- a/lib/exclude.c
 +++ b/lib/exclude.c
 @@ -338,7 +338,7 @@ fnmatch_no_wildcards (char const *pattern, char const *f, int options)
@@ -1359,7 +1359,7 @@ index c0768c29e2..69b95dac62 100644
  /* Separator in PATH like lists of pathnames.  */
  #if (defined _WIN32 && !defined __CYGWIN__) || defined __EMX__ || defined __DJGPP__
 diff --git a/lib/fnmatch_loop.c b/lib/fnmatch_loop.c
-index 68a3b7a5bc..7184b81c55 100644
+index 42e84b80cf..e76b4f8710 100644
 --- a/lib/fnmatch_loop.c
 +++ b/lib/fnmatch_loop.c
 @@ -18,6 +18,7 @@
@@ -1521,7 +1521,7 @@ index 372965ef5f..d5d11accac 100644
        errno = ENOTDIR;
        return -1;
 diff --git a/lib/fts.c b/lib/fts.c
-index 884b84a5a1..0c3a39b2f9 100644
+index 875fe05793..e7183ef05e 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -67,7 +67,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
