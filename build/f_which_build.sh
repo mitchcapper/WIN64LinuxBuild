@@ -20,19 +20,11 @@ fi
 	fi
 
 	cd $BLD_CONFIG_SRC_FOLDER
-	export CWAUTOMACROSPREFIX="$BLD_CONFIG_SRC_FOLDER"
-	if [[ -z $SKIP_STEP || $SKIP_STEP == "cwmacros" ]]; then
-		git clone https://github.com/CarloWood/cwautomacros.git cwautomacros
-		cd cwautomacros
-		make install
-		rm  $CWAUTOMACROSPREFIX/share/cwautomacros/scripts/depcomp.sh #we want autogen newer one
-		cd $BLD_CONFIG_SRC_FOLDER
-	fi
 
 	if [[ -z $SKIP_STEP ||  $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
 		gnulib_ensure_buildaux_scripts_copied;
-		./autogen.sh
-		unset PREFIX
+		echo "" > ChangeLog
+		autoreconf -si
 		SKIP_STEP=""
 	fi
 
