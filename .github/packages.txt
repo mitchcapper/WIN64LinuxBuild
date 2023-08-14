@@ -18,7 +18,7 @@ sed
 symlinks
 tar
 wget: pcre2 libpsl zlib
-wget2: pcre2 libpsl zlib libhsts wolfcrypt
+wget2: pcre2 libpsl zlib libhsts wolfcrypt tar
 which
 wolfcrypt
 zlib
