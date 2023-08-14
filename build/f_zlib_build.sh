@@ -24,12 +24,16 @@ fi
 
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		apply_our_repo_patch; #looks in the patches folder for  repo_BUILD_NAME.patch and if found applies it.  Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
+		if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+			sed -i -E 's/-lz/-lzd/' zlib.pc.cmakein #this will transform below to the static version properly as well
+		fi
 		if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
 			sed -i -E 's/^sharedlibdir.+//' zlib.pc.cmakein
 			sed -i -E 's/-L\$\{sharedlibdir\}//' zlib.pc.cmakein
 			sed -i -E 's/-lz/-lzlibstatic/' zlib.pc.cmakein
 		fi
 		sed -i -E 's/if\(MSVC\)/if(MSVC OR NOT MSVC)/' CMakeLists.txt
+		git add zlib.pc.cmakein .gitignore CMakeLists.txt #staging them means if we re-apply our patch they are discarded		
 		SKIP_STEP=""
 	fi
 	
