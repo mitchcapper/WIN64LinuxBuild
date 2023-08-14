@@ -16,7 +16,8 @@ function ourmain() {
 	fi
 	startcommon;
 	add_lib_pkg_config  "libpsl" "pcre2" "zlib" "libhsts" "wolfcrypt"
-	add_vcpkg_pkg_config  "nghttp2" "zlib-ng" "zstd" "liblzma" "brotli" "bzip2"
+	# "zlib-ng"
+	add_vcpkg_pkg_config  "nghttp2" "zstd" "liblzma" "brotli" "bzip2"
 
 if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
@@ -39,7 +40,12 @@ fi
 		apply_our_repo_patch; #looks in the patches folder for  repo_BUILD_NAME.patch and if found applies it.  Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
 		SKIP_STEP=""
 	fi
+	OLDPATH="$PATH"
+
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "vcpkg" ]]; then
+		TAR_BASE=$(get_install_prefix_for_pkg "tar")
+		TAR_BASE=$(convert_to_msys_path "$TAR_BASE")
+		export PATH="$TAR_BASE/bin:$PATH"
 		vcpkg_install_package "zlib-ng" "nghttp2" "zstd" "liblzma" "brotli" "bzip2"
 		#vcpkg_remove_package "wolfssl";
 		#vcpkg_install_package --head fix_wolf_src "wolfssl";
@@ -55,7 +61,7 @@ fi
 		wget https://download.savannah.gnu.org/releases/lzip/lzip-1.22-w64.zip -O lzip.zip
 		unzip -j lzip.zip
 	fi
-	export PATH="$PATH:./"
+	export PATH="$OLDPATH:./"
 
 	if [[ $BLD_CONFIG_GNU_LIBS_USED ]]; then
 		cd $BLD_CONFIG_SRC_FOLDER
