@@ -16,7 +16,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <debugapi.h>
-void DisableDebugAssertPopup() {
+void DisableDebugAssertPopup(void) {
 	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
 }
 void EnableDebugAssertPopup() {
@@ -232,12 +232,8 @@ int _dbglog(int retval, __DbgLogType_t LogType, int lineno, const char* file, co
 	return retval;
 #endif // !1
 }
-#include <stdio.h>
+
 #include <stdlib.h>
-// If you still get errors make sure you are calling this late enough into your main atexit is LIFO
-void DisableDebugAssertAtExit() {
-	atexit(DisableDebugAssertPopup);
-}
 #define CRT_REPORT_MODE_NOTSET -999
 static int GetCrtReportMode(const char* env_name) {
 	const char * str = getenv(env_name);

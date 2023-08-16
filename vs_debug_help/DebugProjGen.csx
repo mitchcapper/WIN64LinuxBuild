@@ -34,28 +34,34 @@ void Main(){
 	}
 	var config = new ConfigRead();
 	config.ReadConfig();
-	var TEMPLATE_FOLDER = Path.Combine(config.GetVal("SCRIPT_FOLDER"), "vs_debug_help");
+	var VS_DEBUG_FOLDER = Path.Combine(config.GetVal("SCRIPT_FOLDER"), "vs_debug_help");
 	var TEMPLATE_DICT = BuildTemplateDict(config, opts);
 	DoFileReplace("ProjTemplate.sln", config, TEMPLATE_DICT, "[PROJ_NAME].sln");
 	DoFileReplace("ProjTemplate.vcxproj", config, TEMPLATE_DICT, "[PROJ_NAME].vcxproj");
 	DoFileReplace("ProjTemplate.vcxproj.filters", config, TEMPLATE_DICT, "[PROJ_NAME].vcxproj.filters");
 	var ROOT_DIR = config.GetVal("SRC_FOLDER");
 	var ALT_DEBUG_HEADER_DIR = opts.GetVal("ALT_DEBUG_HEADER_DIR");
-	var copy = new[] { "wlb_debug.c", "wlb_debug.h" };
+	var copy = new[] { "wlb_debug.c", "wlb_debug.h", "osfixes.h", "osfixes.c" };
 	foreach (var fl in copy) {
+		var useSymlink = false;
 		var dstName = fl;
-		if (fl == "wlb_debug.c" && opts.GetValBool("debug_cpp"))
-			dstName = "wlb_debug.cpp";
+		if (fl == "wlb_debug.c" || fl =="osfixes.c" || fl=="osfixes.h"){
+			useSymlink=true;
+			 if(opts.GetValBool("debug_cpp") && fl.EndsWith(".c"))
+				dstName = fl+"pp";
+		}
 		var dir = ROOT_DIR;
-		if (fl == "wlb_debug.h" && String.IsNullOrWhiteSpace(ALT_DEBUG_HEADER_DIR) == false)
+		if ((fl == "wlb_debug.h" || fl == "osfixes.h") && String.IsNullOrWhiteSpace(ALT_DEBUG_HEADER_DIR) == false)
 			dir = Path.Combine(dir,ALT_DEBUG_HEADER_DIR);		
 		var target = Path.Combine(dir, dstName);
-		var useSym = fl == "wlb_debug.c";
 		if (! File.Exists(target)){
-			if (useSym)
-				File.CreateSymbolicLink(target,Path.Combine(TEMPLATE_FOLDER, fl));
+			var src_path = Path.Combine(config.GetVal("SCRIPT_FOLDER"),fl);
+			if (! File.Exists(src_path))
+				src_path=Path.Combine(VS_DEBUG_FOLDER, fl);
+			if (useSymlink)
+				File.CreateSymbolicLink(target,src_path);
 			else
-				File.Copy(Path.Combine(TEMPLATE_FOLDER, fl), target, true);
+				File.Copy(src_path, target, true);
 		}
 	}
 
@@ -154,7 +160,9 @@ Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
 
 	ArrExpandWithDefs(ROOT_DIR, libs, chk_addl_libs, true);
 	compile.Add(opts.GetValBool("debug_cpp") ? "wlb_debug.cpp" : "wlb_debug.c");
+	compile.Add(opts.GetValBool("debug_cpp") ? "osfixes.cpp" : "osfixes.c");
 	include.Add("wlb_debug.h");
+	include.Add("osfixes.h");
 	
 	RelativePaths(ROOT_DIR, compile);
 	RelativePaths(ROOT_DIR, include);
