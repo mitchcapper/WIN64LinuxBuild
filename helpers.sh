@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eo pipefail -o functrace
+
 shopt -s inherit_errexit
 #while we could export SHELLOPTS many scripts dont work well with pipefail enabled
 
@@ -8,6 +8,7 @@ declare -g CALL_SCRIPT_PATH="$(readlink -f "$0")"
 declare -g SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER:-$(dirname "$(CALL_SCRIPT_PATH)")}"
 declare -g LOG_MAKE_RUN=""
 declare -g LOG_MAKE_CONTINUE=0
+
 
 function usage(){
 	load_colors;
@@ -48,6 +49,8 @@ function usage(){
 case "$SKIP_STEP" in
 	log_raw_build|log)
 		LOG_MAKE_RUN="raw"
+		SKIP_STEP=""
+		LOG_MAKE_CONTINUE=1
 		;;
 	log_raw_build_full|log_full)
 		LOG_MAKE_RUN="raw"
@@ -56,13 +59,13 @@ case "$SKIP_STEP" in
 		;;
 	log_make)
 		LOG_MAKE_RUN="make"
+		SKIP_STEP=""
 		;;
 	log_make_full)
 		LOG_MAKE_RUN="make"
 		SKIP_STEP="$2"
 		;;
 esac
-
 
 #if a env variable is completely undefined our changes wont be picked up unless past directly to the command or exported
 
@@ -107,16 +110,62 @@ apply_our_repo_patch () {
 	local PATCH_NAME="${1:-$BLD_CONFIG_BUILD_NAME}"
 	PATCH_PATH="${WIN_SCRIPT_FOLDER}/patches/repo_${PATCH_NAME}.patch"
 	if [[ -f "${PATCH_PATH}" ]]; then
+		git_stash_cur_work_discard_staged_work
 		git_apply_patch "${PATCH_PATH}"
+		git_stash_stage_patches_and_restore_cur_work
 	else
 		echo "Error apply_our_repo_patch called but can't find patch at: ${PATCH_PATH}" 1>&2;
 		exit 1
 	fi
 }
-git_apply_patch () {
-	local PATCH=$1
-	ex git apply --ignore-space-change --ignore-whitespace "$PATCH"
+
+osfixes_set_locations_dbg_add_to_libs(){
+	osfixes_set_locations "$@"
+	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
+		return;
+	fi
+	LDFLAGS+=" -Xlinker $OSFIXES_LIB"
 }
+osfixes_bare_compile(){
+	cd $OSFIXES_SRC_DST_FLDR
+	ex cl.exe -D_DEBUG -DDEBUG /nologo /c /ZI /MTd -DWLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH "$OSFIXES_SRC_DST"
+	#ex lib.exe /nologo "${OSFIXES_SRC_DST::-1}obj" want to do obj to make sure it is always incldued
+	cd $BLD_CONFIG_SRC_FOLDER
+}
+osfixes_set_locations(){
+	declare -g OSFIXES_HEADER_DST="$BLD_CONFIG_SRC_FOLDER"
+	declare -g OSFIXES_SRC_DST_FLDR="$BLD_CONFIG_SRC_FOLDER"
+	if [[ "$#" -gt 0 ]]; then
+		OSFIXES_HEADER_DST="$1"
+		if [[ "$#" -gt 1 ]]; then
+			OSFIXES_SRC_DST_FLDR="$2"
+		fi
+	fi
+	declare -g OSFIXES_SRC_DST="${OSFIXES_SRC_DST_FLDR}/osfixes.c"
+	OSFIXES_HEADER_DST+="/osfixes.h"
+	#declare -g OSFIXES_LIB="${OSFIXES_SRC_DST::-1}lib"
+	declare -g OSFIXES_LIB="${OSFIXES_SRC_DST::-1}obj"
+
+}
+
+osfixes_link_in_if_dbg_and_stg() {
+	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
+		return;
+	fi
+	osfixes_link_in_if_needed;
+	git_staging_add "$OSFIXES_SRC_DST" "$OSFIXES_HEADER_DST"
+}
+# first arg is header folder, second arg is c file folder
+osfixes_link_in_if_needed()  {
+	
+	if [[ ! -e "${OSFIXES_SRC_DST}" ]]; then
+		ln -s "${WLB_SCRIPT_FOLDER}/osfixes.c" "${OSFIXES_SRC_DST}"
+	fi
+	if [[ ! -e "${OSFIXES_HEADER_DST}" ]]; then
+		ln -s "${WLB_SCRIPT_FOLDER}/osfixes.h" "${OSFIXES_HEADER_DST}"
+	fi
+}
+
 convert_to_msys_path () {
 	local WPATH=$1
 	WPATH=`cygpath -u "$WPATH"`
@@ -203,10 +252,19 @@ function run_logged_make(){
 		exit 0
 	fi
 }
+
 function configure_run(){
 	setup_build_env;
 	#gl_cv_host_operating_system="MSYS2" ac_cv_host="x86_64-w64-msys2" ac_cv_build="x86_64-w64-msys2"
 	ex ./configure "${FULL_CONFIG_CMD_ARR[@]}"  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+}
+function use_custom_make_and_gsh(){
+	BLD_CONFIG_BUILD_MAKE_BIN="gnumake.exe"
+	MAKESHELL="gsh.exe"
+	DEFAULTMAKESHELL="$MAKESHELL"
+	NOMAKESHELLS="/bin/sh"
+
+	export MAKESHELL DEFAULTMAKESHELL NOMAKESHELLS
 }
 declare -g SETUP_BUILD_ENV_RUN=0
 
@@ -287,7 +345,8 @@ function setup_build_env(){
 			ADL_LIB_FLAGS+=" /DLL"
 		fi
 		if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
-			ADL_C_FLAGS+=" /D_DEBUG ${BLD_CONFIG_BUILD_DEBUG_ADDL_CFLAGS} ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}"
+		#the xlinker debug here is mostly needed for libtool which wont recognize it otherwise
+			ADL_C_FLAGS+=" /D_DEBUG ${BLD_CONFIG_BUILD_DEBUG_ADDL_CFLAGS} ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS} ${XLINKER_CMD} /DEBUG ${XLINKER_CMD} -ZI ${XLINKER_CMD} -Zf ${XLINKER_CMD} -FS"
 			ADL_LIB_FLAGS+=" /DEBUG"
 			if [[ "$BUILD_MSVC_NO_DEFAULT_LIB" == "debug" ]]; then
 				NO_DEFAULT_LIB_ARR+=($MSVC_DESIRED_LIB)
@@ -390,29 +449,15 @@ function configure_fixes(){
 
 
 }
-function git_settings_to_env(){
-	declare -a GIT_SETTINGS=("${BLD_CONFIG_GIT_SETTINGS_DEFAULT[@]}")
-	if [[ ${#BLD_CONFIG_GIT_SETTINGS_ADDL[@]} > 0 ]]; then
-		GIT_SETTINGS+=("${BLD_CONFIG_GIT_SETTINGS_ADDL[@]}")
-	fi
-	GIT_SETTING_COUNT=${#GIT_SETTINGS[@]}
-	GIT_CONFIG_COUNT=0
 
-	for (( j=0; j<${GIT_SETTING_COUNT}; j++ )); do
-		SETTING="${GIT_SETTINGS[$j]}"
-		IFS=' ' read -ra KVP <<< "$SETTING"
-		NAME="${KVP[0]}"
-		VALUE="${KVP[1]}"
-		if [[ $name -eq "" ]]; then
-			continue;
-		fi
-
-		export GIT_CONFIG_KEY_${GIT_CONFIG_COUNT}="$NAME"
-		export GIT_CONFIG_VALUE_${GIT_CONFIG_COUNT}="$VALUE"
-		(( GIT_CONFIG_COUNT++ ))
-	done
-	export GIT_CONFIG_COUNT
+function load_colors(){
+	COLOR_MINOR="${COLOR_MINOR:-\e[2;33m}"
+	COLOR_MINOR2="${COLOR_MINOR2:-\e[2;36m}"
+	COLOR_MAJOR="${COLOR_MAJOR:-\e[1;32m}"
+	COLOR_ERROR="${COLOR_ERROR:-\e[1;31m}"
+	COLOR_NONE="${COLOR_NONE:-\e[0m}"	
 }
+
 function startcommon(){
 	# need to do these early before everything else
 
@@ -424,11 +469,7 @@ function startcommon(){
 	mkdir -p "$BLD_CONFIG_SRC_FOLDER"
 	cd "$BLD_CONFIG_SRC_FOLDER"
 	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT ]]; then
-		COLOR_MINOR="${COLOR_MINOR:-\e[2;33m}"
-		COLOR_MINOR2="${COLOR_MINOR2:-\e[2;36m}"
-		COLOR_MAJOR="${COLOR_MAJOR:-\e[1;32m}"
-		COLOR_ERROR="${COLOR_ERROR:-\e[1;31m}"
-		COLOR_NONE="${COLOR_NONE:-\e[0m}"
+		load_colors;
 	else
 		COLOR_MINOR=""
 		COLOR_MINOR2=""
@@ -471,8 +512,8 @@ function finalcommon(){
 	if [[ "${LOG_MAKE_RUN}" -eq "raw" && -e "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" ]]; then
 		BUILD_OUT="$BLD_CONFIG_INSTALL_FOLDER/build"
 		mkdir -p "$BUILD_OUT"
-		cp -t "$BUILD_OUT" "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" "${BLD_CONFIG_LOG_CONFIG_ENV_FILE}" &>/dev/null || true
-		CFG_PATHS=("config.h" "lib/config.h" "gnulib/config.h" "gl/config.h" "include/config.h")
+		cp -t "$BUILD_OUT" "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" "${BLD_CONFIG_LOG_FILE}"  &>/dev/null || true
+		CFG_PATHS=("config.h" "lib/config.h" "gnulib/config.h" "gl/config.h" "include/config.h" "${BLD_CONFIG_LOG_CONFIG_ENV_FILE}" "config.cache" "config.log" "${BLD_CONFIG_LOG_CONFIGURE_FILE}")
 		for path in "${CFG_PATHS[@]}"; do
 			if [[ -e "$path" ]]; then
 				cp "$path" "$BUILD_OUT"
@@ -483,7 +524,7 @@ function finalcommon(){
 	trace_final;
 	return 0;
 }
-
+. "$SCRIPT_FOLDER/helpers_git.sh"
 . "$SCRIPT_FOLDER/helpers_ini.sh"
 . "$SCRIPT_FOLDER/helpers_gnu.sh"
 . "$SCRIPT_FOLDER/helpers_vcpkg.sh"

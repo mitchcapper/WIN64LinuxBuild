@@ -9,6 +9,7 @@ function gnulib_dump_patches(){
 	done
 	echo "ScriptRes=[$STROUT]" >> "$GITHUB_OUTPUT"
 }
+
 function gnulib_switch_to_master_and_patch(){
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
@@ -17,18 +18,19 @@ function gnulib_switch_to_master_and_patch(){
 		sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
 	fi
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
-	#git fetch
+
+	#we do this process to make it easier to tell what changes we have actually made vs what changes were from our patches
+
+	git_stash_cur_work_discard_staged_work
+	
 	if [[ ! -z "$BLD_CONFIG_GNU_LIBS_BRANCH" ]]; then
 		git checkout "$BLD_CONFIG_GNU_LIBS_BRANCH"
 	fi
 	echo ++++++ Running on GNULIB commit `git rev-parse --abbrev-ref HEAD` `git rev-parse HEAD`
-	git checkout .
+	rm -f build-aux/wrapper_helper.sh build-aux/wrapper_helper.sh build-aux/ld-link #temporary as we add files rn that the normal checkout clean doesn't cleanup
 	gnulib_patches;
-	#"gnulib"
-#	declare -a dirs=(".")
-#	for do_dir in "${dirs[@]}"
-#	do
-#	:
+	git_stash_stage_patches_and_restore_cur_work
+	
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ -f "Makefile.am" ]]; then
 		SUBDIR_REGEX="^\\s*SUBDIRS\\s*="
@@ -90,7 +92,7 @@ function gnulib_ensure_buildaux_scripts_copied(){
 			if [[ ! -e "${gnu_path}" || $FORCED -eq 1 ]]; then
 				if [[ -e "${SRC_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
 					cp "${SRC_PATH}" "${gnu_path}"
-			else #no gnulib local so lets fetch it from remote
+				else #no gnulib local so lets fetch it from remote
 					wget --quiet "https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/${flf}" -O "${gnu_path}"
 				fi
 			fi
@@ -129,9 +131,9 @@ function setup_gnulibtool_py_autoconfwrapper(){
 		local TARGET_FL="${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
 		#For things like coreutils bootstrap will create the mk files we need to fix before it also then runs autoreconf so we will just use our wrapper for autoreconf, call ourselves, then call autoreconf
 		if [[ ! -e "$TARGET_FL" ]]; then
-		WRAPPER=`cat "${SCRIPT_FOLDER}/AUTORECONF_prewrapper.sh.template"`
-		WRAPPER="${WRAPPER/SCRIPT_PATH/"$CALL_SCRIPT_PATH"}"
-		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
+			WRAPPER=`cat "${SCRIPT_FOLDER}/AUTORECONF_prewrapper.sh.template"`
+			WRAPPER="${WRAPPER/SCRIPT_PATH/"$CALL_SCRIPT_PATH"}"
+			mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
 			echo "${WRAPPER}" > "$TARGET_FL"
 		fi
 		export AUTORECONF="$TARGET_FL"
