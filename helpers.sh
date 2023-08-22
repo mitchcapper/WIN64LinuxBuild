@@ -9,6 +9,41 @@ declare -g SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER:-$(dirname "$(CALL_SCRIPT_PATH)")}
 declare -g LOG_MAKE_RUN=""
 declare -g LOG_MAKE_CONTINUE=0
 
+function usage(){
+	load_colors;
+	declare -A cmds=(
+		[export_config]="Export project config to file for DebugProjGen.csx"
+		[log_raw_build|log]="Normal full run except create a .bat file for the commands run for the build process"
+		[log_make|log_make_full]="Similar to raw build above but runs make's dry run and generates that log, _full"
+		[log_raw_build_full|log_full]="Same as above, but can pass an additional step arg after to start at a certain step"
+		[our_patch]="Apply our patch for this repo"
+		[checkout]="Checkout the original repo"
+		[gnulib]="checkout gnulib and apply our patches to it"
+		[bootstrap]="bootstrap gnulib and related project autoconf files"
+		[configure]="configure run (does use cache opt)"
+		[make]="make, default that happens if not matched to another arg (but an arg is passed)"
+	)
+	comp_str=""
+	OUR_NAME=$(basename "$0")
+	if [[ $SKIP_STEP != "autocomplete" ]]; then
+		echo "$OUR_NAME <skip_to_step_or_cmd> - build script, steps: "
+	fi
+	for key in "${!cmds[@]}"; do
+		if [[ $SKIP_STEP != "autocomplete" ]]; then
+			echo -e "\t${COLOR_MAJOR}${key}${COLOR_NONE} - ${COLOR_MINOR2}${cmds[$key]}${COLOR_NONE}"
+		fi
+		IFS='|' read -ra ALL <<< "$key"
+		for key in "${ALL[@]}"; do 
+			comp_str+="${key} ";
+		done
+	done
+	if [[ $SKIP_STEP == "autocomplete" ]]; then
+		echo "$comp_str"
+		exit 0
+	fi
+
+	exit 1
+}
 #full allows you to run all the steps including it, or resume earlier through it rather than just it
 case "$SKIP_STEP" in
 	log_raw_build|log)
@@ -455,3 +490,6 @@ function finalcommon(){
 . "$SCRIPT_FOLDER/helpers_cmake.sh"
 . "$SCRIPT_FOLDER/helpers_bashtrace.sh"
 PreInitialize;
+if [[ $SKIP_STEP == "-h" || $SKIP_STEP == "--help" || $SKIP_STEP == "help"  || $SKIP_STEP == "autocomplete" ]]; then
+	usage;
+fi;
