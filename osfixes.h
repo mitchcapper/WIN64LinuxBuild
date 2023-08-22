@@ -11,11 +11,12 @@
 #define WLB_PROC_SIG_EXITS
 #define WLB_FUNC_NOOPS
 #define WLB_INCL_WLB_DEBUG_H
-#define WLB_DISABLE_DEBUG_ASSERT_AT_EXIT
+#define WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_EXIT
+#define WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH
 #define WLB_CONSTRUCTOR_SUPPORT
 */
 extern void DisableDebugAssertAtExit();
-#if defined(WLB_DISABLE_DEBUG_ASSERT_AT_EXIT) && ! defined(WLB_CONSTRUCTOR_SUPPORT)
+#if (defined(WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH) || defined(WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_EXIT)) && ! defined(WLB_CONSTRUCTOR_SUPPORT)
 #define WLB_CONSTRUCTOR_SUPPORT
 
 #endif
@@ -204,7 +205,7 @@ extern char *dlerror (void);
 #endif
 
 #if ! defined(BOOL)
-#define BOOL int
+typedef int                 BOOL;
 #endif
 
 

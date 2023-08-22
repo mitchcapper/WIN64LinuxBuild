@@ -1,6 +1,8 @@
-//shared between bash and gawk
 #include "osfixes.h"
-
+#define WIN32_LEAN_AND_MEAN
+#define _GL_CTYPE_H
+#define _GL_CONFIG_H_INCLUDED 1
+#include <windows.h>
 #ifdef WLB_INCL_WLB_DEBUG_H
 #include "wlb_debug.h"
 #endif
@@ -8,13 +10,13 @@
 // #include "term.h"
 // #include "general.h"
 
-#include <stdio.h>
-#ifndef FALSE
+#include <../ucrt/stdio.h>
+#ifndef TRUE
 #define FALSE 0
 #define TRUE 1
 #endif // !FALSE
 
-#ifdef WLB_DISABLE_DEBUG_ASSERT_AT_EXIT
+#if defined (WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_EXIT) || defined(WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH)
 #if !defined(DisableDebugAssertPopup)
 
 #include <crtdbg.h>
@@ -31,7 +33,11 @@ void DisableDebugAssertAtExit() {
 #endif
 
 CONSTRUCTOR(wlb_at_startup) {
+#ifdef WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH
+	DisableDebugAssertPopup();
+#else
 	DisableDebugAssertAtExit();
+#endif
 }
 
 #endif
