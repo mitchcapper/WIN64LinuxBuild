@@ -12,7 +12,7 @@ if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
 fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
-		git clone --recurse-submodules https://github.com/mitchcapper/symlinks.git .
+		git_clone https://github.com/mitchcapper/symlinks.git .
 		git checkout win32_enhancements
 		add_items_to_gitignore;
 		SKIP_STEP=""

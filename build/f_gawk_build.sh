@@ -23,7 +23,7 @@ if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
 fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
-		git clone --recurse-submodules https://git.savannah.gnu.org/git/gawk.git .
+		git_clone https://git.savannah.gnu.org/git/gawk.git .
 		git submodule add https://github.com/coreutils/gnulib
 		cp gnulib/build-aux/bootstrap .
 		cp gnulib/build-aux/bootstrap.conf .
@@ -37,6 +37,8 @@ fi
 		popd
 		echo "EXTRA_DIST = " > m4/Makefile.am
 		add_items_to_gitignore;
+		git_staging_add bootstrap bootstrap.conf
+		git_staging_commit #need to commit it up so that the bootstrap files are avail for our gnulib patching by default all local changes are stashed		
 		SKIP_STEP=""
 	fi
 	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
