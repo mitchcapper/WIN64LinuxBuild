@@ -23,11 +23,17 @@ fi
 		add_items_to_gitignore;
 		SKIP_STEP=""
 	fi
-
+	
+	osfixes_set_locations_dbg_add_to_libs;
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		apply_our_repo_patch; #looks in the patches folder for  repo_BUILD_NAME.patch and if found applies it.  Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
+		osfixes_link_in_if_dbg_and_stg;
+		osfixes_bare_compile;
+
+		
 		SKIP_STEP=""
 	fi
+	#osfixes_bare_compile;exit 1;
 	
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then
 		if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib" ]]; then
