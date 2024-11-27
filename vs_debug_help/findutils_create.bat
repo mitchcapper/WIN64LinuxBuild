@@ -1,0 +1,1 @@
+dotnet-script "%WLB_SCRIPT_FOLDER%\vs_debug_help\DebugProjGen.csx" --exe find --libraries lib/libfind.a gl/lib/libgnulib.a --include_paths . find --compile find/exec.c find/finddata.c find/fstype.c find/ftsfind.c find/parser.c find/pred.c find/print.c find/sharefile.c find/tree.c find/util.c 

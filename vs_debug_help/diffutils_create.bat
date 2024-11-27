@@ -1,0 +1,1 @@
+dotnet-script "%WLB_SCRIPT_FOLDER%\vs_debug_help\DebugProjGen.csx" --exe diff --include_paths . lib --compile src/*.c
