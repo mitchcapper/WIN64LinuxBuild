@@ -1,13 +1,13 @@
-diff --git a/gnulib-tool b/gnulib-tool
-index ae1b17f4dd..7b38761978 100644
---- a/gnulib-tool
-+++ b/gnulib-tool
-@@ -1793,7 +1793,7 @@ func_lookup_file ()
+diff --git a/gnulib-tool.sh b/gnulib-tool.sh
+index d4f8792898..0e291be22e 100644
+--- a/gnulib-tool.sh
++++ b/gnulib-tool.sh
+@@ -1825,7 +1825,7 @@ func_lookup_file ()
      IFS="$PATH_SEPARATOR"
      for patchfile in $lkpatches; do
-       IFS="$save_IFS"
+       IFS="$saved_IFS"
 -      patch -s "$tmp/$lkbase" < "$patchfile" >&2 \
 +      patch --ignore-whitespace -i "$patchfile" "$tmp/$lkbase" >&2 \
          || func_fatal_error "patch file $patchfile didn't apply cleanly"
      done
-     IFS="$save_IFS"
+     IFS="$saved_IFS"

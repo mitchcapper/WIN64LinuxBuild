@@ -1,17 +1,17 @@
 diff --git a/lib/physmem.c b/lib/physmem.c
-index 398f99b727..15a3f0898e 100644
+index 5c226b8abf..b640a7706e 100644
 --- a/lib/physmem.c
 +++ b/lib/physmem.c
-@@ -313,7 +313,7 @@ physmem_available (void)
+@@ -398,7 +398,7 @@ physmem_available (void)
+   return physmem_claimable (0.0);
  }
- 
  
 -#if DEBUG
 +#if TEST
  
  # include <stdio.h>
  # include <stdlib.h>
-@@ -325,7 +325,7 @@ main (void)
+@@ -410,7 +410,7 @@ main (void)
    exit (0);
  }
  

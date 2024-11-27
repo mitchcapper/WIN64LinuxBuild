@@ -1,8 +1,8 @@
 diff --git a/find/exec.c b/find/exec.c
-index c9cda8af..822532b3 100644
+index 1f6bc83d..7a1a2073 100644
 --- a/find/exec.c
 +++ b/find/exec.c
-@@ -309,10 +309,49 @@ launch (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
+@@ -307,10 +307,49 @@ launch (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
    if (first_time)
      {
        first_time = 0;
@@ -10,8 +10,6 @@ index c9cda8af..822532b3 100644
        signal (SIGCHLD, SIG_DFL);
 +#endif
      }
--
--  child_pid = fork ();
 +#ifdef _WIN32
 +      if (bc_args_exceed_testing_limit (argv))
 +	      errno = E2BIG;
@@ -23,7 +21,7 @@ index c9cda8af..822532b3 100644
 +          {
 +            complain_about_leaky_fds ();
 +          }
-+        errno = execute(argv[0],argv[0],argv,NULL,false,false,false,false,true,false,NULL);
++        errno = execute(argv[0],argv[0],argv,NULL,NULL,false,false,false,false,true,false,NULL);
 +        dup2(fd_stdin,STDIN_FILENO);//restore stdin
 +        close(fd_stdin);
 +      }
@@ -46,19 +44,20 @@ index c9cda8af..822532b3 100644
 +	      }
 +	}else
 +        return 1;			/* OK */
-+
+ 
+-  child_pid = fork ();
 +
 +#else
 +  child_pid= fork ();
 +#endif
    if (child_pid == -1)
-     die (EXIT_FAILURE, errno, _("cannot fork"));
+     error (EXIT_FAILURE, errno, _("cannot fork"));
    if (child_pid == 0)
 diff --git a/find/fstype.c b/find/fstype.c
-index 47f1ff71..5fcf626a 100644
+index a7ca25df..42cbe5ed 100644
 --- a/find/fstype.c
 +++ b/find/fstype.c
-@@ -113,6 +113,7 @@ in_afs (char *path)
+@@ -109,6 +109,7 @@ in_afs (char *path)
  static struct mount_entry *
  get_file_system_list (bool need_fs_type)
  {
@@ -66,7 +65,7 @@ index 47f1ff71..5fcf626a 100644
    /* Local cache for the mount list.  */
    static struct mount_entry *mount_list = NULL;
  
-@@ -130,6 +131,9 @@ get_file_system_list (bool need_fs_type)
+@@ -126,6 +127,9 @@ get_file_system_list (bool need_fs_type)
        has_fstype = need_fs_type;
      }
    return mount_list;
@@ -76,7 +75,7 @@ index 47f1ff71..5fcf626a 100644
  }
  
  /* Return a static string naming the type of file system that the file PATH,
-@@ -160,6 +164,7 @@ filesystem_type (const struct stat *statp, const char *path)
+@@ -156,6 +160,7 @@ filesystem_type (const struct stat *statp, const char *path)
  bool
  is_used_fs_type(const char *name)
  {
@@ -84,15 +83,15 @@ index 47f1ff71..5fcf626a 100644
    if (0 == strcmp("afs", name))
      {
        /* I guess AFS may not appear in /etc/mtab (or equivalent) but still be in use,
-@@ -183,6 +188,7 @@ is_used_fs_type(const char *name)
- 	  return true;
- 	}
+@@ -179,6 +184,7 @@ is_used_fs_type(const char *name)
+           return true;
+         }
      }
 +#endif
    return false;
  }
  
-@@ -274,6 +280,7 @@ file_system_type_uncached (const struct stat *statp, const char *path,
+@@ -270,6 +276,7 @@ file_system_type_uncached (const struct stat *statp, const char *path,
  dev_t *
  get_mounted_devices (size_t *n)
  {
@@ -100,7 +99,7 @@ index 47f1ff71..5fcf626a 100644
    size_t alloc_size = 0u;
    size_t used = 0u;
    struct mount_entry *entries, *entry;
-@@ -311,4 +318,7 @@ get_mounted_devices (size_t *n)
+@@ -307,4 +314,7 @@ get_mounted_devices (size_t *n)
        *n = used;
      }
    return result;
@@ -109,7 +108,7 @@ index 47f1ff71..5fcf626a 100644
 +#endif  
  }
 diff --git a/find/parser.c b/find/parser.c
-index 78c3f969..e8eb8226 100644
+index 1b389b3c..76ec600d 100644
 --- a/find/parser.c
 +++ b/find/parser.c
 @@ -23,9 +23,12 @@
@@ -126,15 +125,15 @@ index 78c3f969..e8eb8226 100644
  #include <regex.h>
  #include <sys/stat.h>
  #include <unistd.h>
-@@ -1134,6 +1137,7 @@ parse_gid (const struct parser_table* entry, char **argv, int *arg_ptr)
+@@ -1139,6 +1142,7 @@ parse_gid (const struct parser_table* entry, char **argv, int *arg_ptr)
  static bool
  parse_group (const struct parser_table* entry, char **argv, int *arg_ptr)
  {
 +  #ifndef _WIN32
    const char *groupname;
-   const int saved_argc = *arg_ptr;
  
-@@ -1193,6 +1197,9 @@ parse_group (const struct parser_table* entry, char **argv, int *arg_ptr)
+   if (collect_arg (argv, arg_ptr, &groupname))
+@@ -1170,6 +1174,9 @@ parse_group (const struct parser_table* entry, char **argv, int *arg_ptr)
        return true;
      }
    return false;
@@ -144,7 +143,7 @@ index 78c3f969..e8eb8226 100644
  }
  
  static bool
-@@ -2442,6 +2449,7 @@ parse_used (const struct parser_table* entry, char **argv, int *arg_ptr)
+@@ -2380,6 +2387,7 @@ parse_used (const struct parser_table* entry, char **argv, int *arg_ptr)
  static bool
  parse_user (const struct parser_table* entry, char **argv, int *arg_ptr)
  {
@@ -152,7 +151,7 @@ index 78c3f969..e8eb8226 100644
    const char *username;
  
    if (collect_arg (argv, arg_ptr, &username))
-@@ -2488,6 +2496,9 @@ parse_user (const struct parser_table* entry, char **argv, int *arg_ptr)
+@@ -2411,6 +2419,9 @@ parse_user (const struct parser_table* entry, char **argv, int *arg_ptr)
        return true;
      }
    return false;
@@ -163,7 +162,7 @@ index 78c3f969..e8eb8226 100644
  
  static bool
 diff --git a/find/pred.c b/find/pred.c
-index b5a642b4..ce02c54f 100644
+index 6c792423..1cff7c6c 100644
 --- a/find/pred.c
 +++ b/find/pred.c
 @@ -24,9 +24,14 @@
@@ -182,7 +181,7 @@ index b5a642b4..ce02c54f 100644
  #include <selinux/selinux.h>
  #include <stdarg.h>
  #include <sys/stat.h>
-@@ -671,17 +676,25 @@ pred_newerXY (const char *pathname, struct stat *stat_buf, struct predicate *pre
+@@ -669,17 +674,25 @@ pred_newerXY (const char *pathname, struct stat *stat_buf, struct predicate *pre
  bool
  pred_nogroup (const char *pathname, struct stat *stat_buf, struct predicate *pred_ptr)
  {
@@ -209,7 +208,7 @@ index b5a642b4..ce02c54f 100644
  
  
 diff --git a/find/print.c b/find/print.c
-index b04bfef8..108c5010 100644
+index 465e9ec6..8c92e028 100644
 --- a/find/print.c
 +++ b/find/print.c
 @@ -22,9 +22,12 @@
@@ -226,7 +225,7 @@ index b04bfef8..108c5010 100644
  #include <stdarg.h>
  #include <sys/stat.h>
  #include <sys/types.h>
-@@ -933,6 +936,7 @@ do_fprintf (struct format_val *dest,
+@@ -931,6 +934,7 @@ do_fprintf (struct format_val *dest,
            checked_print_quoted (dest, segment->text, filesystem_type (stat_buf, pathname));
            break;
          case 'g':               /* group name */
@@ -234,7 +233,7 @@ index b04bfef8..108c5010 100644
            /* trusted */
            /* (well, the actual group is selected by the user but
             * its name was selected by the system administrator)
-@@ -949,13 +953,16 @@ do_fprintf (struct format_val *dest,
+@@ -947,13 +951,16 @@ do_fprintf (struct format_val *dest,
                }
            }
            FALLTHROUGH; /*...sometimes, so 'G' case.*/
@@ -252,7 +251,7 @@ index b04bfef8..108c5010 100644
          case 'h':               /* leading directories part of path */
            /* sanitised */
            {
-@@ -1141,6 +1148,7 @@ do_fprintf (struct format_val *dest,
+@@ -1139,6 +1146,7 @@ do_fprintf (struct format_val *dest,
            break;
  
          case 'u':               /* user name */
@@ -260,7 +259,7 @@ index b04bfef8..108c5010 100644
            /* trusted */
            /* (well, the actual user is selected by the user on systems
             * where chown is not restricted, but the user name was
-@@ -1158,12 +1166,14 @@ do_fprintf (struct format_val *dest,
+@@ -1156,12 +1164,14 @@ do_fprintf (struct format_val *dest,
                }
            }
            FALLTHROUGH; /* .. to case U */
@@ -277,10 +276,10 @@ index b04bfef8..108c5010 100644
  
            /* %Y: type of file system entry like `ls -l`:
 diff --git a/find/util.c b/find/util.c
-index e2a2c244..ff81e577 100644
+index a1736807..936772ca 100644
 --- a/find/util.c
 +++ b/find/util.c
-@@ -198,8 +198,8 @@ Tests (N can be +N or -N or N):\n\
+@@ -196,8 +196,8 @@ Tests (N can be +N or -N or N):\n\
  Actions:\n\
        -delete -print0 -printf FORMAT -fprintf FILE FORMAT -print \n\
        -fprint0 FILE -fprint FILE -ls -fls FILE -prune -quit\n\
@@ -292,7 +291,7 @@ index e2a2c244..ff81e577 100644
    HTL (_("\n\
  Other common options:\n"));
 diff --git a/lib/buildcmd.c b/lib/buildcmd.c
-index 9412b230..8e337087 100644
+index b648c2bf..66791084 100644
 --- a/lib/buildcmd.c
 +++ b/lib/buildcmd.c
 @@ -24,8 +24,13 @@
@@ -311,7 +310,7 @@ index 9412b230..8e337087 100644
  #include <unistd.h>
  #include <wchar.h>
 diff --git a/lib/fdleak.c b/lib/fdleak.c
-index 87ece559..93b680b6 100644
+index f79b3424..fcba379f 100644
 --- a/lib/fdleak.c
 +++ b/lib/fdleak.c
 @@ -31,7 +31,9 @@
@@ -325,7 +324,7 @@ index 87ece559..93b680b6 100644
  /* gnulib headers. */
  #include "cloexec.h"
  #include "dirent--.h"
-@@ -114,9 +116,10 @@ get_max_fd (void)
+@@ -113,9 +115,10 @@ get_max_fd (void)
    open_max = get_proc_max_fd ();
    if (open_max >= 0)
      return open_max;
@@ -334,11 +333,11 @@ index 87ece559..93b680b6 100644
    open_max = sysconf (_SC_OPEN_MAX);
    if (open_max == -1)
 +#endif  
-     open_max = _POSIX_OPEN_MAX;	/* underestimate */
+     open_max = _POSIX_OPEN_MAX; /* underestimate */
  
    /* We assume if RLIMIT_NOFILE is defined, all the related macros are, too. */
 diff --git a/lib/listfile.c b/lib/listfile.c
-index 3f0397b5..2d61931b 100644
+index f98c22c7..8d34cfe5 100644
 --- a/lib/listfile.c
 +++ b/lib/listfile.c
 @@ -21,8 +21,10 @@
@@ -353,10 +352,10 @@ index 3f0397b5..2d61931b 100644
  #include <stdlib.h>
  #include <string.h>
 diff --git a/lib/regextype.c b/lib/regextype.c
-index 9c3c7788..98dc5611 100644
+index 2f090892..df9415f5 100644
 --- a/lib/regextype.c
 +++ b/lib/regextype.c
-@@ -49,15 +49,15 @@ static struct tagRegexTypeMap regex_map[] =
+@@ -48,15 +48,15 @@ static struct tagRegexTypeMap regex_map[] =
    {
     { "findutils-default",     CONTEXT_FINDUTILS, RE_SYNTAX_EMACS|RE_DOT_NEWLINE  },
     { "ed",                    CONTEXT_GENERIC,   RE_SYNTAX_ED                    },
@@ -382,7 +381,7 @@ index 9c3c7788..98dc5611 100644
     { "sed",                   CONTEXT_GENERIC,   RE_SYNTAX_SED                   },
     /*    ,{ "posix-common",   CONTEXT_GENERIC,  _RE_SYNTAX_POSIX_COMMON   } */
 diff --git a/lib/regextype.h b/lib/regextype.h
-index 382dcc88..012f65d5 100644
+index 2127ad4d..80c9b9c9 100644
 --- a/lib/regextype.h
 +++ b/lib/regextype.h
 @@ -29,7 +29,7 @@ int get_regex_type(const char *s);
@@ -395,7 +394,7 @@ index 382dcc88..012f65d5 100644
  
  
 diff --git a/locate/locate.c b/locate/locate.c
-index a7f5eb75..d8310fc7 100644
+index 31459e9e..229d910b 100644
 --- a/locate/locate.c
 +++ b/locate/locate.c
 @@ -66,7 +66,9 @@
@@ -408,7 +407,7 @@ index a7f5eb75..d8310fc7 100644
  #include <regex.h>
  #include <signal.h>
  #include <stdbool.h>
-@@ -1418,6 +1420,7 @@ static struct option const longopts[] =
+@@ -1414,6 +1416,7 @@ static struct option const longopts[] =
  static int
  drop_privs (void)
  {
@@ -416,9 +415,9 @@ index a7f5eb75..d8310fc7 100644
    const char * what = "failed";
    const uid_t orig_euid = geteuid ();
    const uid_t uid       = getuid ();
-@@ -1493,7 +1496,11 @@ drop_privs (void)
-   die (EXIT_FAILURE, errno, "%s",
-        quotearg_n_style (0, locale_quoting_style, what));
+@@ -1489,7 +1492,11 @@ drop_privs (void)
+   error (EXIT_FAILURE, errno, "%s",
+          quotearg_n_style (0, locale_quoting_style, what));
    abort ();
 +  #ifndef _WIN32
    kill (0, SIGKILL);
@@ -428,7 +427,7 @@ index a7f5eb75..d8310fc7 100644
    _exit (1);
    /*NOTREACHED*/
    /* ... we hope. */
-@@ -1501,6 +1508,7 @@ drop_privs (void)
+@@ -1497,6 +1504,7 @@ drop_privs (void)
      {
        /* deliberate infinite loop */
      }
@@ -436,7 +435,7 @@ index a7f5eb75..d8310fc7 100644
  }
  
  static int
-@@ -1514,11 +1522,13 @@ opendb (const char *name)
+@@ -1510,11 +1518,13 @@ opendb (const char *name)
    if (fd >= 0)
      {
        /* Make sure it won't survive an exec */
@@ -451,7 +450,7 @@ index a7f5eb75..d8310fc7 100644
    return fd;
  }
 diff --git a/xargs/xargs.c b/xargs/xargs.c
-index 96e8897f..5dee96ab 100644
+index c1963b19..5255f41f 100644
 --- a/xargs/xargs.c
 +++ b/xargs/xargs.c
 @@ -46,10 +46,14 @@
@@ -469,7 +468,7 @@ index 96e8897f..5dee96ab 100644
  
  /* gnulib headers. */
  #include "closein.h"
-@@ -816,7 +820,9 @@ main (int argc, char **argv)
+@@ -822,7 +826,9 @@ main (int argc, char **argv)
    bc_state.argbuf = xmalloc (bc_ctl.arg_max + 1);
  
    /* Make sure to listen for the kids.  */
@@ -479,7 +478,7 @@ index 96e8897f..5dee96ab 100644
  
    if (!bc_ctl.replace_pat)
      {
-@@ -1233,7 +1239,11 @@ prep_child_for_exec (void)
+@@ -1243,7 +1249,11 @@ prep_child_for_exec (void)
    if (!keep_stdin || open_tty)
      {
        int fd;
@@ -491,7 +490,7 @@ index 96e8897f..5dee96ab 100644
  
        close (0);
        if ((fd = open (inputfile, O_RDONLY)) < 0)
-@@ -1278,7 +1288,11 @@ static int
+@@ -1288,7 +1298,11 @@ static int
  xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
  {
    pid_t child;
@@ -503,20 +502,20 @@ index 96e8897f..5dee96ab 100644
    int buf;
    size_t r;
  
-@@ -1309,7 +1323,8 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
- 	 ./xargs -P 200 -n 20  sh -c 'echo "$@"; sleep $((1 + $RANDOM % 5))' sleeper
+@@ -1319,7 +1333,8 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
+          ./xargs -P 200 -n 20  sh -c 'echo "$@"; sleep $((1 + $RANDOM % 5))' sleeper
        */
        wait_for_proc (false, 0u);
 -
 +	  child=0;
 +#ifndef _WIN32
        if (pipe (fd))
- 	die (EXIT_FAILURE, errno, _("could not create pipe before fork"));
+         error (EXIT_FAILURE, errno, _("could not create pipe before fork"));
        fcntl (fd[1], F_SETFD, FD_CLOEXEC);
-@@ -1318,7 +1333,36 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
+@@ -1328,7 +1343,36 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
           try again.  */
        while ((child = fork ()) < 0 && errno == EAGAIN && procs_executing)
- 	wait_for_proc (false, 1u);
+         wait_for_proc (false, 1u);
 +#else
 +	//this code likely would work for all platforms
 +
@@ -525,7 +524,7 @@ index 96e8897f..5dee96ab 100644
 +	else{
 +		int fd_stdin = dup(STDIN_FILENO);//backup stdin incase prep changes it
 +		prep_child_for_exec();
-+		errno = execute(argv[0],argv[0],argv,NULL,false,false,false,false,true,false,NULL);
++		errno = execute(argv[0],argv[0],argv,NULL,NULL,false,false,false,false,true,false,NULL);
 +		dup2(fd_stdin,STDIN_FILENO);//restore stdin
 +		close(fd_stdin);
 +	}
@@ -548,18 +547,9 @@ index 96e8897f..5dee96ab 100644
  
 +#endif
        switch (child)
- 	{
- 	case -1:
-@@ -1368,7 +1412,7 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
- 	default:
- 	  {
- 	    /* Parent */
--	    close (fd[1]);
-+	    close (fd[1]); //closing the write end
- 	  }
- 
- 	} /* switch (child) */
-@@ -1462,6 +1506,10 @@ static unsigned int
+         {
+         case -1:
+@@ -1472,6 +1516,10 @@ static unsigned int
  add_proc (pid_t pid)
  {
    unsigned int i, j;
@@ -570,17 +560,17 @@ index 96e8897f..5dee96ab 100644
  
    /* Find an empty slot.  */
    for (i = 0; i < pids_alloc && pids[i]; i++)
-@@ -1496,6 +1544,7 @@ static void
+@@ -1506,6 +1554,7 @@ static void
  wait_for_proc (bool all, unsigned int minreap)
  {
    unsigned int reaped = 0;
-+#ifndef _WIN32
++#ifndef _WIN32  
+   int deferred_exit_status = 0;
  
    while (procs_executing)
-     {
-@@ -1590,6 +1639,7 @@ wait_for_proc (bool all, unsigned int minreap)
-       if (WEXITSTATUS (status) != 0)
- 	child_error = XARGS_EXIT_CLIENT_EXIT_NONZERO;
+@@ -1628,6 +1677,7 @@ wait_for_proc (bool all, unsigned int minreap)
+       child_error = deferred_exit_status > child_error ? deferred_exit_status : child_error;
+       exit (child_error);
      }
 +#endif
  }

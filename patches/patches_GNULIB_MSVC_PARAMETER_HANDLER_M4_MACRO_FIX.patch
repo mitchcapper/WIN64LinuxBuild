@@ -1,12 +1,12 @@
 diff --git a/m4/printf.m4 b/m4/printf.m4
-index 8b8f01067f..198e3363b7 100644
+index 4c3e8ecf2d..e1d99ea315 100644
 --- a/m4/printf.m4
 +++ b/m4/printf.m4
-@@ -908,6 +908,7 @@ int main ()
+@@ -931,6 +931,7 @@ int main ()
  {
    int count = -1;
  #ifdef _MSC_VER
 +  _set_error_mode(1); #1 being _OUT_TO_STDERR, disable abort/retry/ignore popup in debug mode
    _set_invalid_parameter_handler (invalid_parameter_handler);
- #endif
-   /* Copy the format string.  Some systems (glibc with _FORTIFY_SOURCE=2)
+   /* Also avoid an Abort/Retry/Ignore dialog in debug builds.
+      <https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/crtsetreportmode>  */

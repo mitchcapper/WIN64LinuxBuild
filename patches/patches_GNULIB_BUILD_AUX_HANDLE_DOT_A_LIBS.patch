@@ -1,5 +1,5 @@
 diff --git a/build-aux/ar-lib b/build-aux/ar-lib
-index 17de55e79c..33f0b676ef 100644
+index 1521987496..fa651e18a5 100644
 --- a/build-aux/ar-lib
 +++ b/build-aux/ar-lib
 @@ -1,6 +1,11 @@
@@ -12,9 +12,9 @@ index 17de55e79c..33f0b676ef 100644
 +	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
 +fi
  me=ar-lib
- scriptversion=2019-07-04.01; # UTC
+ scriptversion=2024-06-19.01; # UTC
  
-@@ -29,6 +34,14 @@ scriptversion=2019-07-04.01; # UTC
+@@ -29,6 +34,14 @@ scriptversion=2024-06-19.01; # UTC
  # bugs to <bug-automake@gnu.org> or send patches to
  # <automake-patches@gnu.org>.
  
@@ -57,7 +57,7 @@ index 17de55e79c..33f0b676ef 100644
    done
  }
  
-@@ -205,7 +223,7 @@ if test -n "$delete"; then
+@@ -209,7 +227,7 @@ if test -n "$delete"; then
          ;;
        *)
          func_file_conv "$1"
@@ -66,7 +66,7 @@ index 17de55e79c..33f0b676ef 100644
          ;;
      esac
    done
-@@ -223,15 +241,15 @@ elif test -n "$extract"; then
+@@ -227,15 +245,15 @@ elif test -n "$extract"; then
            ;;
          *)
            func_file_conv "$1"
@@ -85,7 +85,7 @@ index 17de55e79c..33f0b676ef 100644
          done
    fi
  
-@@ -262,14 +280,14 @@ elif test -n "$quick$replace"; then
+@@ -266,14 +284,14 @@ elif test -n "$quick$replace"; then
    done
  
    if test -n "$orig_archive"; then
@@ -104,7 +104,7 @@ index 17de55e79c..33f0b676ef 100644
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index ba883b54aa..4e9157a535 100644
+index 49b3d05fde..a88792bed9 100644
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,5 +1,10 @@
@@ -116,7 +116,7 @@ index ba883b54aa..4e9157a535 100644
 +	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
 +fi
  
- scriptversion=2018-03-07.03; # UTC
+ scriptversion=2024-06-19.01; # UTC
  
 @@ -49,6 +54,10 @@ func_file_conv ()
      / | /[!/]*) # absolute file, and not a UNC file
@@ -242,7 +242,7 @@ index ba883b54aa..4e9157a535 100644
    do
 @@ -145,16 +189,32 @@ func_cl_wrapper ()
  	  case $2 in
- 	    *.o | *.[oO][bB][jJ])
+ 	    *.o | *.lo | *.[oO][bB][jJ])
  	      func_file_conv "$2"
 -	      set x "$@" -Fo"$file"
 +	      set x "$@" -Fo${COLOR_MAJOR}"$file"${COLOR_NONE}

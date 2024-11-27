@@ -1,8 +1,8 @@
 diff --git a/lib/poll.c b/lib/poll.c
-index ec8d2c2b55..80a68aff03 100644
+index 37cb2d7ba4..292d3b3b99 100644
 --- a/lib/poll.c
 +++ b/lib/poll.c
-@@ -364,6 +364,11 @@ compute_revents (int fd, int sought, fd_set *rfds, fd_set *wfds, fd_set *efds)
+@@ -359,6 +359,11 @@ compute_revents (int fd, int sought, fd_set *rfds, fd_set *wfds, fd_set *efds)
  }
  #endif /* !MinGW */
  
@@ -14,7 +14,7 @@ index ec8d2c2b55..80a68aff03 100644
  int
  poll (struct pollfd *pfd, nfds_t nfd, int timeout)
  {
-@@ -463,11 +468,13 @@ poll (struct pollfd *pfd, nfds_t nfd, int timeout)
+@@ -458,11 +463,13 @@ poll (struct pollfd *pfd, nfds_t nfd, int timeout)
    return rc;
  #else
    static struct timeval tv0;
@@ -29,7 +29,7 @@ index ec8d2c2b55..80a68aff03 100644
    BOOL poll_again;
    MSG msg;
    int rc = 0;
-@@ -539,6 +546,9 @@ restart:
+@@ -534,6 +541,9 @@ restart:
              timeout = 0;
          }
      }
@@ -39,7 +39,7 @@ index ec8d2c2b55..80a68aff03 100644
  
    if (select (0, &rfds, &wfds, &xfds, &tv0) > 0)
      {
-@@ -575,8 +585,13 @@ restart:
+@@ -570,8 +580,13 @@ restart:
          break;
      }
  
@@ -55,7 +55,7 @@ index ec8d2c2b55..80a68aff03 100644
  
    /* Place a sentinel at the end of the array.  */
    handle_array[nhandles] = NULL;
-@@ -632,3 +647,21 @@ restart:
+@@ -627,3 +642,21 @@ restart:
    return rc;
  #endif
  }
@@ -79,7 +79,7 @@ index ec8d2c2b55..80a68aff03 100644
 +}
 \ No newline at end of file
 diff --git a/lib/poll.in.h b/lib/poll.in.h
-index 75ca21f4cc..2d57f3ffdb 100644
+index 29b2d26150..48a2f7565c 100644
 --- a/lib/poll.in.h
 +++ b/lib/poll.in.h
 @@ -124,7 +124,7 @@ _GL_WARN_ON_USE (poll, "poll is unportable - "

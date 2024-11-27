@@ -1,8 +1,8 @@
 diff --git a/lib/dirchownmod.c b/lib/dirchownmod.c
-index b3dbac3374..992b810c97 100644
+index d5f7b5432a..42ab816fa8 100644
 --- a/lib/dirchownmod.c
 +++ b/lib/dirchownmod.c
-@@ -62,6 +62,7 @@ dirchownmod (int fd, char const *dir, mode_t mkdir_mode,
+@@ -68,6 +68,7 @@ dirchownmod (int fd, char const *dir, mode_t mkdir_mode,
               uid_t owner, gid_t group,
               mode_t mode, mode_t mode_bits)
  {
@@ -10,7 +10,7 @@ index b3dbac3374..992b810c97 100644
    struct stat st;
    int result = (fd < 0 ? stat (dir, &st) : fstat (fd, &st));
  
-@@ -138,4 +139,7 @@ dirchownmod (int fd, char const *dir, mode_t mkdir_mode,
+@@ -144,4 +145,7 @@ dirchownmod (int fd, char const *dir, mode_t mkdir_mode,
      }
  
    return result;
@@ -19,7 +19,7 @@ index b3dbac3374..992b810c97 100644
 +#endif
  }
 diff --git a/lib/idcache.c b/lib/idcache.c
-index ff1233aa17..2a2d8b6202 100644
+index ccaf56dad2..239a332746 100644
 --- a/lib/idcache.c
 +++ b/lib/idcache.c
 @@ -22,8 +22,10 @@
@@ -107,10 +107,10 @@ index ff1233aa17..2a2d8b6202 100644
 +  #endif
  }
 diff --git a/lib/savewd.c b/lib/savewd.c
-index 4eddba32dc..dcddb342a0 100644
+index 3a0361425a..301127e7e0 100644
 --- a/lib/savewd.c
 +++ b/lib/savewd.c
-@@ -70,7 +70,11 @@ savewd_save (struct savewd *wd)
+@@ -87,7 +87,11 @@ savewd_save (struct savewd *wd)
            /* "Save" the initial working directory by forking a new
               subprocess that will attempt all the work from the chdir
               until the next savewd_restore.  */
@@ -122,7 +122,7 @@ index 4eddba32dc..dcddb342a0 100644
            if (wd->val.child != 0)
              {
                if (0 < wd->val.child)
-@@ -204,8 +208,12 @@ savewd_restore (struct savewd *wd, int status)
+@@ -221,8 +225,12 @@ savewd_restore (struct savewd *wd, int status)
          if (0 < child)
            {
              int child_status;
@@ -136,7 +136,7 @@ index 4eddba32dc..dcddb342a0 100644
              if (! WIFEXITED (child_status))
                raise (WTERMSIG (child_status));
 diff --git a/lib/userspec.c b/lib/userspec.c
-index 5958883ff4..b0912df1fc 100644
+index 833f7f58d7..1f992e083a 100644
 --- a/lib/userspec.c
 +++ b/lib/userspec.c
 @@ -24,8 +24,12 @@

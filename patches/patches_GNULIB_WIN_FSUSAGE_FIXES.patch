@@ -1,5 +1,5 @@
 diff --git a/lib/fsusage.c b/lib/fsusage.c
-index f6f4b1c35f..d30dd3f9fb 100644
+index 97d0eef7aa..cd7a7da4c9 100644
 --- a/lib/fsusage.c
 +++ b/lib/fsusage.c
 @@ -22,8 +22,7 @@
@@ -105,13 +105,13 @@ index f6f4b1c35f..d30dd3f9fb 100644
    return 0;
  }
 diff --git a/lib/fsusage.h b/lib/fsusage.h
-index 9630b04e00..24cddb7e76 100644
+index da87859060..080c8642ac 100644
 --- a/lib/fsusage.h
 +++ b/lib/fsusage.h
 @@ -22,6 +22,17 @@
- # define FSUSAGE_H_
+ #define FSUSAGE_H_
  
- # include <stdint.h>
+ #include <stdint.h>
 +# include <stdbool.h>
 +#ifdef _WIN32
 +# include <stdlib.h>
@@ -124,9 +124,9 @@ index 9630b04e00..24cddb7e76 100644
 +# endif
 +#endif
  
- struct fs_usage
- {
-@@ -32,8 +43,14 @@ struct fs_usage
+ #ifdef __cplusplus
+ extern "C" {
+@@ -37,6 +48,13 @@ struct fs_usage
    bool fsu_bavail_top_bit_set;  /* 1 if fsu_bavail represents a value < 0.  */
    uintmax_t fsu_files;          /* Total file nodes. */
    uintmax_t fsu_ffree;          /* Free file nodes. */
@@ -138,12 +138,10 @@ index 9630b04e00..24cddb7e76 100644
 +  fsword fsu_fs_type;
 +#endif
  };
--
- int get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp);
  
- #endif
+ int get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp);
 diff --git a/lib/mountlist.c b/lib/mountlist.c
-index 8b06e7b7ee..f7272bbdd7 100644
+index 06300d6b73..db8b79f307 100644
 --- a/lib/mountlist.c
 +++ b/lib/mountlist.c
 @@ -187,6 +187,10 @@

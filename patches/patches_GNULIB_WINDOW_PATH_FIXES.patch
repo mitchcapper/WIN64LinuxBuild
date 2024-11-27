@@ -1,5 +1,5 @@
 diff --git a/lib/argp-help.c b/lib/argp-help.c
-index e5baee2ca8..d3970e4f4e 100644
+index 193fd384b7..397157da7d 100644
 --- a/lib/argp-help.c
 +++ b/lib/argp-help.c
 @@ -47,7 +47,7 @@
@@ -11,7 +11,7 @@ index e5baee2ca8..d3970e4f4e 100644
  #include "argp.h"
  #include "argp-fmtstream.h"
  #include "argp-namefrob.h"
-@@ -1828,7 +1828,7 @@ char *
+@@ -1833,7 +1833,7 @@ char *
  __argp_short_program_name (void)
  {
  # if HAVE_DECL_PROGRAM_INVOCATION_NAME
@@ -21,7 +21,7 @@ index e5baee2ca8..d3970e4f4e 100644
  # else
    /* FIXME: What now? Miles suggests that it is better to use NULL,
 diff --git a/lib/basename.c b/lib/basename.c
-index 21fab1efad..a52738c101 100644
+index c5a6bdc9d5..c330723c9b 100644
 --- a/lib/basename.c
 +++ b/lib/basename.c
 @@ -22,6 +22,7 @@
@@ -42,7 +42,7 @@ index 21fab1efad..a52738c101 100644
  
    /* Finally, copy the basename.  */
 diff --git a/lib/canonicalize-lgpl.c b/lib/canonicalize-lgpl.c
-index e701297d84..b6d56fb443 100644
+index efd79ceebb..7a4ae6e265 100644
 --- a/lib/canonicalize-lgpl.c
 +++ b/lib/canonicalize-lgpl.c
 @@ -242,12 +242,12 @@ realpath_stk (const char *name, char *resolved, struct realpath_bufs *bufs)
@@ -84,941 +84,62 @@ index e701297d84..b6d56fb443 100644
                      }
                    /* Install the new prefix to be in effect hereafter.  */
 diff --git a/lib/canonicalize.c b/lib/canonicalize.c
-index d73ee2c894..e83e66b307 100644
+index 2572b40558..46224b63c6 100644
 --- a/lib/canonicalize.c
 +++ b/lib/canonicalize.c
-@@ -1,469 +1,463 @@
--/* Return the canonical absolute name of a given file.
--   Copyright (C) 1996-2023 Free Software Foundation, Inc.
--
--   This program is free software: you can redistribute it and/or modify
--   it under the terms of the GNU General Public License as published by
--   the Free Software Foundation, either version 3 of the License, or
--   (at your option) any later version.
--
--   This program is distributed in the hope that it will be useful,
--   but WITHOUT ANY WARRANTY; without even the implied warranty of
--   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
--   GNU General Public License for more details.
--
--   You should have received a copy of the GNU General Public License
--   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
--
--#include <config.h>
--
--#include "canonicalize.h"
--
--#include <errno.h>
--#include <fcntl.h>
--#include <string.h>
--#include <sys/stat.h>
--#include <unistd.h>
--
--#include <filename.h>
--#include <idx.h>
--#include <intprops.h>
--#include <scratch_buffer.h>
--
--#include "attribute.h"
--#include "file-set.h"
--#include "hash-triple.h"
--#include "xalloc.h"
--
--#ifndef DOUBLE_SLASH_IS_DISTINCT_ROOT
--# define DOUBLE_SLASH_IS_DISTINCT_ROOT false
--#endif
--
+@@ -45,11 +45,6 @@
+ # define DOUBLE_SLASH_IS_DISTINCT_ROOT false
+ #endif
+ 
 -#if ISSLASH ('\\')
 -# define SLASHES "/\\"
 -#else
 -# define SLASHES "/"
 -#endif
--
--/* Avoid false GCC warning "'end_idx' may be used uninitialized".  */
-+/* Return the canonical absolute name of a given file.
-+   Copyright (C) 1996-2023 Free Software Foundation, Inc.
-+
-+   This program is free software: you can redistribute it and/or modify
-+   it under the terms of the GNU General Public License as published by
-+   the Free Software Foundation, either version 3 of the License, or
-+   (at your option) any later version.
-+
-+   This program is distributed in the hope that it will be useful,
-+   but WITHOUT ANY WARRANTY; without even the implied warranty of
-+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+   GNU General Public License for more details.
-+
-+   You should have received a copy of the GNU General Public License
-+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
-+
-+#include <config.h>
-+
-+#include "canonicalize.h"
-+
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <string.h>
-+#include <sys/stat.h>
-+#include <unistd.h>
-+
-+#include <filename.h>
-+#include <idx.h>
-+#include <intprops.h>
-+#include <scratch_buffer.h>
-+
-+#include "attribute.h"
-+#include "file-set.h"
-+#include "hash-triple.h"
-+#include "xalloc.h"
-+
-+#ifndef DOUBLE_SLASH_IS_DISTINCT_ROOT
-+# define DOUBLE_SLASH_IS_DISTINCT_ROOT false
-+#endif
-+
-+
-+/* Avoid false GCC warning "'end_idx' may be used uninitialized".  */
- #if __GNUC__ + (__GNUC_MINOR__ >= 7) > 4
- # pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
- #endif
--
--/* Return true if FILE's existence can be shown, false (setting errno)
--   otherwise.  Follow symbolic links.  */
--static bool
--file_accessible (char const *file)
--{
--# if HAVE_FACCESSAT
--  return faccessat (AT_FDCWD, file, F_OK, AT_EACCESS) == 0;
--# else
--  struct stat st;
--  return stat (file, &st) == 0 || errno == EOVERFLOW;
--# endif
--}
--
--/* True if concatenating END as a suffix to a file name means that the
--   code needs to check that the file name is that of a searchable
--   directory, since the canonicalize_filename_mode_stk code won't
--   check this later anyway when it checks an ordinary file name
--   component within END.  END must either be empty, or start with a
--   slash.  */
--
--static bool _GL_ATTRIBUTE_PURE
--suffix_requires_dir_check (char const *end)
--{
--  /* If END does not start with a slash, the suffix is OK.  */
--  while (ISSLASH (*end))
--    {
--      /* Two or more slashes act like a single slash.  */
--      do
--        end++;
--      while (ISSLASH (*end));
--
--      switch (*end++)
--        {
--        default: return false;  /* An ordinary file name component is OK.  */
--        case '\0': return true; /* Trailing "/" is trouble.  */
--        case '.': break;        /* Possibly "." or "..".  */
--        }
--      /* Trailing "/.", or "/.." even if not trailing, is trouble.  */
--      if (!*end || (*end == '.' && (!end[1] || ISSLASH (end[1]))))
--        return true;
--    }
--
--  return false;
--}
--
--/* Append this to a file name to test whether it is a searchable directory.
--   On POSIX platforms "/" suffices, but "/./" is sometimes needed on
--   macOS 10.13 <https://bugs.gnu.org/30350>, and should also work on
--   platforms like AIX 7.2 that need at least "/.".  */
--
--#ifdef LSTAT_FOLLOWS_SLASHED_SYMLINK
--static char const dir_suffix[] = "/";
--#else
--static char const dir_suffix[] = "/./";
--#endif
--
--/* Return true if DIR is a searchable dir, false (setting errno) otherwise.
--   DIREND points to the NUL byte at the end of the DIR string.
--   Store garbage into DIREND[0 .. strlen (dir_suffix)].  */
--
--static bool
--dir_check (char *dir, char *dirend)
--{
--  strcpy (dirend, dir_suffix);
--  return file_accessible (dir);
--}
--
--#if !((HAVE_CANONICALIZE_FILE_NAME && FUNC_REALPATH_WORKS)      \
--      || GNULIB_CANONICALIZE_LGPL)
--/* Return the canonical absolute name of file NAME.  A canonical name
--   does not contain any ".", ".." components nor any repeated file name
--   separators ('/') or symlinks.  All components must exist.
--   The result is malloc'd.  */
--
--char *
--canonicalize_file_name (const char *name)
--{
--  return canonicalize_filename_mode (name, CAN_EXISTING);
--}
--#endif /* !HAVE_CANONICALIZE_FILE_NAME */
--
--static bool
--multiple_bits_set (canonicalize_mode_t i)
--{
--  return (i & (i - 1)) != 0;
--}
--
--/* Return true if we've already seen the triple, <FILENAME, dev, ino>.
--   If *HT is not initialized, initialize it.  */
--static bool
--seen_triple (Hash_table **ht, char const *filename, struct stat const *st)
--{
--  if (*ht == NULL)
--    {
--      idx_t initial_capacity = 7;
--      *ht = hash_initialize (initial_capacity,
--                            NULL,
--                            triple_hash,
--                            triple_compare_ino_str,
--                            triple_free);
--      if (*ht == NULL)
--        xalloc_die ();
--    }
--
--  if (seen_file (*ht, filename, st))
--    return true;
--
--  record_file (*ht, filename, st);
--  return false;
--}
--
--/* Scratch buffers used by canonicalize_filename_mode_stk and managed
--   by __realpath.  */
--struct realpath_bufs
--{
--  struct scratch_buffer rname;
--  struct scratch_buffer extra;
--  struct scratch_buffer link;
--};
--
--static char *
--canonicalize_filename_mode_stk (const char *name, canonicalize_mode_t can_mode,
--                                struct realpath_bufs *bufs)
--{
--  char *dest;
--  char const *start;
--  char const *end;
--  Hash_table *ht = NULL;
--  bool logical = (can_mode & CAN_NOLINKS) != 0;
--  int num_links = 0;
--
--  canonicalize_mode_t can_exist = can_mode & CAN_MODE_MASK;
--  if (multiple_bits_set (can_exist))
--    {
--      errno = EINVAL;
--      return NULL;
--    }
--
--  if (name == NULL)
--    {
--      errno = EINVAL;
--      return NULL;
--    }
--
--  if (name[0] == '\0')
--    {
--      errno = ENOENT;
--      return NULL;
--    }
--
--  char *rname = bufs->rname.data;
--  bool end_in_extra_buffer = false;
--  bool failed = true;
--
--  /* This is always zero for Posix hosts, but can be 2 for MS-Windows
--     and MS-DOS X:/foo/bar file names.  */
--  idx_t prefix_len = FILE_SYSTEM_PREFIX_LEN (name);
--
--  if (!IS_ABSOLUTE_FILE_NAME (name))
--    {
--      while (!getcwd (bufs->rname.data, bufs->rname.length))
--        {
--          switch (errno)
--            {
--            case ERANGE:
--              if (scratch_buffer_grow (&bufs->rname))
--                break;
--              FALLTHROUGH;
--            case ENOMEM:
--              xalloc_die ();
--
--            default:
--              dest = rname;
--              goto error;
--            }
--          rname = bufs->rname.data;
--        }
--      dest = rawmemchr (rname, '\0');
--      start = name;
--      prefix_len = FILE_SYSTEM_PREFIX_LEN (rname);
--    }
--  else
--    {
--      dest = mempcpy (rname, name, prefix_len);
+ 
+ /* Avoid false GCC warning "'end_idx' may be used uninitialized".  */
+ #if _GL_GNUC_PREREQ (4, 7)
+@@ -240,13 +235,13 @@ canonicalize_filename_mode_stk (const char *name, canonicalize_mode_t can_mode,
+   else
+     {
+       dest = mempcpy (rname, name, prefix_len);
 -      *dest++ = '/';
--      if (DOUBLE_SLASH_IS_DISTINCT_ROOT)
--        {
--          if (prefix_len == 0 /* implies ISSLASH (name[0]) */
--              && ISSLASH (name[1]) && !ISSLASH (name[2]))
--            {
--              *dest++ = '/';
--#if defined _WIN32 && !defined __CYGWIN__
--              /* For UNC file names '\\server\path\to\file', extend the prefix
--                 to include the server: '\\server\'.  */
--              {
--                idx_t i;
--                for (i = 2; name[i] != '\0' && !ISSLASH (name[i]); )
--                  i++;
--                if (name[i] != '\0' /* implies ISSLASH (name[i]) */
--                    && i + 1 < bufs->rname.length)
--                  {
--                    prefix_len = i;
--                    memcpy (dest, name + 2, i - 2 + 1);
--                    dest += i - 2 + 1;
--                  }
--                else
--                  {
--                    /* Either name = '\\server'; this is an invalid file name.
--                       Or name = '\\server\...' and server is more than
--                       bufs->rname.length - 4 bytes long.  In either
--                       case, stop the UNC processing.  */
--                  }
--              }
--#endif
--            }
--          *dest = '\0';
--        }
--      start = name + prefix_len;
--    }
--
--  for ( ; *start; start = end)
--    {
--      /* Skip sequence of multiple file name separators.  */
--      while (ISSLASH (*start))
--        ++start;
--
--      /* Find end of component.  */
--      for (end = start; *end && !ISSLASH (*end); ++end)
--        /* Nothing.  */;
--
--      /* Length of this file name component; it can be zero if a file
--         name ends in '/'.  */
--      idx_t startlen = end - start;
--
--      if (startlen == 0)
--        break;
--      else if (startlen == 1 && start[0] == '.')
--        /* nothing */;
--      else if (startlen == 2 && start[0] == '.' && start[1] == '.')
--        {
--          /* Back up to previous component, ignore if at root already.  */
--          if (dest > rname + prefix_len + 1)
--            for (--dest; dest > rname && !ISSLASH (dest[-1]); --dest)
--              continue;
--          if (DOUBLE_SLASH_IS_DISTINCT_ROOT
--              && dest == rname + 1 && !prefix_len
--              && ISSLASH (*dest) && !ISSLASH (dest[1]))
--            dest++;
--        }
--      else
--        {
--          if (!ISSLASH (dest[-1]))
--            *dest++ = '/';
--
--          while (rname + bufs->rname.length - dest
--                 < startlen + sizeof dir_suffix)
--            {
--              idx_t dest_offset = dest - rname;
--              if (!scratch_buffer_grow_preserve (&bufs->rname))
--                xalloc_die ();
--              rname = bufs->rname.data;
--              dest = rname + dest_offset;
--            }
--
--          dest = mempcpy (dest, start, startlen);
--          *dest = '\0';
--
--          char *buf;
--          ssize_t n = -1;
--          if (!logical)
--            {
--              while (true)
--                {
--                  buf = bufs->link.data;
--                  idx_t bufsize = bufs->link.length;
--                  n = readlink (rname, buf, bufsize - 1);
--                  if (n < bufsize - 1)
--                    break;
--                  if (!scratch_buffer_grow (&bufs->link))
--                    xalloc_die ();
--                }
--            }
--          if (0 <= n)
--            {
--              /* A physical traversal and RNAME is a symbolic link.  */
--
--              if (num_links < 20)
--                num_links++;
--              else if (*start)
--                {
--                  /* Enough symlinks have been seen that it is time to
--                     worry about being in a symlink cycle.
--                     Get the device and inode of the parent directory, as
--                     pre-2017 POSIX says this info is not reliable for
--                     symlinks.  */
--                  struct stat st;
--                  dest[- startlen] = '\0';
--                  if (stat (*rname ? rname : ".", &st) != 0)
--                    goto error;
--                  dest[- startlen] = *start;
--
--                  /* Detect loops.  We cannot use the cycle-check module here,
--                     since it's possible to encounter the same parent
--                     directory more than once in a given traversal.  However,
--                     encountering the same (parentdir, START) pair twice does
--                     indicate a loop.  */
--                  if (seen_triple (&ht, start, &st))
--                    {
--                      if (can_exist == CAN_MISSING)
--                        continue;
--                      errno = ELOOP;
--                      goto error;
--                    }
--                }
--
--              buf[n] = '\0';
--
--              char *extra_buf = bufs->extra.data;
--              idx_t end_idx;
--              if (end_in_extra_buffer)
--                end_idx = end - extra_buf;
--              size_t len = strlen (end);
--              if (INT_ADD_OVERFLOW (len, n))
--                xalloc_die ();
--              while (bufs->extra.length <= len + n)
--                {
--                  if (!scratch_buffer_grow_preserve (&bufs->extra))
--                    xalloc_die ();
--                  extra_buf = bufs->extra.data;
--                }
--              if (end_in_extra_buffer)
--                end = extra_buf + end_idx;
--
--              /* Careful here, end may be a pointer into extra_buf... */
--              memmove (&extra_buf[n], end, len + 1);
--              name = end = memcpy (extra_buf, buf, n);
--              end_in_extra_buffer = true;
--
--              if (IS_ABSOLUTE_FILE_NAME (buf))
--                {
--                  idx_t pfxlen = FILE_SYSTEM_PREFIX_LEN (buf);
--
--                  dest = mempcpy (rname, buf, pfxlen);
--                  *dest++ = '/'; /* It's an absolute symlink */
--                  if (DOUBLE_SLASH_IS_DISTINCT_ROOT)
--                    {
--                      if (ISSLASH (buf[1]) && !ISSLASH (buf[2]) && !pfxlen)
--                        *dest++ = '/';
--                      *dest = '\0';
--                    }
--                  /* Install the new prefix to be in effect hereafter.  */
--                  prefix_len = pfxlen;
--                }
--              else
--                {
--                  /* Back up to previous component, ignore if at root
--                     already: */
--                  if (dest > rname + prefix_len + 1)
--                    for (--dest; dest > rname && !ISSLASH (dest[-1]); --dest)
--                      continue;
--                  if (DOUBLE_SLASH_IS_DISTINCT_ROOT && dest == rname + 1
--                      && ISSLASH (*dest) && !ISSLASH (dest[1]) && !prefix_len)
--                    dest++;
--                }
--            }
--          else if (! (can_exist == CAN_MISSING
--                      || (suffix_requires_dir_check (end)
--                          ? dir_check (rname, dest)
--                          : !logical
--                          ? errno == EINVAL
--                          : *end || file_accessible (rname))
--                      || (can_exist == CAN_ALL_BUT_LAST
--                          && errno == ENOENT
--                          && !end[strspn (end, SLASHES)])))
--            goto error;
--        }
--    }
--  if (dest > rname + prefix_len + 1 && ISSLASH (dest[-1]))
--    --dest;
--  if (DOUBLE_SLASH_IS_DISTINCT_ROOT && dest == rname + 1 && !prefix_len
--      && ISSLASH (*dest) && !ISSLASH (dest[1]))
--    dest++;
--  failed = false;
--
--error:
--  if (ht)
--    hash_free (ht);
--
--  if (failed)
--    return NULL;
--
--  *dest++ = '\0';
--  char *result = malloc (dest - rname);
--  if (!result)
--    xalloc_die ();
--  return memcpy (result, rname, dest - rname);
--}
--
--/* Return the canonical absolute name of file NAME, while treating
--   missing elements according to CAN_MODE.  A canonical name
--   does not contain any ".", ".." components nor any repeated file name
--   separators ('/') or, depending on other CAN_MODE flags, symlinks.
--   Whether components must exist or not depends on canonicalize mode.
--   The result is malloc'd.  */
--
--char *
--canonicalize_filename_mode (const char *name, canonicalize_mode_t can_mode)
--{
--  struct realpath_bufs bufs;
--  scratch_buffer_init (&bufs.rname);
--  scratch_buffer_init (&bufs.extra);
--  scratch_buffer_init (&bufs.link);
--  char *result = canonicalize_filename_mode_stk (name, can_mode, &bufs);
--  scratch_buffer_free (&bufs.link);
--  scratch_buffer_free (&bufs.extra);
--  scratch_buffer_free (&bufs.rname);
--  return result;
--}
-+/* Return true if FILE's existence can be shown, false (setting errno)
-+   otherwise.  Follow symbolic links.  */
-+static bool
-+file_accessible (char const *file)
-+{
-+# if HAVE_FACCESSAT
-+  return faccessat (AT_FDCWD, file, F_OK, AT_EACCESS) == 0;
-+# else
-+  struct stat st;
-+  return stat (file, &st) == 0 || errno == EOVERFLOW;
-+# endif
-+}
-+
-+/* True if concatenating END as a suffix to a file name means that the
-+   code needs to check that the file name is that of a searchable
-+   directory, since the canonicalize_filename_mode_stk code won't
-+   check this later anyway when it checks an ordinary file name
-+   component within END.  END must either be empty, or start with a
-+   slash.  */
-+
-+static bool _GL_ATTRIBUTE_PURE
-+suffix_requires_dir_check (char const *end)
-+{
-+  /* If END does not start with a slash, the suffix is OK.  */
-+  while (ISSLASH (*end))
-+    {
-+      /* Two or more slashes act like a single slash.  */
-+      do
-+        end++;
-+      while (ISSLASH (*end));
-+
-+      switch (*end++)
-+        {
-+        default: return false;  /* An ordinary file name component is OK.  */
-+        case '\0': return true; /* Trailing "/" is trouble.  */
-+        case '.': break;        /* Possibly "." or "..".  */
-+        }
-+      /* Trailing "/.", or "/.." even if not trailing, is trouble.  */
-+      if (!*end || (*end == '.' && (!end[1] || ISSLASH (end[1]))))
-+        return true;
-+    }
-+
-+  return false;
-+}
-+
-+/* Append this to a file name to test whether it is a searchable directory.
-+   On POSIX platforms "/" suffices, but "/./" is sometimes needed on
-+   macOS 10.13 <https://bugs.gnu.org/30350>, and should also work on
-+   platforms like AIX 7.2 that need at least "/.".  */
-+
-+#ifdef LSTAT_FOLLOWS_SLASHED_SYMLINK
-+static char const dir_suffix[] = "/";
-+#else
-+static char const dir_suffix[] = "/./";
-+#endif
-+
-+/* Return true if DIR is a searchable dir, false (setting errno) otherwise.
-+   DIREND points to the NUL byte at the end of the DIR string.
-+   Store garbage into DIREND[0 .. strlen (dir_suffix)].  */
-+
-+static bool
-+dir_check (char *dir, char *dirend)
-+{
-+  strcpy (dirend, dir_suffix);
-+  return file_accessible (dir);
-+}
-+
-+#if !((HAVE_CANONICALIZE_FILE_NAME && FUNC_REALPATH_WORKS)      \
-+      || GNULIB_CANONICALIZE_LGPL)
-+/* Return the canonical absolute name of file NAME.  A canonical name
-+   does not contain any ".", ".." components nor any repeated file name
-+   separators ('/') or symlinks.  All components must exist.
-+   The result is malloc'd.  */
-+
-+char *
-+canonicalize_file_name (const char *name)
-+{
-+  return canonicalize_filename_mode (name, CAN_EXISTING);
-+}
-+#endif /* !HAVE_CANONICALIZE_FILE_NAME */
-+
-+static bool
-+multiple_bits_set (canonicalize_mode_t i)
-+{
-+  return (i & (i - 1)) != 0;
-+}
-+
-+/* Return true if we've already seen the triple, <FILENAME, dev, ino>.
-+   If *HT is not initialized, initialize it.  */
-+static bool
-+seen_triple (Hash_table **ht, char const *filename, struct stat const *st)
-+{
-+  if (*ht == NULL)
-+    {
-+      idx_t initial_capacity = 7;
-+      *ht = hash_initialize (initial_capacity,
-+                            NULL,
-+                            triple_hash,
-+                            triple_compare_ino_str,
-+                            triple_free);
-+      if (*ht == NULL)
-+        xalloc_die ();
-+    }
-+
-+  if (seen_file (*ht, filename, st))
-+    return true;
-+
-+  record_file (*ht, filename, st);
-+  return false;
-+}
-+
-+/* Scratch buffers used by canonicalize_filename_mode_stk and managed
-+   by __realpath.  */
-+struct realpath_bufs
-+{
-+  struct scratch_buffer rname;
-+  struct scratch_buffer extra;
-+  struct scratch_buffer link;
-+};
-+
-+static char *
-+canonicalize_filename_mode_stk (const char *name, canonicalize_mode_t can_mode,
-+                                struct realpath_bufs *bufs)
-+{
-+  char *dest;
-+  char const *start;
-+  char const *end;
-+  Hash_table *ht = NULL;
-+  bool logical = (can_mode & CAN_NOLINKS) != 0;
-+  int num_links = 0;
-+
-+  canonicalize_mode_t can_exist = can_mode & CAN_MODE_MASK;
-+  if (multiple_bits_set (can_exist))
-+    {
-+      errno = EINVAL;
-+      return NULL;
-+    }
-+
-+  if (name == NULL)
-+    {
-+      errno = EINVAL;
-+      return NULL;
-+    }
-+
-+  if (name[0] == '\0')
-+    {
-+      errno = ENOENT;
-+      return NULL;
-+    }
-+
-+  char *rname = bufs->rname.data;
-+  bool end_in_extra_buffer = false;
-+  bool failed = true;
-+
-+  /* This is always zero for Posix hosts, but can be 2 for MS-Windows
-+     and MS-DOS X:/foo/bar file names.  */
-+  idx_t prefix_len = FILE_SYSTEM_PREFIX_LEN (name);
-+
-+  if (!IS_ABSOLUTE_FILE_NAME (name))
-+    {
-+      while (!getcwd (bufs->rname.data, bufs->rname.length))
-+        {
-+          switch (errno)
-+            {
-+            case ERANGE:
-+              if (scratch_buffer_grow (&bufs->rname))
-+                break;
-+              FALLTHROUGH;
-+            case ENOMEM:
-+              xalloc_die ();
-+
-+            default:
-+              dest = rname;
-+              goto error;
-+            }
-+          rname = bufs->rname.data;
-+        }
-+      dest = rawmemchr (rname, '\0');
-+      start = name;
-+      prefix_len = FILE_SYSTEM_PREFIX_LEN (rname);
-+    }
-+  else
-+    {
-+      dest = mempcpy (rname, name, prefix_len);
 +      *dest++ = DIR_SEPARATOR;
-+      if (DOUBLE_SLASH_IS_DISTINCT_ROOT)
-+        {
-+          if (prefix_len == 0 /* implies ISSLASH (name[0]) */
-+              && ISSLASH (name[1]) && !ISSLASH (name[2]))
-+            {
+       if (DOUBLE_SLASH_IS_DISTINCT_ROOT)
+         {
+           if (prefix_len == 0 /* implies ISSLASH (name[0]) */
+               && ISSLASH (name[1]) && !ISSLASH (name[2]))
+             {
+-              *dest++ = '/';
 +              *dest++ = DIR_SEPARATOR;
-+#if defined _WIN32 && !defined __CYGWIN__
-+              /* For UNC file names '\\server\path\to\file', extend the prefix
-+                 to include the server: '\\server\'.  */
-+              {
-+                idx_t i;
-+                for (i = 2; name[i] != '\0' && !ISSLASH (name[i]); )
-+                  i++;
-+                if (name[i] != '\0' /* implies ISSLASH (name[i]) */
-+                    && i + 1 < bufs->rname.length)
-+                  {
-+                    prefix_len = i;
-+                    memcpy (dest, name + 2, i - 2 + 1);
-+                    dest += i - 2 + 1;
-+                  }
-+                else
-+                  {
-+                    /* Either name = '\\server'; this is an invalid file name.
-+                       Or name = '\\server\...' and server is more than
-+                       bufs->rname.length - 4 bytes long.  In either
-+                       case, stop the UNC processing.  */
-+                  }
-+              }
-+#endif
-+            }
-+          *dest = '\0';
-+        }
-+      start = name + prefix_len;
-+    }
-+
-+  for ( ; *start; start = end)
-+    {
-+      /* Skip sequence of multiple file name separators.  */
-+      while (ISSLASH (*start))
-+        ++start;
-+
-+      /* Find end of component.  */
-+      for (end = start; *end && !ISSLASH (*end); ++end)
-+        /* Nothing.  */;
-+
-+      /* Length of this file name component; it can be zero if a file
-+         name ends in '/'.  */
-+      idx_t startlen = end - start;
-+
-+      if (startlen == 0)
-+        break;
-+      else if (startlen == 1 && start[0] == '.')
-+        /* nothing */;
-+      else if (startlen == 2 && start[0] == '.' && start[1] == '.')
-+        {
-+          /* Back up to previous component, ignore if at root already.  */
-+          if (dest > rname + prefix_len + 1)
-+            for (--dest; dest > rname && !ISSLASH (dest[-1]); --dest)
-+              continue;
-+          if (DOUBLE_SLASH_IS_DISTINCT_ROOT
-+              && dest == rname + 1 && !prefix_len
-+              && ISSLASH (*dest) && !ISSLASH (dest[1]))
-+            dest++;
-+        }
-+      else
-+        {
-+          if (!ISSLASH (dest[-1]))
+ #if defined _WIN32 && !defined __CYGWIN__
+               /* For UNC file names '\\server\path\to\file', extend the prefix
+                  to include the server: '\\server\'.  */
+@@ -308,7 +303,7 @@ canonicalize_filename_mode_stk (const char *name, canonicalize_mode_t can_mode,
+       else
+         {
+           if (!ISSLASH (dest[-1]))
+-            *dest++ = '/';
 +            *dest++ = DIR_SEPARATOR;
-+
-+          while (rname + bufs->rname.length - dest
-+                 < startlen + sizeof dir_suffix)
-+            {
-+              idx_t dest_offset = dest - rname;
-+              if (!scratch_buffer_grow_preserve (&bufs->rname))
-+                xalloc_die ();
-+              rname = bufs->rname.data;
-+              dest = rname + dest_offset;
-+            }
-+
-+          dest = mempcpy (dest, start, startlen);
-+          *dest = '\0';
-+
-+          char *buf;
-+          ssize_t n = -1;
-+          if (!logical)
-+            {
-+              while (true)
-+                {
-+                  buf = bufs->link.data;
-+                  idx_t bufsize = bufs->link.length;
-+                  n = readlink (rname, buf, bufsize - 1);
-+                  if (n < bufsize - 1)
-+                    break;
-+                  if (!scratch_buffer_grow (&bufs->link))
-+                    xalloc_die ();
-+                }
-+            }
-+          if (0 <= n)
-+            {
-+              /* A physical traversal and RNAME is a symbolic link.  */
-+
-+              if (num_links < 20)
-+                num_links++;
-+              else if (*start)
-+                {
-+                  /* Enough symlinks have been seen that it is time to
-+                     worry about being in a symlink cycle.
-+                     Get the device and inode of the parent directory, as
-+                     pre-2017 POSIX says this info is not reliable for
-+                     symlinks.  */
-+                  struct stat st;
-+                  dest[- startlen] = '\0';
-+                  if (stat (*rname ? rname : ".", &st) != 0)
-+                    goto error;
-+                  dest[- startlen] = *start;
-+
-+                  /* Detect loops.  We cannot use the cycle-check module here,
-+                     since it's possible to encounter the same parent
-+                     directory more than once in a given traversal.  However,
-+                     encountering the same (parentdir, START) pair twice does
-+                     indicate a loop.  */
-+                  if (seen_triple (&ht, start, &st))
-+                    {
-+                      if (can_exist == CAN_MISSING)
-+                        continue;
-+                      errno = ELOOP;
-+                      goto error;
-+                    }
-+                }
-+
-+              buf[n] = '\0';
-+
-+              char *extra_buf = bufs->extra.data;
-+              idx_t end_idx;
-+              if (end_in_extra_buffer)
-+                end_idx = end - extra_buf;
-+              size_t len = strlen (end);
-+              if (INT_ADD_OVERFLOW (len, n))
-+                xalloc_die ();
-+              while (bufs->extra.length <= len + n)
-+                {
-+                  if (!scratch_buffer_grow_preserve (&bufs->extra))
-+                    xalloc_die ();
-+                  extra_buf = bufs->extra.data;
-+                }
-+              if (end_in_extra_buffer)
-+                end = extra_buf + end_idx;
-+
-+              /* Careful here, end may be a pointer into extra_buf... */
-+              memmove (&extra_buf[n], end, len + 1);
-+              name = end = memcpy (extra_buf, buf, n);
-+              end_in_extra_buffer = true;
-+
-+              if (IS_ABSOLUTE_FILE_NAME (buf))
-+                {
-+                  idx_t pfxlen = FILE_SYSTEM_PREFIX_LEN (buf);
-+
-+                  dest = mempcpy (rname, buf, pfxlen);
+ 
+           while (rname + bufs->rname.length - dest
+                  < startlen + sizeof dir_suffix)
+@@ -399,11 +394,11 @@ canonicalize_filename_mode_stk (const char *name, canonicalize_mode_t can_mode,
+                   idx_t pfxlen = FILE_SYSTEM_PREFIX_LEN (buf);
+ 
+                   dest = mempcpy (rname, buf, pfxlen);
+-                  *dest++ = '/'; /* It's an absolute symlink */
 +                  *dest++ = DIR_SEPARATOR; /* It's an absolute symlink */
-+                  if (DOUBLE_SLASH_IS_DISTINCT_ROOT)
-+                    {
-+                      if (ISSLASH (buf[1]) && !ISSLASH (buf[2]) && !pfxlen)
+                   if (DOUBLE_SLASH_IS_DISTINCT_ROOT)
+                     {
+                       if (ISSLASH (buf[1]) && !ISSLASH (buf[2]) && !pfxlen)
+-                        *dest++ = '/';
 +                        *dest++ = DIR_SEPARATOR;
-+                      *dest = '\0';
-+                    }
-+                  /* Install the new prefix to be in effect hereafter.  */
-+                  prefix_len = pfxlen;
-+                }
-+              else
-+                {
-+                  /* Back up to previous component, ignore if at root
-+                     already: */
-+                  if (dest > rname + prefix_len + 1)
-+                    for (--dest; dest > rname && !ISSLASH (dest[-1]); --dest)
-+                      continue;
-+                  if (DOUBLE_SLASH_IS_DISTINCT_ROOT && dest == rname + 1
-+                      && ISSLASH (*dest) && !ISSLASH (dest[1]) && !prefix_len)
-+                    dest++;
-+                }
-+            }
-+          else if (! (can_exist == CAN_MISSING
-+                      || (suffix_requires_dir_check (end)
-+                          ? dir_check (rname, dest)
-+                          : !logical
-+                          ? errno == EINVAL
-+                          : *end || file_accessible (rname))
-+                      || (can_exist == CAN_ALL_BUT_LAST
-+                          && errno == ENOENT
-+                          && !end[strspn (end, SLASHES)])))
-+            goto error;
-+        }
-+    }
-+  if (dest > rname + prefix_len + 1 && ISSLASH (dest[-1]))
-+    --dest;
-+  if (DOUBLE_SLASH_IS_DISTINCT_ROOT && dest == rname + 1 && !prefix_len
-+      && ISSLASH (*dest) && !ISSLASH (dest[1]))
-+    dest++;
-+  failed = false;
-+
-+error:
-+  if (ht)
-+    hash_free (ht);
-+
-+  if (failed)
-+    return NULL;
-+
-+  *dest++ = '\0';
-+  char *result = malloc (dest - rname);
-+  if (!result)
-+    xalloc_die ();
-+  return memcpy (result, rname, dest - rname);
-+}
-+
-+/* Return the canonical absolute name of file NAME, while treating
-+   missing elements according to CAN_MODE.  A canonical name
-+   does not contain any ".", ".." components nor any repeated file name
-+   separators ('/') or, depending on other CAN_MODE flags, symlinks.
-+   Whether components must exist or not depends on canonicalize mode.
-+   The result is malloc'd.  */
-+
-+char *
-+canonicalize_filename_mode (const char *name, canonicalize_mode_t can_mode)
-+{
-+  struct realpath_bufs bufs;
-+  scratch_buffer_init (&bufs.rname);
-+  scratch_buffer_init (&bufs.extra);
-+  scratch_buffer_init (&bufs.link);
-+  char *result = canonicalize_filename_mode_stk (name, can_mode, &bufs);
-+  scratch_buffer_free (&bufs.link);
-+  scratch_buffer_free (&bufs.extra);
-+  scratch_buffer_free (&bufs.rname);
-+  return result;
-+}
+                       *dest = '\0';
+                     }
+                   /* Install the new prefix to be in effect hereafter.  */
 diff --git a/lib/chdir-long.c b/lib/chdir-long.c
-index 8a25538b3f..eb32ff685c 100644
+index 6160025113..370a7adbcb 100644
 --- a/lib/chdir-long.c
 +++ b/lib/chdir-long.c
 @@ -25,7 +25,7 @@
@@ -1086,7 +207,7 @@ index 8a25538b3f..eb32ff685c 100644
            goto Fail;
  
 diff --git a/lib/chmod.c b/lib/chmod.c
-index 40088c8a5b..50d3a9726c 100644
+index 827c7f9b26..a8255bd872 100644
 --- a/lib/chmod.c
 +++ b/lib/chmod.c
 @@ -22,6 +22,7 @@
@@ -1107,7 +228,7 @@ index 40088c8a5b..50d3a9726c 100644
        struct stat st;
        if (lstat (filename, &st) < 0)
 diff --git a/lib/chown.c b/lib/chown.c
-index d735818afd..31c60e975f 100644
+index 398f8c1855..41db83dc04 100644
 --- a/lib/chown.c
 +++ b/lib/chown.c
 @@ -27,6 +27,7 @@
@@ -1118,7 +239,7 @@ index d735818afd..31c60e975f 100644
  
  #if !HAVE_CHOWN
  
-@@ -122,7 +123,7 @@ rpl_chown (const char *file, uid_t uid, gid_t gid)
+@@ -113,7 +114,7 @@ rpl_chown (const char *file, uid_t uid, gid_t gid)
    if (!stat_valid)
      {
        size_t len = strlen (file);
@@ -1128,7 +249,7 @@ index d735818afd..31c60e975f 100644
      }
  # endif
 diff --git a/lib/concat-filename.c b/lib/concat-filename.c
-index 62842a69cb..4124b2ffd1 100644
+index b46ff1b520..1722a22291 100644
 --- a/lib/concat-filename.c
 +++ b/lib/concat-filename.c
 @@ -64,7 +64,7 @@ concatenated_filename (const char *directory, const char *filename,
@@ -1141,10 +262,10 @@ index 62842a69cb..4124b2ffd1 100644
    p = stpcpy (p, filename);
    if (suffix != NULL)
 diff --git a/lib/creat.c b/lib/creat.c
-index dad7b2da45..94a8823f96 100644
+index 81626f9164..6c7d8e1f2f 100644
 --- a/lib/creat.c
 +++ b/lib/creat.c
-@@ -43,6 +43,7 @@ orig_creat (const char *filename, mode_t mode)
+@@ -47,6 +47,7 @@ orig_creat (const char *filename, mode_t mode)
  #include <errno.h>
  #include <string.h>
  #include <sys/types.h>
@@ -1152,7 +273,7 @@ index dad7b2da45..94a8823f96 100644
  
  int
  creat (const char *filename, mode_t mode)
-@@ -63,7 +64,7 @@ creat (const char *filename, mode_t mode)
+@@ -67,7 +68,7 @@ creat (const char *filename, mode_t mode)
       creat() must fail since creat() cannot create directories.  */
    {
      size_t len = strlen (filename);
@@ -1162,7 +283,7 @@ index dad7b2da45..94a8823f96 100644
          errno = EISDIR;
          return -1;
 diff --git a/lib/dirname.h b/lib/dirname.h
-index 0344f1c44c..65a2675ae9 100644
+index 33935ba937..aa203785e4 100644
 --- a/lib/dirname.h
 +++ b/lib/dirname.h
 @@ -30,7 +30,7 @@
@@ -1175,10 +296,10 @@ index 0344f1c44c..65a2675ae9 100644
  
  #ifdef __cplusplus
 diff --git a/lib/exclude.c b/lib/exclude.c
-index 15f238e09c..4cf9d64fc1 100644
+index 81549fa8fc..51ce296f09 100644
 --- a/lib/exclude.c
 +++ b/lib/exclude.c
-@@ -338,7 +338,7 @@ fnmatch_no_wildcards (char const *pattern, char const *f, int options)
+@@ -337,7 +337,7 @@ fnmatch_no_wildcards (char const *pattern, char const *f, int options)
        if (! r)
          {
            r = f[patlen];
@@ -1187,28 +308,28 @@ index 15f238e09c..4cf9d64fc1 100644
              r = 0;
          }
        return r;
-@@ -355,9 +355,9 @@ fnmatch_no_wildcards (char const *pattern, char const *f, int options)
+@@ -353,9 +353,9 @@ fnmatch_no_wildcards (char const *pattern, char const *f, int options)
+ 
        char *fcopy = xstrdup (f);
-       char *p;
        int r;
--      for (p = fcopy; ; *p++ = '/')
-+      for (p = fcopy; ; *p++ = DIR_SEPARATOR)
+-      for (char *p = fcopy; ; *p++ = '/')
++      for (char *p = fcopy; ; *p++ = DIR_SEPARATOR)
          {
 -          p = strchr (p, '/');
 +          p = strpbrk(p, SLASHES);
            if (p)
              *p = '\0';
            r = mbscasecmp (pattern, fcopy);
-@@ -381,7 +381,7 @@ exclude_fnmatch (char const *pattern, char const *f, int options)
+@@ -378,7 +378,7 @@ exclude_fnmatch (char const *pattern, char const *f, int options)
  
    if (! (options & EXCLUDE_ANCHORED))
-     for (p = f; *p && ! matched; p++)
+     for (char const *p = f; *p && ! matched; p++)
 -      if (*p == '/' && p[1] != '/')
 +      if ( ISSLASH(*p) && ! ISSLASH(p[1]))
-         matched = ((*matcher) (pattern, p + 1, options) == 0);
+         matched = matcher (pattern, p + 1, options) == 0;
  
    return matched;
-@@ -434,7 +434,7 @@ file_name_matches (struct exclude_segment const *seg, char const *f,
+@@ -429,7 +429,7 @@ file_name_matches (struct exclude_segment const *seg, char const *f,
              return true;
            if (options & FNM_LEADING_DIR)
              {
@@ -1216,8 +337,8 @@ index 15f238e09c..4cf9d64fc1 100644
 +              char *p = LAST_SLASH_IN_PATH(buffer);
                if (p)
                  {
-                   *p = 0;
-@@ -446,7 +446,7 @@ file_name_matches (struct exclude_segment const *seg, char const *f,
+                   *p = '\0';
+@@ -441,7 +441,7 @@ file_name_matches (struct exclude_segment const *seg, char const *f,
  
        if (!(options & EXCLUDE_ANCHORED))
          {
@@ -1227,7 +348,7 @@ index 15f238e09c..4cf9d64fc1 100644
              f++;
          }
 diff --git a/lib/faccessat.c b/lib/faccessat.c
-index ac8977cfd6..1dbda1b178 100644
+index 6eed1b642a..98d4639986 100644
 --- a/lib/faccessat.c
 +++ b/lib/faccessat.c
 @@ -30,6 +30,8 @@
@@ -1239,17 +360,26 @@ index ac8977cfd6..1dbda1b178 100644
  #undef _GL_INCLUDING_UNISTD_H
  
  #if HAVE_FACCESSAT
-@@ -59,7 +61,7 @@ rpl_faccessat (int fd, char const *file, int mode, int flag)
+@@ -44,7 +46,7 @@ orig_faccessat (int fd, char const *name, int mode, int flag)
+ /* Write "unistd.h" here, not <unistd.h>, otherwise OSF/1 5.1 DTK cc
+    eliminates this include because of the preliminary #include <unistd.h>
+    above.  */
+-# include "unistd.h"
++#include "unistd.h"
+ #else
+ # include <unistd.h>
+ #endif
+@@ -63,7 +65,7 @@ rpl_faccessat (int fd, char const *file, int mode, int flag)
  {
    int result = orig_faccessat (fd, file, mode, flag);
  
--  if (result == 0 && file[strlen (file) - 1] == '/')
-+  if (result == 0 && ISSLASH(file[strlen (file) - 1]) )
+-  if (file[strlen (file) - 1] == '/')
++  if ( ISSLASH(file[strlen (file) - 1]) )
      {
        struct stat st;
-       result = fstatat (fd, file, &st, 0);
+       int ret = fstatat (fd, file, &st, 0);
 diff --git a/lib/fchownat.c b/lib/fchownat.c
-index c8a016088f..72438b53cf 100644
+index 61902d1d98..f49db5ee3e 100644
 --- a/lib/fchownat.c
 +++ b/lib/fchownat.c
 @@ -31,6 +31,7 @@
@@ -1270,7 +400,7 @@ index c8a016088f..72438b53cf 100644
          if (fstatat (fd, file, &st, 0))
            return -1;
 diff --git a/lib/filename.h b/lib/filename.h
-index a2400a9dfe..97cab128a3 100644
+index 4f0f0fbc3c..07b2214673 100644
 --- a/lib/filename.h
 +++ b/lib/filename.h
 @@ -57,8 +57,12 @@ extern "C" {
@@ -1327,7 +457,7 @@ index a2400a9dfe..97cab128a3 100644
  
  /* Deprecated macros.  For backward compatibility with old users of the
 diff --git a/lib/filenamecat-lgpl.c b/lib/filenamecat-lgpl.c
-index 6d7ed8481d..3936a7f4ed 100644
+index dc6d3468c8..197c1e0eaf 100644
 --- a/lib/filenamecat-lgpl.c
 +++ b/lib/filenamecat-lgpl.c
 @@ -56,7 +56,7 @@ mfile_name_concat (char const *dir, char const *base, char **base_in_result)
@@ -1340,7 +470,7 @@ index 6d7ed8481d..3936a7f4ed 100644
    else if (ISSLASH (*base))
      {
 diff --git a/lib/findprog-in.c b/lib/findprog-in.c
-index c0768c29e2..69b95dac62 100644
+index 5c71c309ee..ae359876e8 100644
 --- a/lib/findprog-in.c
 +++ b/lib/findprog-in.c
 @@ -30,13 +30,7 @@
@@ -1359,7 +489,7 @@ index c0768c29e2..69b95dac62 100644
  /* Separator in PATH like lists of pathnames.  */
  #if (defined _WIN32 && !defined __CYGWIN__) || defined __EMX__ || defined __DJGPP__
 diff --git a/lib/fnmatch_loop.c b/lib/fnmatch_loop.c
-index 42e84b80cf..e76b4f8710 100644
+index 4e6e0865e9..aadaead8b2 100644
 --- a/lib/fnmatch_loop.c
 +++ b/lib/fnmatch_loop.c
 @@ -18,6 +18,7 @@
@@ -1470,7 +600,7 @@ index 42e84b80cf..e76b4f8710 100644
                         NULL, alloca_used) == 0))
              /* This is successful.  */
 diff --git a/lib/fopen.c b/lib/fopen.c
-index e1e4cdbd23..4f5a7f35f9 100644
+index d3b57a987a..946fc91836 100644
 --- a/lib/fopen.c
 +++ b/lib/fopen.c
 @@ -24,6 +24,7 @@
@@ -1481,7 +611,7 @@ index e1e4cdbd23..4f5a7f35f9 100644
  #undef _GL_ALREADY_INCLUDING_STDIO_H
  
  static FILE *
-@@ -163,7 +164,7 @@ rpl_fopen (const char *filename, const char *mode)
+@@ -167,7 +168,7 @@ rpl_fopen (const char *filename, const char *mode)
       fopen() must fail since the file does not contain a '.' directory.  */
    {
      size_t len = strlen (filename);
@@ -1491,7 +621,7 @@ index e1e4cdbd23..4f5a7f35f9 100644
          int fd;
          struct stat statbuf;
 diff --git a/lib/fstatat.c b/lib/fstatat.c
-index 372965ef5f..d5d11accac 100644
+index 470ef336cf..2381040128 100644
 --- a/lib/fstatat.c
 +++ b/lib/fstatat.c
 @@ -26,6 +26,7 @@
@@ -1521,7 +651,7 @@ index 372965ef5f..d5d11accac 100644
        errno = ENOTDIR;
        return -1;
 diff --git a/lib/fts.c b/lib/fts.c
-index faeb4b20a5..526be1600f 100644
+index 92306bc72f..324464c6c2 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -67,7 +67,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
@@ -1590,7 +720,7 @@ index faeb4b20a5..526be1600f 100644
                  /* GCC, you're too verbose. */
                  cp = NULL;
 diff --git a/lib/getcwd.c b/lib/getcwd.c
-index 28f69133a8..8e381d18af 100644
+index 214950a144..29e30eeefd 100644
 --- a/lib/getcwd.c
 +++ b/lib/getcwd.c
 @@ -30,7 +30,7 @@
@@ -1639,10 +769,10 @@ index 28f69133a8..8e381d18af 100644
  #if ! HAVE_OPENAT_SUPPORT
    if (dotlist != dots)
 diff --git a/lib/glob.c b/lib/glob.c
-index af0694eec4..c6bdb5940a 100644
+index dc1a915c05..c9c001dd8f 100644
 --- a/lib/glob.c
 +++ b/lib/glob.c
-@@ -49,6 +49,7 @@
+@@ -50,6 +50,7 @@
  #include <stdlib.h>
  #include <string.h>
  #include <alloca.h>
@@ -1650,7 +780,7 @@ index af0694eec4..c6bdb5940a 100644
  
  #ifdef _LIBC
  # undef strdup
-@@ -322,7 +323,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -308,7 +309,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
  
    /* POSIX requires all slashes to be matched.  This means that with
       a trailing slash we must match only directories.  */
@@ -1659,7 +789,7 @@ index af0694eec4..c6bdb5940a 100644
      flags |= GLOB_ONLYDIR;
  
    if (!(flags & GLOB_DOOFFS))
-@@ -486,7 +487,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -472,7 +473,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
    oldcount = pglob->gl_pathc + pglob->gl_offs;
  
    /* Find the filename.  */
@@ -1668,7 +798,7 @@ index af0694eec4..c6bdb5940a 100644
  
  #if defined __MSDOS__ || defined WINDOWS32
    /* The case of "d:pattern".  Since ':' is not allowed in
-@@ -574,7 +575,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -560,7 +561,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
        bool drive_root = (dirlen > 1
                           && (dirname[dirlen - 1] == ':'
                               || (dirlen > 2 && dirname[dirlen - 2] == ':'
@@ -1677,7 +807,7 @@ index af0694eec4..c6bdb5940a 100644
  #else
        bool drive_root = false;
  #endif
-@@ -583,7 +584,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -569,7 +570,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
          /* "pattern/".  Expand "pattern", appending slashes.  */
          {
            int orig_flags = flags;
@@ -1686,7 +816,7 @@ index af0694eec4..c6bdb5940a 100644
              {
                /* "pattern\\/".  Remove the final backslash if it hasn't
                   been quoted.  */
-@@ -615,9 +616,9 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -601,9 +602,9 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
  
    if ((flags & (GLOB_TILDE|GLOB_TILDE_CHECK)) && dirname[0] == '~')
      {
@@ -1699,7 +829,7 @@ index af0694eec4..c6bdb5940a 100644
          {
            /* Look up home directory.  */
            char *home_dir = getenv ("HOME");
-@@ -750,7 +751,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -736,7 +737,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
  #ifndef WINDOWS32
            /* Recognize ~user as a shorthand for the specified user's home
               directory.  */
@@ -1708,7 +838,7 @@ index af0694eec4..c6bdb5940a 100644
            char *user_name;
            int malloc_user_name = 0;
            char *unescape = NULL;
-@@ -937,7 +938,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
+@@ -923,7 +924,7 @@ __glob (const char *pattern, int flags, int (*errfunc) (const char *, int),
            if (pglob->gl_pathv[newcount] == NULL)
              goto nospace;
            p = mempcpy (pglob->gl_pathv[newcount], dirname, dirlen);
@@ -1717,7 +847,7 @@ index af0694eec4..c6bdb5940a 100644
            p[1] = '\0';
            if (__glibc_unlikely (malloc_dirname))
              free (dirname);
-@@ -1228,9 +1229,9 @@ prefix_array (const char *dirname, char **array, size_t n)
+@@ -1214,9 +1215,9 @@ prefix_array (const char *dirname, char **array, size_t n)
  {
    size_t i;
    size_t dirlen = strlen (dirname);
@@ -1729,7 +859,7 @@ index af0694eec4..c6bdb5940a 100644
      /* DIRNAME is just "/", so normal prepending would get us "//foo".
         We want "/foo" instead, so don't prepend any chars from DIRNAME.  */
      dirlen = 0;
-@@ -1238,7 +1239,7 @@ prefix_array (const char *dirname, char **array, size_t n)
+@@ -1224,7 +1225,7 @@ prefix_array (const char *dirname, char **array, size_t n)
  #if defined __MSDOS__ || defined WINDOWS32
    if (dirlen > 1)
      {
@@ -1738,7 +868,7 @@ index af0694eec4..c6bdb5940a 100644
          /* DIRNAME is "d:/".  Don't prepend the slash from DIRNAME.  */
          --dirlen;
        else if (dirname[dirlen - 1] == ':')
-@@ -1399,8 +1400,8 @@ glob_in_dir (const char *pattern, const char *directory, int flags,
+@@ -1385,8 +1386,8 @@ glob_in_dir (const char *pattern, const char *directory, int flags,
                              && !scratch_buffer_set_array_size (&s, need, 1))
                            goto memory_error;
                          char *p = mempcpy (s.data, directory, dirlen);
@@ -1750,7 +880,7 @@ index af0694eec4..c6bdb5940a 100644
                          if (! is_dir (s.data, flags, pglob))
                            continue;
 diff --git a/lib/lchmod.c b/lib/lchmod.c
-index b2d1b8bfde..b2baf00db2 100644
+index 8056f0b197..093c04372d 100644
 --- a/lib/lchmod.c
 +++ b/lib/lchmod.c
 @@ -29,6 +29,7 @@
@@ -1771,7 +901,7 @@ index b2d1b8bfde..b2baf00db2 100644
        struct stat st;
        if (lstat (file, &st) < 0)
 diff --git a/lib/lchown.c b/lib/lchown.c
-index 19a68c052b..2d5e3f3f13 100644
+index 03836bcb3b..49fca6cb4c 100644
 --- a/lib/lchown.c
 +++ b/lib/lchown.c
 @@ -25,6 +25,7 @@
@@ -1792,7 +922,7 @@ index 19a68c052b..2d5e3f3f13 100644
      }
  # endif
 diff --git a/lib/link.c b/lib/link.c
-index 2c81e2f2e3..3aacd91d00 100644
+index 97aa6d52c2..feb514a911 100644
 --- a/lib/link.c
 +++ b/lib/link.c
 @@ -23,6 +23,7 @@
@@ -1844,7 +974,7 @@ index 2c81e2f2e3..3aacd91d00 100644
          {
            *p = '\0';
 diff --git a/lib/linkat.c b/lib/linkat.c
-index 3d1ee3962f..ec3f3a483c 100644
+index 7ce1f81feb..6651e5aac5 100644
 --- a/lib/linkat.c
 +++ b/lib/linkat.c
 @@ -32,6 +32,7 @@
@@ -1867,7 +997,7 @@ index 3d1ee3962f..ec3f3a483c 100644
          /* Let linkat() decide whether hard-linking directories is legal.
             If fstatat() fails, then linkat() should fail for the same reason;
 diff --git a/lib/lstat.c b/lib/lstat.c
-index 00a4ce2ab8..20747ea6f7 100644
+index 7c09957e20..3d3b532953 100644
 --- a/lib/lstat.c
 +++ b/lib/lstat.c
 @@ -22,7 +22,7 @@
@@ -1889,7 +1019,7 @@ index 00a4ce2ab8..20747ea6f7 100644
        else
          {
 diff --git a/lib/mkfifo.c b/lib/mkfifo.c
-index 5ad81030e8..18b5eb3e05 100644
+index 5fc089646c..06c119a487 100644
 --- a/lib/mkfifo.c
 +++ b/lib/mkfifo.c
 @@ -22,6 +22,7 @@
@@ -1910,7 +1040,7 @@ index 5ad81030e8..18b5eb3e05 100644
        struct stat st;
        if (stat (name, &st) == 0 || errno == EOVERFLOW)
 diff --git a/lib/mkfifoat.c b/lib/mkfifoat.c
-index 23243e8cf8..fbd1e78654 100644
+index 7bb031babb..de0b64a434 100644
 --- a/lib/mkfifoat.c
 +++ b/lib/mkfifoat.c
 @@ -22,6 +22,7 @@
@@ -1931,7 +1061,7 @@ index 23243e8cf8..fbd1e78654 100644
        struct stat st;
  
 diff --git a/lib/mknodat.c b/lib/mknodat.c
-index 3ed38e159c..1d28dc29a7 100644
+index a31450abab..d99521eb21 100644
 --- a/lib/mknodat.c
 +++ b/lib/mknodat.c
 @@ -22,6 +22,7 @@
@@ -1952,7 +1082,7 @@ index 3ed38e159c..1d28dc29a7 100644
        struct stat st;
  
 diff --git a/lib/mountlist.c b/lib/mountlist.c
-index 8b06e7b7ee..b7b2ba96fc 100644
+index 06300d6b73..c8ad9bd11f 100644
 --- a/lib/mountlist.c
 +++ b/lib/mountlist.c
 @@ -30,7 +30,7 @@
@@ -1974,7 +1104,7 @@ index 8b06e7b7ee..b7b2ba96fc 100644
                }
  
 diff --git a/lib/open.c b/lib/open.c
-index 7ec8fdc35d..092e0cd1a4 100644
+index e690c9ea77..ffc8600b46 100644
 --- a/lib/open.c
 +++ b/lib/open.c
 @@ -21,7 +21,7 @@
@@ -2012,7 +1142,7 @@ index 7ec8fdc35d..092e0cd1a4 100644
  }
  
  /* Specification.  */
-@@ -119,7 +131,7 @@ open (const char *filename, int flags, ...)
+@@ -123,7 +135,7 @@ open (const char *filename, int flags, ...)
        || (flags & O_ACCMODE) == O_WRONLY)
      {
        size_t len = strlen (filename);
@@ -2021,7 +1151,7 @@ index 7ec8fdc35d..092e0cd1a4 100644
          {
            errno = EISDIR;
            return -1;
-@@ -186,7 +198,7 @@ open (const char *filename, int flags, ...)
+@@ -190,7 +202,7 @@ open (const char *filename, int flags, ...)
      {
        /* We know len is positive, since open did not fail with ENOENT.  */
        size_t len = strlen (filename);
@@ -2031,7 +1161,7 @@ index 7ec8fdc35d..092e0cd1a4 100644
            struct stat statbuf;
  
 diff --git a/lib/openat-proc.c b/lib/openat-proc.c
-index 88f70be4f5..3c543def02 100644
+index 7ccb734f42..278c8898ee 100644
 --- a/lib/openat-proc.c
 +++ b/lib/openat-proc.c
 @@ -38,6 +38,7 @@
@@ -2052,10 +1182,10 @@ index 88f70be4f5..3c543def02 100644
  #endif
  
 diff --git a/lib/openat.c b/lib/openat.c
-index f28b10e138..b62e1c9c6c 100644
+index 609b03d627..ad9954d778 100644
 --- a/lib/openat.c
 +++ b/lib/openat.c
-@@ -104,7 +104,7 @@ rpl_openat (int dfd, char const *filename, int flags, ...)
+@@ -99,7 +99,7 @@ rpl_openat (int dfd, char const *filename, int flags, ...)
        || (flags & O_ACCMODE) == O_WRONLY)
      {
        size_t len = strlen (filename);
@@ -2064,7 +1194,7 @@ index f28b10e138..b62e1c9c6c 100644
          {
            errno = EISDIR;
            return -1;
-@@ -147,7 +147,7 @@ rpl_openat (int dfd, char const *filename, int flags, ...)
+@@ -149,7 +149,7 @@ rpl_openat (int dfd, char const *filename, int flags, ...)
      {
        /* We know len is positive, since open did not fail with ENOENT.  */
        size_t len = strlen (filename);
@@ -2074,7 +1204,7 @@ index f28b10e138..b62e1c9c6c 100644
            struct stat statbuf;
  
 diff --git a/lib/progname.c b/lib/progname.c
-index ed928e04e9..4ada400f56 100644
+index db17f5b208..e6a441a204 100644
 --- a/lib/progname.c
 +++ b/lib/progname.c
 @@ -21,7 +21,7 @@
@@ -2096,7 +1226,7 @@ index ed928e04e9..4ada400f56 100644
    if (base - argv0 >= 7 && strncmp (base - 7, "/.libs/", 7) == 0)
      {
 diff --git a/lib/progreloc.c b/lib/progreloc.c
-index 30b1f759b6..b89413c7b1 100644
+index 9f49ed16ff..875edef9ea 100644
 --- a/lib/progreloc.c
 +++ b/lib/progreloc.c
 @@ -50,6 +50,7 @@
@@ -2161,7 +1291,7 @@ index 30b1f759b6..b89413c7b1 100644
                    }
                  if (maybe_executable (concat_name))
 diff --git a/lib/readlinkat.c b/lib/readlinkat.c
-index 7738ba8bfd..58bc4ddfcf 100644
+index f4d64c0d13..f7816c02a5 100644
 --- a/lib/readlinkat.c
 +++ b/lib/readlinkat.c
 @@ -20,7 +20,7 @@
@@ -2183,7 +1313,7 @@ index 7738ba8bfd..58bc4ddfcf 100644
        /* Even if FILE without the slash is a symlink to a directory,
           both lstat() and stat() must resolve the trailing slash to
 diff --git a/lib/relocatable.c b/lib/relocatable.c
-index ac12c6da39..0ab43497be 100644
+index 365c085825..a2ce7ceae9 100644
 --- a/lib/relocatable.c
 +++ b/lib/relocatable.c
 @@ -25,7 +25,7 @@
@@ -2233,7 +1363,7 @@ index ac12c6da39..0ab43497be 100644
                    size_t size;
                    int len;
 diff --git a/lib/rename.c b/lib/rename.c
-index aa3afd8768..4f2ddd6854 100644
+index b6c93db474..eb8cc6fe25 100644
 --- a/lib/rename.c
 +++ b/lib/rename.c
 @@ -320,8 +320,8 @@ rpl_rename (char const *src, char const *dst)
@@ -2257,10 +1387,10 @@ index aa3afd8768..4f2ddd6854 100644
            rename_errno = EINVAL;
            goto out;
 diff --git a/lib/renameatu.c b/lib/renameatu.c
-index 939e58965f..400c673309 100644
+index 437fc8f71a..533c7e0e59 100644
 --- a/lib/renameatu.c
 +++ b/lib/renameatu.c
-@@ -155,8 +155,8 @@ renameatu (int fd1, char const *src, int fd2, char const *dst,
+@@ -163,8 +163,8 @@ renameatu (int fd1, char const *src, int fd2, char const *dst,
    if (!src_len || !dst_len)
      return renameat2ish (fd1, src, fd2, dst, flags);
  
@@ -2272,7 +1402,7 @@ index 939e58965f..400c673309 100644
      return renameat2ish (fd1, src, fd2, dst, flags);
  
 diff --git a/lib/spawni.c b/lib/spawni.c
-index 84d1fb27f6..a79311384f 100644
+index 211394bb9f..dae8502070 100644
 --- a/lib/spawni.c
 +++ b/lib/spawni.c
 @@ -1028,7 +1028,7 @@ __spawni (pid_t *pid, const char *file,
@@ -2294,7 +1424,7 @@ index 84d1fb27f6..a79311384f 100644
    p = path;
    do
 diff --git a/lib/symlink.c b/lib/symlink.c
-index b5009ae835..1ebaeafaa8 100644
+index 6ba83666e1..3ab4bd431b 100644
 --- a/lib/symlink.c
 +++ b/lib/symlink.c
 @@ -19,6 +19,7 @@
@@ -2315,7 +1445,7 @@ index b5009ae835..1ebaeafaa8 100644
        struct stat st;
        if (lstat (name, &st) == 0 || errno == EOVERFLOW)
 diff --git a/lib/symlinkat.c b/lib/symlinkat.c
-index 11eda8289a..1aface185f 100644
+index 920001a6fa..2c101271fc 100644
 --- a/lib/symlinkat.c
 +++ b/lib/symlinkat.c
 @@ -26,7 +26,7 @@
@@ -2337,7 +1467,7 @@ index 11eda8289a..1aface185f 100644
        struct stat st;
        if (fstatat (fd, name, &st, AT_SYMLINK_NOFOLLOW) == 0
 diff --git a/lib/tmpdir.c b/lib/tmpdir.c
-index 9c96a6972c..fe1d5a57b5 100644
+index dd43fe22c1..7e740c99a2 100644
 --- a/lib/tmpdir.c
 +++ b/lib/tmpdir.c
 @@ -21,7 +21,7 @@

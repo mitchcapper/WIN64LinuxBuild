@@ -1,10 +1,10 @@
 diff --git a/lib/pipe.c b/lib/pipe.c
-index e8573ed97f..ea11ab21fa 100644
+index 167d8f8c5e..92a8e602bb 100644
 --- a/lib/pipe.c
 +++ b/lib/pipe.c
 @@ -34,7 +34,7 @@ pipe (int fd[2])
    /* Mingw changes fd to {-1,-1} on failure, but this violates
-      http://austingroupbugs.net/view.php?id=467 */
+      https://austingroupbugs.net/view.php?id=467 */
    int tmp[2];
 -  int result = _pipe (tmp, 4096, _O_BINARY);
 +  int result = _pipe (tmp, 4096, _O_BINARY | _O_NOINHERIT);
@@ -12,10 +12,10 @@ index e8573ed97f..ea11ab21fa 100644
      {
        fd[0] = tmp[0];
 diff --git a/lib/spawn-pipe.c b/lib/spawn-pipe.c
-index d2d21e6e8e..e730c9dedc 100644
+index fe60646c43..d9e44d0161 100644
 --- a/lib/spawn-pipe.c
 +++ b/lib/spawn-pipe.c
-@@ -593,7 +593,7 @@ create_pipe (const char *progname,
+@@ -596,7 +596,7 @@ create_pipe (const char *progname,
   fail_with_saved_errno:
    if (exit_on_error || !null_stderr)
      error (exit_on_error ? EXIT_FAILURE : 0, saved_errno,
@@ -25,7 +25,7 @@ index d2d21e6e8e..e730c9dedc 100644
    return -1;
  }
 diff --git a/lib/spawn_faction_addclose.c b/lib/spawn_faction_addclose.c
-index c87a23794b..9087ac4af1 100644
+index af1e77a0d4..f4685fbacd 100644
 --- a/lib/spawn_faction_addclose.c
 +++ b/lib/spawn_faction_addclose.c
 @@ -15,7 +15,12 @@
@@ -60,7 +60,7 @@ index c87a23794b..9087ac4af1 100644
    return posix_spawn_file_actions_addclose (file_actions, fd);
  #else
 diff --git a/lib/w32sock.h b/lib/w32sock.h
-index 84e46e3356..8ffd214597 100644
+index 166a5f777e..18a6d781ec 100644
 --- a/lib/w32sock.h
 +++ b/lib/w32sock.h
 @@ -33,7 +33,7 @@
