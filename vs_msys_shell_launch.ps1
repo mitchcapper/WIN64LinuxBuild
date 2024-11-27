@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop";
 
 if (! $env:VS_ENV_INITIALIZED) {
     $env:VS_ENV_INITIALIZED=1;
-    $VS_INSTANCE=Get-CimInstance MSFT_VSInstance;
+    $VS_INSTANCE=Get-CimInstance MSFT_VSInstance -Namespace root/cimv2/vs;
     $VS_DEV_SHELL_PATH="$($VS_INSTANCE.InstallLocation)/Common7/Tools/Microsoft.VisualStudio.DevShell.dll";
     $VS_INSTANCE_ID=$VS_INSTANCE.IdentifyingNumber;
     Import-Module $VS_DEV_SHELL_PATH;

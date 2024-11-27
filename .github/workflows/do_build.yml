@@ -30,7 +30,7 @@ env:
 
 jobs:
   build:
-    name:  ${{ inputs.BuildPkg == 'script' && 'Run Script' || 'Build Package' }}
+    name:  ${{ inputs.BuildPkg == 'script' && 'Run Script' || 'Build Package' }} - ${{matrix.Configuration}}
     runs-on: windows-2022
     environment: main
     outputs:
@@ -45,7 +45,7 @@ jobs:
         #BuildPkg: [grep]
 #        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,grep]
         BaseImage: [windows-latest]
-        Configuration: [Debug]
+        Configuration: [Debug, Release] #right now the deps downloader always downloads release versions, we could use our debug libs for debug builds
         Arch: [x64]
         #BaseImage: [windows-latest, ubuntu-latest]
         #Configuration: [Debug, Release]
@@ -63,6 +63,7 @@ jobs:
     env:
       BUILD_PKG: ${{inputs.BuildPkg}}
       SCRIPT: ${{inputs.Script}}
+      Configuration: ${{matrix.Configuration}}
     steps:
       - uses: actions/checkout@v3.1.0
         with:
@@ -73,6 +74,9 @@ jobs:
           $dir=$dir.replace("\","/")
           echo "WLB_SCRIPT_FOLDER=$dir" >> $env:GITHUB_ENV
           mkdir $env:WLB_BASE_FOLDER
+          if ($env:Configuration -eq "Debug"){
+            echo "BLD_CONFIG_BUILD_DEBUG=1" >> $env:GITHUB_ENV
+          }
 
 #      - uses: actions/setup-dotnet@v3.0.3
 #        with:
@@ -139,7 +143,7 @@ jobs:
         if: ${{ inputs.BuildPkg != 'script' }}
         shell: powershell
         working-directory: ${{env.WLB_BASE_FOLDER}}
-        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/build/f_$($env:BUILD_PKG)_build.sh"
+        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/build/f_$($env:BUILD_PKG)_build.sh" log_raw_build #raw build gets us a .bat file for compiling, without msys but runs make -j 1 so is much slower than without
 
       - name: Run Script
         id: script_step
@@ -155,6 +159,6 @@ jobs:
       - uses: actions/upload-artifact@v3.1.1
         if: ${{ inputs.BuildPkg != 'script' }}
         with:
-          name: WLB-${{env.BUILD_PKG}}
+          name: WLB-${{env.BUILD_PKG}}${{matrix.Configuration=='Debug' && '-Debug' || ''}}
           path: ${{env.WLB_BASE_FOLDER}}/${{env.BUILD_PKG}}/final
           if-no-files-found: error

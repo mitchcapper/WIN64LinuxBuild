@@ -66,7 +66,7 @@ index 372965ef5f..84f2e92044 100644
  
  /* Likewise, if there is no native 'lstat', then the gnulib
 diff --git a/lib/fts.c b/lib/fts.c
-index 875fe05793..3646ec3e88 100644
+index faeb4b20a5..c2f51b2062 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -117,9 +117,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
@@ -80,7 +80,7 @@ index 875fe05793..3646ec3e88 100644
  #ifndef S_IFSOCK
  # define S_IFSOCK 0
  #endif
-@@ -1823,6 +1821,8 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
+@@ -1820,6 +1818,8 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
              return FTS_NS;
            }
  
@@ -89,7 +89,7 @@ index 875fe05793..3646ec3e88 100644
          if (S_ISDIR(sbp->st_mode)) {
                  if (ISDOT(p->fts_name)) {
                          /* Command-line "." and ".." are real directories. */
-@@ -1831,8 +1831,7 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
+@@ -1828,8 +1828,7 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
  
                  return (FTS_D);
          }

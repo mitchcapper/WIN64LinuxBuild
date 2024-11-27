@@ -1,0 +1,93 @@
+diff --git a/lib/poll.c b/lib/poll.c
+index ec8d2c2b55..80a68aff03 100644
+--- a/lib/poll.c
++++ b/lib/poll.c
+@@ -364,6 +364,11 @@ compute_revents (int fd, int sought, fd_set *rfds, fd_set *wfds, fd_set *efds)
+ }
+ #endif /* !MinGW */
+ 
++#ifdef _WIN32
++#define THREAD_LOCAL static __declspec( thread )
++#else
++#define THREAD_LOCAL static thread_local
++#endif
+ int
+ poll (struct pollfd *pfd, nfds_t nfd, int timeout)
+ {
+@@ -463,11 +468,13 @@ poll (struct pollfd *pfd, nfds_t nfd, int timeout)
+   return rc;
+ #else
+   static struct timeval tv0;
+-  static HANDLE hEvent;
++	THREAD_LOCAL HANDLE hEvent; //note if you don't want to use thread local and this could be called from multiple threads you should make this a standard local var and use CloseHandle before any returns
+   WSANETWORKEVENTS ev;
+   HANDLE h, handle_array[FD_SETSIZE + 2];
+   DWORD ret, wait_timeout, nhandles;
+   fd_set rfds, wfds, xfds;
++  fd_set orig_rfds, orig_wfds, orig_xfds;
++  
+   BOOL poll_again;
+   MSG msg;
+   int rc = 0;
+@@ -539,6 +546,9 @@ restart:
+             timeout = 0;
+         }
+     }
++  orig_rfds = rfds;
++  orig_wfds = wfds;
++  orig_xfds = xfds;
+ 
+   if (select (0, &rfds, &wfds, &xfds, &tv0) > 0)
+     {
+@@ -575,8 +585,13 @@ restart:
+         break;
+     }
+ 
+-  if (poll_again)
+-    select (0, &rfds, &wfds, &xfds, &tv0);
++  if (poll_again) {
++	  rfds = orig_rfds;
++	  wfds = orig_wfds;
++	  xfds = orig_xfds;
++	  if (select(0, &rfds, &wfds, &xfds, &tv0) == SOCKET_ERROR)
++		  return -1;
++  }
+ 
+   /* Place a sentinel at the end of the array.  */
+   handle_array[nhandles] = NULL;
+@@ -632,3 +647,21 @@ restart:
+   return rc;
+ #endif
+ }
++#define MIN_TIMEOUT_FIX_MS 50
++int poll_retry(struct pollfd* pfd, nfds_t nfd, int timeout, int max_retries) {
++	DWORD startTime;
++	BOOL retryTrack = timeout > 0 && timeout != INFTIM && timeout > MIN_TIMEOUT_FIX_MS;
++	if (retryTrack)
++		startTime = GetTickCount();
++	int rc = 0;
++	for (int x = 0; x < max_retries; x++) {
++		rc = poll(pfd, nfd, timeout);
++		if (rc != 0 || !retryTrack)
++			return rc;
++		int msElapsed = GetTickCount() - startTime;
++		if (msElapsed < 0 || (timeout - MIN_TIMEOUT_FIX_MS) < msElapsed)//if it got the timing within  MIN_TIMEOUT_FIX_MS of the timer consider us good
++			return rc;
++		SleepEx(1, TRUE);
++	}
++	return rc;
++}
+\ No newline at end of file
+diff --git a/lib/poll.in.h b/lib/poll.in.h
+index 75ca21f4cc..2d57f3ffdb 100644
+--- a/lib/poll.in.h
++++ b/lib/poll.in.h
+@@ -124,7 +124,7 @@ _GL_WARN_ON_USE (poll, "poll is unportable - "
+                  "use gnulib module poll for portability");
+ # endif
+ #endif
+-
++int poll_retry(struct pollfd* pfd, nfds_t nfd, int timeout, int max_retries);
+ 
+ #endif /* _@GUARD_PREFIX@_POLL_H */
+ #endif /* _@GUARD_PREFIX@_POLL_H */

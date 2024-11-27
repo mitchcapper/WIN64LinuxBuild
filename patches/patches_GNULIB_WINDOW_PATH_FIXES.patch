@@ -1521,7 +1521,7 @@ index 372965ef5f..d5d11accac 100644
        errno = ENOTDIR;
        return -1;
 diff --git a/lib/fts.c b/lib/fts.c
-index 875fe05793..e7183ef05e 100644
+index faeb4b20a5..526be1600f 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -67,7 +67,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
@@ -1562,7 +1562,7 @@ index 875fe05793..e7183ef05e 100644
              ? p->fts_pathlen - 1 : p->fts_pathlen)
  
  FTSENT *
-@@ -1007,7 +1007,7 @@ next:   tmp = p;
+@@ -1006,7 +1006,7 @@ next:   tmp = p;
                  }
  
  name:           t = sp->fts_path + NAPPEND(p->fts_parent);
@@ -1571,7 +1571,7 @@ index 875fe05793..e7183ef05e 100644
                  memmove(t, p->fts_name, p->fts_namelen + 1);
  check_for_dir:
                  sp->fts_cur = p;
-@@ -1163,7 +1163,7 @@ fts_children (register FTS *sp, int instr)
+@@ -1159,7 +1159,7 @@ fts_children (register FTS *sp, int instr)
           * directory is, so we can't get back so that the upcoming chdir by
           * fts_read will work.
           */
@@ -1580,7 +1580,7 @@ index 875fe05793..e7183ef05e 100644
              ISSET(FTS_NOCHDIR))
                  return (sp->fts_child = fts_build(sp, instr));
  
-@@ -1426,7 +1426,7 @@ fts_build (register FTS *sp, int type)
+@@ -1423,7 +1423,7 @@ fts_build (register FTS *sp, int type)
          len = NAPPEND(cur);
          if (ISSET(FTS_NOCHDIR)) {
                  cp = sp->fts_path + len;
