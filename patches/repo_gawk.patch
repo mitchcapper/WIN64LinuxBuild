@@ -1,5 +1,5 @@
 diff --git a/Makefile.am b/Makefile.am
-index 9f5e40c6..aee8ff68 100644
+index 4891313f..8cc7aa77 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -26,9 +26,11 @@
@@ -44,7 +44,7 @@ index 9f5e40c6..aee8ff68 100644
  
  # sources for gawk
  base_sources = \
-@@ -108,12 +112,16 @@ base_sources = \
+@@ -109,12 +113,16 @@ base_sources = \
  	replace.c \
  	str_array.c \
  	symbol.c \
@@ -62,7 +62,7 @@ index 9f5e40c6..aee8ff68 100644
  	$(LIBSIGSEGV) $(LIBINTL) $(SOCKET_LIBS) $(LIBREADLINE) $(LIBMPFR) \
  	$(LDFLAGS)
  
-@@ -127,7 +135,8 @@ DEFPATH='".$(PATH_SEPARATOR)$(pkgdatadir)"'
+@@ -128,7 +136,8 @@ DEFPATH='".$(PATH_SEPARATOR)$(pkgdatadir)"'
  SHLIBEXT = "\"$(GAWKLIBEXT)"\"
  DEFLIBPATH="\"$(pkgextensiondir)\""
  
@@ -72,7 +72,7 @@ index 9f5e40c6..aee8ff68 100644
  
  # Get rid of core files when cleaning
  CLEANFILES = core core.* $(bin_SCRIPTS)
-@@ -183,8 +192,8 @@ dist-hook:
+@@ -184,8 +193,8 @@ dist-hook:
  	sed -f /tmp/tmp.sed < /tmp/config.tmp > config.h ; \
  	$(RM) /tmp/tmp.sed /tmp/config.tmp
  	pwd
@@ -83,7 +83,7 @@ index 9f5e40c6..aee8ff68 100644
  
  # Special rules for individual files
  
-@@ -196,10 +205,10 @@ $(srcdir)/command.c: command.y
+@@ -197,10 +206,10 @@ $(srcdir)/command.c: command.y
  	$(YACC) -o $@ -p zz $<
  	sed 's/parse error/syntax error/g' < $@ > $@.tmp && mv $@.tmp $@
  
@@ -99,7 +99,7 @@ index 9f5e40c6..aee8ff68 100644
  # This is for my development & testing.
  efence: gawk
 diff --git a/awk.h b/awk.h
-index 57d4f8bd..4adcfd4a 100644
+index 6d0993ea..906d5d81 100644
 --- a/awk.h
 +++ b/awk.h
 @@ -66,7 +66,7 @@
@@ -111,7 +111,7 @@ index 57d4f8bd..4adcfd4a 100644
  #endif
  #endif
  
-@@ -1537,9 +1537,11 @@ extern void set_CONVFMT(void);
+@@ -1555,9 +1555,11 @@ extern void set_CONVFMT(void);
  extern void set_BINMODE(void);
  extern void set_LINT(void);
  extern void set_TEXTDOMAIN(void);
@@ -123,7 +123,7 @@ index 57d4f8bd..4adcfd4a 100644
  extern void update_NR(void);
  extern void update_NF(void);
  extern void update_FNR(void);
-@@ -1633,9 +1635,11 @@ extern int isdirpunct(int c);
+@@ -1651,9 +1653,11 @@ extern int isdirpunct(int c);
  extern void init_sockets(void);
  extern void init_io(void);
  extern void init_csv_records(void);
@@ -183,7 +183,7 @@ index 2a50d7f6..7cf8f107 100644
  #end: func_convert_core_msys_to_w32
  
 diff --git a/builtin.c b/builtin.c
-index e394cc34..d31f144c 100644
+index c887b3ce..943307f1 100644
 --- a/builtin.c
 +++ b/builtin.c
 @@ -23,13 +23,24 @@
@@ -213,8 +213,8 @@ index e394cc34..d31f144c 100644
  
  #if defined(HAVE_POPEN_H)
  #include "popen.h"
-@@ -67,10 +78,10 @@ static size_t mbc_byte_count(const char *ptr, size_t numchars);
- static size_t mbc_char_count(const char *ptr, size_t numbytes);
+@@ -62,10 +73,10 @@
+ #endif
  
  /* Can declare these, since we always use the random shipped with gawk */
 -extern char *initstate(unsigned long seed, char *state, long n);
@@ -229,7 +229,7 @@ index e394cc34..d31f144c 100644
  extern NODE **args_array;
  extern int max_args;
 diff --git a/configure.ac b/configure.ac
-index f8a4fff4..2dc37b84 100644
+index ae95b69a..f53295e6 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -107,6 +107,8 @@ AC_PROG_EGREP
@@ -250,7 +250,7 @@ index f8a4fff4..2dc37b84 100644
  # This is mainly for my use during testing and development.
  # Yes, it's a bit of a hack.
  # Keep in sync with same code in extension/configure.ac
-@@ -174,8 +176,8 @@ dnl this only needs to be set once, since everything is in C.
+@@ -179,8 +181,8 @@ dnl this only needs to be set once, since everything is in C.
  AC_LANG([C])
  
  dnl initialize GNU gettext
@@ -261,7 +261,7 @@ index f8a4fff4..2dc37b84 100644
  AM_LANGINFO_CODESET
  gt_LC_MESSAGES
  
-@@ -241,50 +243,50 @@ dnl types for the argument to getsockopt, getpeername, etc.  So we
+@@ -246,50 +248,50 @@ dnl types for the argument to getsockopt, getpeername, etc.  So we
  dnl have to test to find something that will work.
  
  dnl This is no good, because passing the wrong pointer on C compilers is
@@ -371,20 +371,20 @@ index f8a4fff4..2dc37b84 100644
  	doc/Makefile
  	extras/Makefile
  	po/Makefile.in
-@@ -506,9 +510,9 @@ then
- w
+@@ -509,9 +513,9 @@ w
  EOF
- 	done
+ 		done
+ 	fi
 -	for i in . support
 -	do
 -		sed -e '/-O2/s///' -e '/^CFLAGS = /s//&${DEBUG} /' $i/Makefile > foo
 -		mv foo $i/Makefile
 -	done
-+	# for i in . support
-+	# do
-+	# 	sed -e '/-O2/s///' -e '/^CFLAGS = /s//&${DEBUG} /' $i/Makefile > foo
-+	# 	mv foo $i/Makefile
-+	# done
++#	for i in . support
++#	do
++#		sed -e '/-O2/s///' -e '/^CFLAGS = /s//&${DEBUG} /' $i/Makefile > foo
++#		mv foo $i/Makefile
++#	done
  fi
 diff --git a/custom.h b/custom.h
 index 221250b3..69a23217 100644
@@ -417,22 +417,21 @@ index 221250b3..69a23217 100644
  #endif /* ! HAVE_STRSIGNAL */
 +#endif
 \ No newline at end of file
-diff --git a/doc/gawktexi.in b/doc/gawktexi.in
-index 998b035e..8e072b5d 100644
---- a/doc/gawktexi.in
-+++ b/doc/gawktexi.in
-@@ -23871,8 +23871,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
+diff --git a/doc/gawk.texi b/doc/gawk.texi
+index 0506e9d8..5ac1c7e4 100644
+--- a/doc/gawk.texi
++++ b/doc/gawk.texi
+@@ -24165,7 +24165,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
  @end ignore
  @c file eg/lib/pwcat.c
  #include <stdio.h>
 +#ifndef _WIN32
  #include <pwd.h>
--
 +#endif
+ 
  @c endfile
  @ignore
- @c file eg/lib/pwcat.c
-@@ -23887,7 +23888,7 @@ int
+@@ -24181,7 +24183,7 @@ int
  main(int argc, char **argv)
  @{
      struct passwd *p;
@@ -441,7 +440,7 @@ index 998b035e..8e072b5d 100644
      while ((p = getpwent()) != NULL)
  @c endfile
  @ignore
-@@ -23912,6 +23913,7 @@ main(int argc, char **argv)
+@@ -24206,6 +24208,7 @@ main(int argc, char **argv)
  @c file eg/lib/pwcat.c
  
      endpwent();
@@ -464,7 +463,7 @@ index 89b53ab5..e9840813 100644
  extern SRCFILE *srcfiles;
  
 diff --git a/extension/Makefile.am b/extension/Makefile.am
-index ec51377c..f5629787 100644
+index 0427d2da..55ce0085 100644
 --- a/extension/Makefile.am
 +++ b/extension/Makefile.am
 @@ -24,8 +24,7 @@
@@ -495,11 +494,11 @@ index ec51377c..f5629787 100644
  filefuncs_la_LIBADD   = $(MY_LIBS)
  
 diff --git a/extension/configure.ac b/extension/configure.ac
-index 7e07a4a0..ec5a603f 100644
+index 5967d00a..4753e33e 100644
 --- a/extension/configure.ac
 +++ b/extension/configure.ac
-@@ -125,12 +125,12 @@ AC_CHECK_FUNCS(fdopendir fmod fnmatch getdtablesize \
- 		gettimeofday nanosleep select statvfs \
+@@ -120,12 +120,12 @@ AC_CHECK_FUNCS(fdopendir fmod fnmatch getdtablesize \
+ 		nanosleep select statvfs \
  		GetSystemTimeAsFileTime strptime)
  
 -GAWK_FUNC_DIRFD
@@ -798,7 +797,7 @@ index 24fe9338..c440cde8 100644
  getuid (void)
  {
 diff --git a/extension/time.c b/extension/time.c
-index 8d93bda7..53668e25 100644
+index e9b9348f..86f9f8d5 100644
 --- a/extension/time.c
 +++ b/extension/time.c
 @@ -23,7 +23,9 @@
@@ -825,10 +824,10 @@ index 8d93bda7..53668e25 100644
  #include <sys/stat.h>
  
 diff --git a/gawkapi.h b/gawkapi.h
-index 3047c753..72d1109e 100644
+index fcf13532..9e4079cb 100644
 --- a/gawkapi.h
 +++ b/gawkapi.h
-@@ -1216,4 +1216,14 @@ int dl_load(const gawk_api_t *const api_p, awk_ext_id_t id)  \
+@@ -1224,4 +1224,14 @@ int dl_load(const gawk_api_t *const api_p, awk_ext_id_t id)  \
  }
  #endif	/* C++ */
  
@@ -859,24 +858,23 @@ index 447210cb..da94b02e 100644
  #include "awk.h"
  
 diff --git a/io.c b/io.c
-index c595c009..d0f1ebaf 100644
+index b0af38b5..192e3fa0 100644
 --- a/io.c
 +++ b/io.c
-@@ -23,7 +23,12 @@
+@@ -23,6 +23,12 @@
   * along with this program; if not, write to the Free Software
   * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
   */
--
 +#include "config.h"
 +#ifdef _WIN32
 +#define WIN32_LEAN_AND_MEAN
 +#include "Windows.h"
 +#define __MINGW32__
 +#endif
- /* For OSF/1 to get struct sockaddr_storage */
- #if defined(__osf__) && !defined(_OSF_SOURCE)
- #define _OSF_SOURCE
-@@ -35,7 +40,7 @@
+ 
+ #include "awk.h"
+ 
+@@ -30,7 +36,7 @@
  #undef RE_DUP_MAX	/* avoid spurious conflict w/regex.h */
  #include <sys/param.h>
  #endif /* HAVE_SYS_PARAM_H */
@@ -885,7 +883,7 @@ index c595c009..d0f1ebaf 100644
  #include <sys/ioctl.h>
  #endif /* HAVE_SYS_IOCTL_H */
  
-@@ -54,9 +59,9 @@
+@@ -53,9 +59,9 @@
  #include <stropts.h>
  #endif
  
@@ -897,7 +895,7 @@ index c595c009..d0f1ebaf 100644
  #include <sys/socket.h>
  #else
  #include <socket.h>
-@@ -70,14 +75,16 @@
+@@ -69,14 +75,16 @@
  #endif
  
  #else /* ! HAVE_NETINET_IN_H */
@@ -915,7 +913,7 @@ index c595c009..d0f1ebaf 100644
  #include <sys/select.h>
  #endif	/* HAVE_SYS_SELECT_H */
  
-@@ -112,6 +119,9 @@
+@@ -111,6 +119,9 @@
  #if defined(HAVE_POPEN_H)
  #include "popen.h"
  #endif
@@ -925,7 +923,7 @@ index c595c009..d0f1ebaf 100644
  
  #ifndef ENFILE
  #define ENFILE EMFILE
-@@ -125,7 +135,11 @@
+@@ -124,7 +135,11 @@
  #include <rmsdef.h>
  #define closemaybesocket(fd)	close(fd)
  #endif
@@ -938,7 +936,7 @@ index c595c009..d0f1ebaf 100644
  #ifdef HAVE_SOCKETS
  
  #ifndef SHUT_RD
-@@ -261,7 +275,8 @@ static bool find_output_wrapper(awk_output_buf_t *outbuf);
+@@ -259,7 +274,8 @@ static bool find_output_wrapper(awk_output_buf_t *outbuf);
  static void init_output_wrapper(awk_output_buf_t *outbuf);
  static bool find_two_way_processor(const char *name, struct redirect *rp);
  static bool avoid_flush(const char *name);
@@ -948,7 +946,7 @@ index c595c009..d0f1ebaf 100644
  static RECVALUE rs1scan(IOBUF *iop, struct recmatch *recm, SCANSTATE *state);
  static RECVALUE rsnullscan(IOBUF *iop, struct recmatch *recm, SCANSTATE *state);
  static RECVALUE rsrescan(IOBUF *iop, struct recmatch *recm, SCANSTATE *state);
-@@ -2561,7 +2576,7 @@ wait_any(int interesting)	/* pid of interest, if any */
+@@ -2563,7 +2579,7 @@ wait_any(int interesting)	/* pid of interest, if any */
  	int pid;
  	int status = 0;
  	struct redirect *redp;
@@ -957,7 +955,7 @@ index c595c009..d0f1ebaf 100644
  	sigset_t set, oldset;
  
  	/* I have no idea why we are blocking signals during this function... */
-@@ -2596,7 +2611,7 @@ wait_any(int interesting)	/* pid of interest, if any */
+@@ -2598,7 +2614,7 @@ wait_any(int interesting)	/* pid of interest, if any */
  	qstat = signal(SIGQUIT, SIG_IGN);
  #endif
  	for (;;) {
@@ -966,7 +964,7 @@ index c595c009..d0f1ebaf 100644
  		/*
  		 * N.B. If the caller wants status for a specific child process
  		 * (i.e. interesting is non-zero), then we must hang until we
-@@ -2637,7 +2652,7 @@ wait_any(int interesting)	/* pid of interest, if any */
+@@ -2639,7 +2655,7 @@ wait_any(int interesting)	/* pid of interest, if any */
  }
  
  /* gawk_popen --- open an IOBUF on a child process */
@@ -975,7 +973,7 @@ index c595c009..d0f1ebaf 100644
  static IOBUF *
  gawk_popen(const char *cmd, struct redirect *rp)
  {
-@@ -2955,7 +2970,7 @@ static path_info pi_awklibpath = {
+@@ -2957,7 +2973,7 @@ static path_info pi_awklibpath = {
  };
  
  /* init_awkpath --- split path(=$AWKPATH) into components */
@@ -984,7 +982,7 @@ index c595c009..d0f1ebaf 100644
  static void
  init_awkpath(path_info *pi)
  {
-@@ -2966,8 +2981,12 @@ init_awkpath(path_info *pi)
+@@ -2968,8 +2984,12 @@ init_awkpath(path_info *pi)
  	int max_path;		/* (# of allocated paths)-1 */
  
  	pi->max_pathlen = 0;
@@ -998,7 +996,7 @@ index c595c009..d0f1ebaf 100644
  
  	/* count number of separators */
  	for (max_path = 0, p = (char *) path; *p; p++)
-@@ -3051,7 +3070,11 @@ do_find_source(const char *src, struct stat *stb, int *errcode, path_info *pi)
+@@ -3053,7 +3073,11 @@ do_find_source(const char *src, struct stat *stb, int *errcode, path_info *pi)
  
  	emalloc(path, char *, pi->max_pathlen + strlen(src) + 1, "do_find_source");
  	for (i = 0; pi->awkpath[i] != NULL; i++) {
@@ -1011,10 +1009,45 @@ index c595c009..d0f1ebaf 100644
  			*path = '\0';
  		else
  			strcpy(path, pi->awkpath[i]);
-@@ -4587,3 +4610,32 @@ avoid_flush(const char *name)
+@@ -4597,7 +4621,7 @@ avoid_flush(const char *name)
  	return in_PROCINFO(bufferpipe, NULL, NULL) != NULL
  		|| in_PROCINFO(name, bufferpipe, NULL) != NULL;
  }
+-
++#ifdef  _WIN32
+ /*
+  * See the thread starting at
+  * https://lists.gnu.org/archive/html/bug-gawk/2023-12/msg00011.html.
+@@ -4628,8 +4652,10 @@ gawk_popen_write(const char *cmd)
+ 		return NULL;
+ 
+ 	if (open_pipes == NULL) {
+-		int count = getdtablesize();
+-
++	   quoted commands is to remove the first and the last quote
++	   characters, and leave the rest (including any quote characters
++	   inside the outer pair) intact.  */
++	sprintf(quoted, "\"%s\"", cmd);
+ 		emalloc(open_pipes, write_pipe *, sizeof(write_pipe) * count,
+ 				"gawk_popen_write");
+ 		memset(open_pipes, 0, sizeof(write_pipe) * count);
+@@ -4663,10 +4689,9 @@ gawk_popen_write(const char *cmd)
+ 	open_pipes[index].pid = childpid;
+ 	open_pipes[index].fp = fp;
+ 
+-	return fp;
+ #endif
+ }
+-
++static SOCKET valid_socket(int fd)
+ /* gawk_popen_write_close --- close a FILE * that we created */
+ 
+ static int
+@@ -4698,3 +4723,33 @@ gawk_popen_write_close(FILE *fp)
+ 	return -1;
+ #endif
+ }
++
 +#ifdef  _WIN32
 +
 +
@@ -1045,7 +1078,7 @@ index c595c009..d0f1ebaf 100644
 +
 +#endif //  _WIN32
 diff --git a/main.c b/main.c
-index cc5ae9a7..2f8d6905 100644
+index adb3be59..d77139c3 100644
 --- a/main.c
 +++ b/main.c
 @@ -33,6 +33,7 @@
@@ -1056,7 +1089,7 @@ index cc5ae9a7..2f8d6905 100644
  
  #define DEFAULT_PROFILE		"awkprof.out"	/* where to put profile */
  #define DEFAULT_VARFILE		"awkvars.out"	/* where to put vars */
-@@ -905,7 +906,26 @@ init_vars()
+@@ -897,7 +898,26 @@ init_vars()
  		load_procinfo();
  	load_environ();
  }
@@ -1084,7 +1117,7 @@ index cc5ae9a7..2f8d6905 100644
  /* path_environ --- put path variable into environment if not already there */
  
  static void
-@@ -928,6 +948,9 @@ path_environ(const char *pname, const char *dflt)
+@@ -920,6 +940,9 @@ path_environ(const char *pname, const char *dflt)
  	 * If original value was the empty string, set it to
  	 * the default value.
  	 */
@@ -1094,7 +1127,7 @@ index cc5ae9a7..2f8d6905 100644
  	if ((*aptr)->stlen == 0) {
  		unref(*aptr);
  		*aptr = make_string(val, strlen(val));
-@@ -1068,10 +1091,10 @@ load_procinfo()
+@@ -1060,10 +1083,10 @@ load_procinfo()
  #else
  #define getpgrp_arg() getpid()
  #endif
@@ -1107,7 +1140,7 @@ index cc5ae9a7..2f8d6905 100644
  	/*
  	 * Could put a lot of this into a table, but then there's
  	 * portability problems declaring all the functions. So just
-@@ -1080,7 +1103,7 @@ load_procinfo()
+@@ -1072,7 +1095,7 @@ load_procinfo()
  
  	value = getpid();
  	update_PROCINFO_num("pid", value);
@@ -1116,7 +1149,7 @@ index cc5ae9a7..2f8d6905 100644
  	value = getppid();
  	update_PROCINFO_num("ppid", value);
  
-@@ -1095,7 +1118,7 @@ load_procinfo()
+@@ -1087,7 +1110,7 @@ load_procinfo()
  
  	value = getegid();
  	update_PROCINFO_num("egid", value);
@@ -1671,7 +1704,7 @@ index 00000000..08108b21
 +
 +#endif
 diff --git a/posix/gawkmisc.c b/posix/gawkmisc.c
-index 58fb520b..8619b3f3 100644
+index 0b30d746..60d75638 100644
 --- a/posix/gawkmisc.c
 +++ b/posix/gawkmisc.c
 @@ -25,6 +25,12 @@

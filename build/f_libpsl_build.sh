@@ -8,6 +8,7 @@ BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 #BLD_CONFIG_BUILD_DEBUG=1
 BLD_CONFIG_GNU_LIBS_USED=0
 BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED=1
+BLD_CONFIG_GNU_LIBS_AUTORECONF_WRAPPER=0
 
 function ourmain() {
 	startcommon;
@@ -66,7 +67,10 @@ fi
 		echo "EXTRA_DIST =" >gtk-doc.make
 		echo "CLEANFILES =" >>gtk-doc.make
 		GTKDOCIZE=""
-		autoreconf --symlink --verbose --install #we don't want to use their autogen.sh script it doesnt fail out properly and has no benefits but may needs to pull extra cmds they add to it in future
+		# BEWARE OF https://ae1020.github.io/undefined-macro-pkg-config/ incase of macro errors
+		autoreconf --symlink --verbose --install || autoreconf --symlink --verbose --install #we don't want to use their autogen.sh script it doesnt fail out properly and has no benefits but may needs to pull extra cmds they add to it in future, we do need to run this twice though t oavoid error
+
+		#./autogen.sh
 		SKIP_STEP=""
 	fi
 	

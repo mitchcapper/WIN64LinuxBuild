@@ -1,18 +1,8 @@
-diff --git a/.gitignore b/.gitignore
-index 97631f3..964afe2 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -31,3 +31,4 @@
- Makefile
- Makefile.in
- TAGS
-+m4/
-\ No newline at end of file
 diff --git a/src/common.h b/src/common.h
-index 53c5e32..f4d41c6 100644
+index 6bc6c39..89bdf33 100644
 --- a/src/common.h
 +++ b/src/common.h
-@@ -170,6 +170,7 @@ extern int errno;
+@@ -127,11 +127,18 @@ _Noreturn void fatal_exit (void);
  #if ! (HAVE_GETEUID || defined geteuid)
  # if ! (HAVE_GETUID || defined getuid)
  #  define geteuid() (-1)
@@ -20,80 +10,56 @@ index 53c5e32..f4d41c6 100644
  # else
  #  define geteuid() getuid ()
  # endif
-@@ -177,6 +178,12 @@ extern int errno;
- 
- #include <fcntl.h>
+ #endif
  
 +
 +#ifdef _WIN32
 +#define READ_MODE_ALWAYS_BINARY_FOR_W32 O_BINARY
 +#else
-+#define READ_MODE_ALWAYS_BINARY_FOR_W32
++#define READ_MODE_ALWAYS_BINARY_FOR_W32 0
 +#endif
  #ifdef HAVE_SETMODE_DOS
-   XTERN int binary_transput;	/* O_BINARY if binary i/o is desired */
+   extern int binary_transput;	/* O_BINARY if binary i/o is desired */
  #else
-diff --git a/src/inp.c b/src/inp.c
-index 22d7473..8a1cb06 100644
---- a/src/inp.c
-+++ b/src/inp.c
-@@ -238,7 +238,7 @@ plan_a (char const *filename)
-     {
-       if (S_ISREG (instat.st_mode))
-         {
--	  int flags = O_RDONLY | binary_transput;
-+	  int flags = O_RDONLY | binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32;
- 	  size_t buffered = 0, n;
- 	  int ifd;
- 
-@@ -345,7 +345,7 @@ plan_a (char const *filename)
- static void
- plan_b (char const *filename)
- {
--  int flags = O_RDONLY | binary_transput;
-+  int flags = O_RDONLY | binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32;
-   int ifd;
-   FILE *ifp;
-   int c;
-@@ -362,7 +362,7 @@ plan_b (char const *filename)
-   if (! follow_symlinks)
-     flags |= O_NOFOLLOW;
-   if ((ifd = safe_open (filename, flags, 0)) < 0
--      || ! (ifp = fdopen (ifd, binary_transput ? "rb" : "r")))
-+      || ! (ifp = fdopen (ifd, binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32 ? "rb" : "r")))
-     pfatal ("Can't open file %s", quotearg (filename));
-   if (TMPINNAME_needs_removal)
-     {
 diff --git a/src/merge.c b/src/merge.c
-index 6f6205a..3d58d09 100644
+index 69ffceb..fbfc7af 100644
 --- a/src/merge.c
 +++ b/src/merge.c
-@@ -40,6 +40,7 @@ static void compute_changes (lin, lin, lin, lin, char *, char *);
+@@ -38,6 +38,7 @@ static void compute_changes (idx_t, idx_t, idx_t, idx_t, char *, char *);
  #define NOTE_DELETE(ctxt, xoff) ctxt->xchar[xoff] = '-';
  #define NOTE_INSERT(ctxt, yoff) ctxt->ychar[yoff] = '+';
  #define USE_HEURISTIC 1
 +#define OFFSET_MAX PTRDIFF_MAX
  #include "diffseq.h"
  
- static lin
+ static idx_t
 diff --git a/src/patch.c b/src/patch.c
-index d5f456c..4f6c7bf 100644
+index 49daa0e..ca5a875 100644
 --- a/src/patch.c
 +++ b/src/patch.c
-@@ -1628,7 +1628,7 @@ static void
+@@ -399,7 +399,7 @@ main (int argc, char **argv)
+ 	if (!skip_rest_of_patch) {
+ 	    if (S_ISREG (file_type) && instat.st_size != 0)
+ 	      {
+-		int oflags = (O_RDONLY | binary_transput
++		int oflags = (O_RDONLY | binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32
+ 			      | (follow_symlinks ? 0 : O_NOFOLLOW));
+ 		ifd = safe_open (inname, oflags, 0);
+ 		if (ifd < 0)
+@@ -1616,7 +1616,7 @@ static void
  init_reject (char const *outname)
  {
    int fd;
--  fd = make_tempfile (&TMPREJNAME, 'r', outname, O_WRONLY | binary_transput,
-+  fd = make_tempfile (&TMPREJNAME, 'r', outname, O_WRONLY | binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32,
- 		      0666);
-   if (fd == -1)
-     pfatal ("Can't create temporary file %s", TMPREJNAME);
+-  fd = make_tempfile (&tmprej, 'r', outname, O_WRONLY | binary_transput, 0666);
++  fd = make_tempfile (&tmprej, 'r', outname, O_WRONLY | binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32, 0666);
+   if (fd < 0)
+     pfatal ("Can't create temporary file %s", tmprej.name);
+   rejfp = fdopen (fd, binary_transput ? "wb" : "w");
 diff --git a/src/pch.c b/src/pch.c
-index cb54e03..c9954ea 100644
+index 0d5fd84..aa61954 100644
 --- a/src/pch.c
 +++ b/src/pch.c
-@@ -121,12 +121,12 @@ open_patch_file (char const *filename)
+@@ -127,13 +127,13 @@ open_patch_file (char const *filename)
        pfp = stdin;
      else
        {
@@ -102,35 +68,27 @@ index cb54e03..c9954ea 100644
  	if (!pfp)
  	  pfatal ("Can't open patch file %s", quotearg (filename));
        }
+     int pfd = fileno (pfp);
  #if HAVE_SETMODE_DOS
 -    if (binary_transput)
 +    if (binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32)
        {
- 	if (isatty (fileno (pfp)))
+ 	if (isatty (pfd))
  	  fatal ("cannot read binary data from tty on this platform");
-@@ -2483,7 +2483,7 @@ do_ed_script (char const *inname, char const *outname,
-     ed_argv[2] = outname;
-     ed_argv[3] = (char  *) NULL;
-     status = execute (editor_program, editor_program, (char **)ed_argv,
--		      false, false, false, false, true, false, NULL);
-+		      false, false, false, false, true, false, false, NULL);
-     if (status)
-       fatal ("%s FAILED", editor_program);
-     if (dup2 (stdin_dup, 0) == -1
-@@ -2494,7 +2494,7 @@ do_ed_script (char const *inname, char const *outname,
+@@ -2391,7 +2391,7 @@ do_ed_script (char *input_name, struct outfile *output, FILE *ofp)
  
      if (ofp)
        {
--	FILE *ifp = fopen (outname, binary_transput ? "rb" : "r");
-+	FILE *ifp = fopen (outname, binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32 ? "rb" : "r");
+-	FILE *ifp = fopen (output_name, binary_transput ? "rb" : "r");
++	FILE *ifp = fopen (output_name, binary_transput | READ_MODE_ALWAYS_BINARY_FOR_W32 ? "rb" : "r");
  	int c;
  	if (!ifp)
- 	  pfatal ("can't open '%s'", outname);
+ 	  pfatal ("can't open '%s'", output_name);
 diff --git a/src/safe.c b/src/safe.c
-index f147b0e..e7865b5 100644
+index 2aafbca..12eb1fc 100644
 --- a/src/safe.c
 +++ b/src/safe.c
-@@ -97,6 +97,7 @@ static void free_cached_dirfd (struct cached_dirfd *entry)
+@@ -103,6 +103,7 @@ static void free_cached_dirfd (struct cached_dirfd *entry)
  
  static void init_dirfd_cache (void)
  {
@@ -138,7 +96,7 @@ index f147b0e..e7865b5 100644
    struct rlimit nofile;
  
    if (getrlimit (RLIMIT_NOFILE, &nofile) == 0)
-@@ -108,7 +109,10 @@ static void init_dirfd_cache (void)
+@@ -114,7 +115,10 @@ static void init_dirfd_cache (void)
      }
    else
      max_cached_fds = min_cached_fds;
@@ -146,10 +104,10 @@ index f147b0e..e7865b5 100644
 +	min_cached_fds = max_cached_fds = OPEN_MAX;
  
 +#endif
-   cached_dirfds = hash_initialize (min_cached_fds,
- 				   NULL,
+   cached_dirfds = hash_initialize (min_cached_fds, nullptr,
  				   hash_cached_dirfd,
-@@ -559,7 +563,7 @@ static int safe_xstat (const char *pathname, struct stat *buf, int flags)
+ 				   compare_cached_dirfds, nullptr);
+@@ -564,7 +568,7 @@ safe_xstat (char *pathname, struct stat *buf, int flags)
    int dirfd;
  
    if (unsafe)
@@ -157,12 +115,12 @@ index f147b0e..e7865b5 100644
 +	  return fstatat (AT_FDCWD, pathname, buf, flags);
  
    dirfd = traverse_path (&pathname);
-   if (dirfd < 0 && dirfd != AT_FDCWD)
+   if (dirfd == DIRFD_INVALID)
 diff --git a/src/safe.h b/src/safe.h
-index 8b2a5a1..19cd9b9 100644
+index 57c0e74..1d838c4 100644
 --- a/src/safe.h
 +++ b/src/safe.h
-@@ -22,6 +22,13 @@
+@@ -27,6 +27,13 @@ enum { DIRFD_INVALID = -1 - (AT_FDCWD == -1) };
  
  extern bool unsafe;
  
@@ -173,48 +131,49 @@ index 8b2a5a1..19cd9b9 100644
 +#define PATH_MAX 260
 +#endif
 +
- int safe_stat (const char *pathname, struct stat *buf);
- int safe_lstat (const char *pathname, struct stat *buf);
- int safe_open (const char *pathname, int flags, mode_t mode);
+ int safe_stat (char *pathname, struct stat *buf);
+ int safe_lstat (char *pathname, struct stat *buf);
+ int safe_open (char *pathname, int flags, mode_t mode);
 diff --git a/src/util.c b/src/util.c
-index c3ff5dd..b69b528 100644
+index 2a90ca0..2ff8e7a 100644
 --- a/src/util.c
 +++ b/src/util.c
-@@ -254,6 +254,7 @@ set_file_attributes (char const *to, enum file_attributes attr,
+@@ -316,6 +316,7 @@ set_file_attributes (char *to, int tofd, enum file_attributes attr,
  		S_ISLNK (mode) ? "symbolic link" : "file",
  		quotearg (to));
      }
 +#ifndef  _WIN32
    if (attr & FA_IDS)
      {
-       static uid_t euid = (uid_t)-1;
-@@ -282,6 +283,7 @@ set_file_attributes (char const *to, enum file_attributes attr,
+       uid_t uid_1 = -1;
+@@ -351,6 +352,7 @@ set_file_attributes (char *to, int tofd, enum file_attributes attr,
  		S_ISLNK (mode) ? "symbolic link" : "file",
  		quotearg (to));
      }
 +#endif //  _WIN32
    if (attr & FA_XATTRS)
-     if (copy_attr (from, to) != 0
- 	&& errno != ENOSYS && errno != ENOTSUP && errno != EPERM)
-@@ -1714,7 +1716,7 @@ bool
- cwd_is_root (char const *name)
- {
-   unsigned int prefix_len = FILE_SYSTEM_PREFIX_LEN (name);
--  char root[prefix_len + 2];
-+  char * root = xmalloc (sizeof(char) * (prefix_len + 2));
-   struct stat st;
-   dev_t root_dev;
-   ino_t root_ino;
-@@ -1722,8 +1724,11 @@ cwd_is_root (char const *name)
-   memcpy (root, name, prefix_len);
-   root[prefix_len] = '/';
-   root[prefix_len + 1] = 0;
--  if (stat (root, &st))
-+  int res = stat (root, &st);
-+  free (root);
-+  if (res)
-     return false;
+     if (copy_attr (from, fromfd, to, tofd) < 0
+ 	&& errno != ENOSYS && errno != ENOTSUP
+@@ -1870,12 +1872,21 @@ cwd_is_root (char const *name)
+     }
+   else
+     {
++#ifndef _WIN32	
+       char root[4];
++#else
++      char * root = xmalloc (sizeof(char) * (prefix_len + 2));
++#endif	  
+       memcpy (root, name, prefix_len);
+       root[prefix_len] = '/';
+       root[prefix_len + 1] = 0;
+-      if (stat (root, &st) < 0)
++	  int res = stat (root, &st);
++#ifdef _WIN32
++	  free (root);
++#endif
++      if (res < 0)
+ 	return false;
 +
-   root_dev = st.st_dev;
-   root_ino = st.st_ino;
-   if (stat (".", &st))
+       root_dev = st.st_dev;
+       root_ino = st.st_ino;
+     }
