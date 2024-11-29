@@ -1,5 +1,28 @@
 #!/bin/bash
-pushd .
-SCRIPT_PATH gnulib_tool_py_remove_nmd_makefiles
-popd
-exec autoreconf "$@"
+# This script does a few things, for one we remove the NMD files that gnulib-tool.py couldn't handle before (but maybe now it can)
+# We remove the force option that overrides the build-aux etc files, also add symlink if not there,  an alternative might me to just recopy the build scripts into place  after running the normal
+
+# beware of macro errors may not be real errors https://ae1020.github.io/undefined-macro-pkg-config/
+set -e
+WLB_ARGS_ARR=("$@")
+WLB_LEN=${#WLB_ARGS_ARR[@]}
+WLB_FINAL_ARR=()
+for (( WLB_INDEX=0; WLB_INDEX<$WLB_LEN; WLB_INDEX++ )); do
+	WLB_VAL="${WLB_ARGS_ARR[$WLB_INDEX]}"
+	case $WLB_VAL in
+		"--force")
+			;;
+		"--symlink")
+			;;
+		*)
+			WLB_FINAL_ARR+=($WLB_VAL)
+			;;
+	esac
+done
+WLB_FINAL_ARR+=("--symlink")
+
+#pushd .
+#SCRIPT_PATH gnulib_tool_py_remove_nmd_makefiles
+#popd
+
+exec autoreconf "${WLB_FINAL_ARR[@]}"

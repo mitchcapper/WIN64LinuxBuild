@@ -127,7 +127,7 @@ function gnulib_add_addl_modules_to_bootstrap(){
 	fi
 }
 function setup_gnulibtool_py_autoconfwrapper(){
-	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
+	if [[ $BLD_CONFIG_GNU_LIBS_AUTORECONF_WRAPPER -eq 1 ]]; then
 		local TARGET_FL="${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
 		#For things like coreutils bootstrap will create the mk files we need to fix before it also then runs autoreconf so we will just use our wrapper for autoreconf, call ourselves, then call autoreconf
 		if [[ ! -e "$TARGET_FL" ]]; then
@@ -138,11 +138,13 @@ function setup_gnulibtool_py_autoconfwrapper(){
 		fi
 		export AUTORECONF="$TARGET_FL"
 
-		gnulib_tool_py_remove_nmd_makefiles;
+		#gnulib_tool_py_remove_nmd_makefiles;
 	fi
-	gnulib_ensure_buildaux_scripts_copied; #this has nothing to do wit autoconf but for some readon can get more failures with debug otherwise.
+	gnulib_ensure_buildaux_scripts_copied; #this has nothing to do wit autoconf but for some reason can get more failures with debug otherwise.
 }
 function gnulib_tool_py_remove_nmd_makefiles() {
+	echo "DONT THINK NEEDED ANYMORE" 1>&2
+	exit 1
 	#this taken from the normal gnulib_tool process, not sure lib/ will exist yet
 
 	#sed_eliminate_NMD='s/@NMD@//;/@!NMD@/d' #this is what is needed for automake subdirs but as that doesn't work with gnulib-tool..py right now no need to worry about it
