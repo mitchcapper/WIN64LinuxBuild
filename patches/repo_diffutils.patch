@@ -1,30 +1,9 @@
-diff --git a/gl/lib/mcel.h b/gl/lib/mcel.h
-index 867d925..0813496 100644
---- a/gl/lib/mcel.h
-+++ b/gl/lib/mcel.h
-@@ -159,14 +159,14 @@ mcel_ch (char32_t ch, size_t len)
-   assume (0 < len);
-   assume (len <= MCEL_LEN_MAX);
-   assume (ch <= MCEL_CHAR_MAX);
--  return (mcel_t) {ch: ch, len: len};
-+  return (mcel_t) {.ch = ch, .len = len};
- }
- MCEL_INLINE mcel_t
- mcel_err (unsigned char err)
- {
-   assume (MCEL_ERR_MIN <= err);
-   assume (err <= MCEL_ERR_MAX);
--  return (mcel_t) {err: err, len: 1};
-+  return (mcel_t) {.err = err, .len = 1};
- }
- 
- /* Compare C1 and C2, with encoding errors sorting after characters.
 diff --git a/src/system.h b/src/system.h
-index 7a7e914..8e8b980 100644
+index 7bc778b..50777f8 100644
 --- a/src/system.h
 +++ b/src/system.h
 @@ -29,6 +29,12 @@
- #include <stat-macros.h>
+ #include <stat-size.h>
  #include <stat-time.h>
  #include <timespec.h>
 +#ifdef _WIN32
@@ -34,13 +13,13 @@ index 7a7e914..8e8b980 100644
 +#endif
 +#endif
  
- #ifndef STAT_BLOCKSIZE
- # if HAVE_STRUCT_STAT_ST_BLKSIZE
+ #include <unistd.h>
+ 
 diff --git a/src/util.c b/src/util.c
-index db3ceba..ad65f2b 100644
+index 6c65991..e14e260 100644
 --- a/src/util.c
 +++ b/src/util.c
-@@ -281,7 +281,9 @@ process_signals (void)
+@@ -283,7 +283,9 @@ process_signals (void)
        if (stops)
          {
            stop_signal_count = stops - 1;

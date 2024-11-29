@@ -29,6 +29,7 @@ fi
 		cp gnulib/build-aux/bootstrap.conf .
 		echo "gnulib_tool_option_extras=\" --without-tests --symlink --m4-base=m4 --lib=libgawk --source-base=lib --cache-modules\"" >> bootstrap.conf
 		git mv m4 m4_orig
+		git rm build-aux/*
 		mkdir -p m4
 		mkdir -p pc/old
 		mv pc/* pc/old/ || true

@@ -166,24 +166,9 @@ index cfe250c3..050ed4fe 100644
 +#endif
      return 0;
  }
-diff --git a/build-aux/ltmain.sh b/build-aux/ltmain.sh
-index 2a50d7f6..7cf8f107 100644
---- a/build-aux/ltmain.sh
-+++ b/build-aux/ltmain.sh
-@@ -3109,9 +3109,8 @@ func_convert_core_msys_to_w32 ()
- {
-   $debug_cmd
- 
--  # awkward: cmd appends spaces to result
--  func_convert_core_msys_to_w32_result=`( cmd //c echo "$1" ) 2>/dev/null |
--    $SED -e 's/[ ]*$//' -e "$sed_naive_backslashify"`
-+func_convert_core_msys_to_w32_result=$1
-+
- }
- #end: func_convert_core_msys_to_w32
  
 diff --git a/builtin.c b/builtin.c
-index c887b3ce..943307f1 100644
+index c887b3ce..fe9e9c66 100644
 --- a/builtin.c
 +++ b/builtin.c
 @@ -23,13 +23,24 @@
@@ -228,6 +213,15 @@ index c887b3ce..943307f1 100644
  
  extern NODE **args_array;
  extern int max_args;
+@@ -3314,7 +3325,7 @@ do_mkbool(int nargs)
+ int
+ gawk_system(const char *command)
+ {
+-#if defined(VMS) || defined(__MINGW32__)
++#if defined(VMS) || defined(__MINGW32__) || defined(_WIN32)
+ 	return system(command);
+ #else /* ! (defined(VMS) || defined(__MINGW32__)) */
+ 	pid_t childpid;
 diff --git a/configure.ac b/configure.ac
 index ae95b69a..f53295e6 100644
 --- a/configure.ac
@@ -858,7 +852,7 @@ index 447210cb..da94b02e 100644
  #include "awk.h"
  
 diff --git a/io.c b/io.c
-index b0af38b5..192e3fa0 100644
+index b0af38b5..47586799 100644
 --- a/io.c
 +++ b/io.c
 @@ -23,6 +23,12 @@
@@ -1009,41 +1003,15 @@ index b0af38b5..192e3fa0 100644
  			*path = '\0';
  		else
  			strcpy(path, pi->awkpath[i]);
-@@ -4597,7 +4621,7 @@ avoid_flush(const char *name)
- 	return in_PROCINFO(bufferpipe, NULL, NULL) != NULL
- 		|| in_PROCINFO(name, bufferpipe, NULL) != NULL;
- }
--
-+#ifdef  _WIN32
- /*
-  * See the thread starting at
-  * https://lists.gnu.org/archive/html/bug-gawk/2023-12/msg00011.html.
-@@ -4628,8 +4652,10 @@ gawk_popen_write(const char *cmd)
- 		return NULL;
- 
- 	if (open_pipes == NULL) {
--		int count = getdtablesize();
--
-+	   quoted commands is to remove the first and the last quote
-+	   characters, and leave the rest (including any quote characters
-+	   inside the outer pair) intact.  */
-+	sprintf(quoted, "\"%s\"", cmd);
- 		emalloc(open_pipes, write_pipe *, sizeof(write_pipe) * count,
- 				"gawk_popen_write");
- 		memset(open_pipes, 0, sizeof(write_pipe) * count);
-@@ -4663,10 +4689,9 @@ gawk_popen_write(const char *cmd)
- 	open_pipes[index].pid = childpid;
- 	open_pipes[index].fp = fp;
- 
--	return fp;
+@@ -4666,7 +4690,6 @@ gawk_popen_write(const char *cmd)
+ 	return fp;
  #endif
  }
 -
-+static SOCKET valid_socket(int fd)
  /* gawk_popen_write_close --- close a FILE * that we created */
  
  static int
-@@ -4698,3 +4723,33 @@ gawk_popen_write_close(FILE *fp)
+@@ -4698,3 +4721,33 @@ gawk_popen_write_close(FILE *fp)
  	return -1;
  #endif
  }
