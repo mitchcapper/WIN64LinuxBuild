@@ -4,7 +4,7 @@ set -e
 
 BLD_CONFIG_BUILD_NAME="sed";
 BLD_CONFIG_CONFIG_CMD_ADDL="" #--disable-nls --enable-static
-BLD_CONFIG_GNU_LIBS_ADDL=( "getopt-gnu" )
+BLD_CONFIG_GNU_LIBS_ADDL=( "getopt-gnu" "alloca" "alloca-opt" )
 #BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY=0
 #BLD_CONFIG_BUILD_DEBUG=1
 
