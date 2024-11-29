@@ -67,7 +67,7 @@ fi
 # "AR=${AR}" "CC=${CC}" "CXX=${CXX}"
 		$PERL Configure no-dynamic-engine enable-trace no-dso no-fips $CONFIG_ADD enable-quic no-pic enable-weak-ssl-ciphers no-threads no-makedepend enable-comp enable-zstd enable-brotli no-acvp-tests no-buildtest-c++ no-external-tests no-tests no-unit-test -DOPENSSL_SMALL_FOOTPRINT "--with-brotli-include=${BRO_BASE}/include" HASHBANGPERL="$PERL" "--with-brotli-lib=${BRO_BASE}/lib" "--with-zstd-include=${ZST_BASE}/include" "LD=${LD}"  "--with-zstd-lib=${ZST_BASE}/lib/zstd.lib"  VC-WIN64A
 		$PERL configdata.pm --dump
-		sed -i -E "s#lib.(brotli[^ ]+).lib#lib/\1-static.lib#g" makefile
+		#sed -i -E "s#lib.(brotli[^ ]+).lib#lib/\1-static.lib#g" makefile #hack no longer needed they properly renamed the lib now
 		sed -i -z -E "s#[^\n]+INSTALL_PROGRAMS[^\n]+[\n][^\n]+INSTALL_PROGRAMPDBS[^\n]+[\n][^\n]+##" makefile
 
 		SKIP_STEP="";
