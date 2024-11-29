@@ -1,35 +1,51 @@
 diff --git a/lib/rmt.h b/lib/rmt.h
-index 9ced4e2..b72c5bf 100644
+index 868b0c3..3f9ff8f 100644
 --- a/lib/rmt.h
 +++ b/lib/rmt.h
-@@ -35,11 +35,22 @@ extern bool force_local_option;
+@@ -38,6 +38,7 @@ _GL_INLINE_HEADER_BEGIN
     Distributed File System (DFS).  However, when --force-local, a
     filename is never remote.  */
  
 +#ifndef _WIN32
- #define _remdev(dev_name) \
-   (!force_local_option && (rmt_dev_name__ = strchr (dev_name, ':')) \
-    && rmt_dev_name__ > (dev_name) \
-    && ! memchr (dev_name, '/', rmt_dev_name__ - (dev_name)))
- 
+ RMT_INLINE bool
+ _remdev (char const *__dev_name)
+ {
+@@ -48,6 +49,21 @@ _remdev (char const *__dev_name)
+       return true;
+   return false;
+ }
 +#else
 +//for windows we need to make sure the colon is not a drive letter;0  sorry 1 char hosts you are screwed
-+#define _remdev(dev_name) \
-+  (!force_local_option && (strlen(dev_name) < 2 || dev_name[1] != ':') && (rmt_dev_name__ = strchr (dev_name, ':')) \
-+   && rmt_dev_name__ > (dev_name) \
-+   && ! memchr (dev_name, '/', rmt_dev_name__ - (dev_name)))
++RMT_INLINE bool
++_remdev (char const *__dev_name)
++{
++  if (force_local_option || *__dev_name == ':' || (strlen(__dev_name) > 2 && __dev_name[1] == ':') )
++    return false;
++  for (char const *__p = __dev_name; *__p & (*__p != '/'); __p++)
++    if (*__p == ':')
++      return true;
++  return false;
++}
 +
 +#endif // !_WIN32
 +
-+
- #define _isrmt(fd) \
-   ((fd) >= __REM_BIAS)
+ 
+ enum { __REM_BIAS = 1 << 30 };
  
 diff --git a/lib/rtapelib.c b/lib/rtapelib.c
-index 82522b9..4a87c17 100644
+index 01a3b18..fb8fd95 100644
 --- a/lib/rtapelib.c
 +++ b/lib/rtapelib.c
-@@ -353,7 +353,7 @@ encode_oflag (char *buf, int oflag)
+@@ -40,7 +40,7 @@
+ # include <sys/mtio.h>
+ #endif
+ 
+-#if HAVE_NETDB_H
++#if defined(HAVE_NETDB_H) || defined(HAVE_DECL_GAI_STRERROR)
+ # include <netdb.h>
+ #endif
+ 
+@@ -364,7 +364,7 @@ encode_oflags (char *buf, int oflags)
  static char const *
  sys_reset_uid_gid (void)
  {
@@ -38,34 +54,37 @@ index 82522b9..4a87c17 100644
    uid_t uid = getuid ();
    gid_t gid = getgid ();
    struct passwd *pw = getpwuid (uid);
-@@ -497,8 +497,11 @@ rmt_open__ (const char *file_name, int open_mode, int bias,
- 	errno = e;
+@@ -522,7 +522,11 @@ rmt_open (char const *file_name, int oflags, int bias,
  	return -1;
        }
--
+ 
 +#ifdef _WIN32
 +  return -1;
 +#else
      status = fork ();
 +#endif
-     if (status == -1)
+     if (status < 0)
        {
  	int e = errno;
 diff --git a/lib/system.h b/lib/system.h
-index 2b3d50b..2ffa88b 100644
+index 1a29253..f915a79 100644
 --- a/lib/system.h
 +++ b/lib/system.h
-@@ -245,11 +245,20 @@ extern int errno;
- # define S_IXOTH 0000001
+@@ -32,11 +32,20 @@
+ # define mkfifo(file_name, mode) (mknod (file_name, (mode) | S_IFIFO, 0))
  #endif
  
-+#ifndef _WIN32
- #define MODE_WXUSR     (S_IWUSR | S_IXUSR)
- #define MODE_R         (S_IRUSR | S_IRGRP | S_IROTH)
+-#define MODE_WXUSR	(S_IWUSR | S_IXUSR)
+-#define MODE_R		(S_IRUSR | S_IRGRP | S_IROTH)
 -#define MODE_RW		(S_IWUSR | S_IWGRP | S_IWOTH | MODE_R)
+-#define MODE_RWX	(S_IXUSR | S_IXGRP | S_IXOTH | MODE_RW)
+-#define MODE_ALL	(S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
++#ifndef _WIN32
++#define MODE_WXUSR     (S_IWUSR | S_IXUSR)
++#define MODE_R         (S_IRUSR | S_IRGRP | S_IROTH)
 +#define MODE_RW(S_IWUSR | S_IWGRP | S_IWOTH | MODE_R) //owner write group write, other write
- #define MODE_RWX       (S_IXUSR | S_IXGRP | S_IXOTH | MODE_RW)
- #define MODE_ALL       (S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
++#define MODE_RWX       (S_IXUSR | S_IXGRP | S_IXOTH | MODE_RW)
++#define MODE_ALL       (S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
 +#else
 +#include <sys/stat.h>
 +#define MODE_WXUSR		_S_IWRITE
@@ -77,7 +96,7 @@ index 2b3d50b..2ffa88b 100644
  
  /* Include <unistd.h> before any preprocessor test of _POSIX_VERSION.  */
  #include <unistd.h>
-@@ -456,7 +465,7 @@ char *getenv ();
+@@ -156,10 +165,10 @@
  # include <grp.h>
  #endif
  
@@ -85,4 +104,8 @@ index 2b3d50b..2ffa88b 100644
 +#if defined(MSDOS) || defined(_WIN32)
  # include <process.h>
  # define SET_BINARY_MODE(arc) setmode(arc, O_BINARY)
- # define mkdir(file, mode) (mkdir) (file)
+-# define mkdir(file, mode) (mkdir) (file)
++//# define mkdir(file, mode) (mkdir) (file)
+ # define TTY_NAME "con"
+ #else
+ # define SET_BINARY_MODE(arc)

@@ -6,7 +6,7 @@ BLD_CONFIG_BUILD_NAME="tar";
 BLD_CONFIG_CONFIG_CMD_ADDL="--enable-threads=windows"
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 #BLD_CONFIG_BUILD_DEBUG=1
-BLD_CONFIG_GNU_LIBS_ADDL=(  "lock" "thread" "sigpipe" "glob" "ioctl" "sys_time" "sys_wait" "ftello" "ftruncate" "system-posix" "posix_spawn" "pipe-posix" "close" "fclose" "fopen-gnu" "open" "posix_spawnattr_setsigdefault" "posix_spawnattr_getsigmask" "posix_spawnattr_getflags" "posix_spawnattr_setflags" "posix_spawnattr_setsigmask" "posix_spawnp" "stdio" "nonblocking" "poll" "pipe2" "signal-h" "sys_types" "sys_stat" "fcntl-h" "fcntl" "stdbool-c99" "waitpid" "sys_file" )
+BLD_CONFIG_GNU_LIBS_ADDL=(  "lock" "thread" "sigpipe" "glob" "ioctl" "sys_time" "sys_wait" "ftello" "ftruncate" "system-posix" "posix_spawn" "pipe-posix" "close" "fclose" "fopen-gnu" "open" "posix_spawnattr_setsigdefault" "posix_spawnattr_getsigmask" "posix_spawnattr_getflags" "posix_spawnattr_setflags" "posix_spawnattr_setsigmask" "posix_spawnp" "stdio" "nonblocking" "poll" "pipe2" "signal-h" "sys_types" "sys_stat" "fcntl-h" "fcntl" "stdbool-c99" "waitpid" "sys_file" "netdb" "mkdir" "wait-process" "getaddrinfo" )
 
 function ourmain() {
 	startcommon;

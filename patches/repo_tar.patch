@@ -1,20 +1,18 @@
 diff --git a/lib/wordsplit.c b/lib/wordsplit.c
-index 56837c32..d297a1fd 100644
+index 289f7c10..814abe59 100644
 --- a/lib/wordsplit.c
 +++ b/lib/wordsplit.c
-@@ -25,8 +25,11 @@
- #include <string.h>
- #include <stdio.h>
- #include <stdarg.h>
+@@ -23,7 +23,9 @@
+ #include <errno.h>
+ #include <glob.h>
+ #include <limits.h>
 +#ifndef _WIN32
  #include <pwd.h>
-+#else
- #include <glob.h>
 +#endif
- 
- #if ENABLE_NLS
- # include <gettext.h>
-@@ -1692,7 +1695,8 @@ wordsplit_trimws (struct wordsplit *wsp)
+ #include <stdarg.h>
+ #include <stdckdint.h>
+ #include <stdio.h>
+@@ -1740,7 +1742,8 @@ wordsplit_trimws (struct wordsplit *wsp)
    wsnode_nullelim (wsp);
    return 0;
  }
@@ -24,16 +22,16 @@ index 56837c32..d297a1fd 100644
  static int
  wordsplit_tildexpand (struct wordsplit *wsp)
  {
-@@ -1765,7 +1769,7 @@ wordsplit_tildexpand (struct wordsplit *wsp)
+@@ -1813,7 +1816,7 @@ wordsplit_tildexpand (struct wordsplit *wsp)
    free (uname);
    return 0;
  }
 -
 +#endif
- static int
- isglob (const char *s, int l)
+ static bool
+ isglob (char const *s, idx_t l)
  {
-@@ -2307,8 +2311,10 @@ static struct exptab exptab[] = {
+@@ -2369,8 +2372,10 @@ static struct exptab exptab[] = {
      wordsplit_cmdexp },
    { N_("coalesce list"),        0,                EXPOPT_NEG|EXPOPT_COALESCE,
      NULL },
@@ -44,43 +42,968 @@ index 56837c32..d297a1fd 100644
    { N_("variable expansion"),   WRDSF_NOVAR,      EXPOPT_NEG,
      wordsplit_varexp },
    { N_("quote removal"),        0,                EXPOPT_NEG,
+diff --git a/src/buffer.c b/src/buffer.c
+index 8b6028ce..1c65c2e2 100644
+--- a/src/buffer.c
++++ b/src/buffer.c
+@@ -53,6 +53,9 @@ static idx_t short_read_slop;	/* excess bytes at end of short read */
+    module.  However, this cannot be done yet.  The cleanup continues!  */
+ 
+ int archive;
++#ifdef _WIN32
++int archive_child;
++#endif
+ struct timespec start_time;
+ struct timespec volume_start_time;
+ struct tar_stat_info current_stat_info;
 diff --git a/src/checkpoint.c b/src/checkpoint.c
-index 5a0eade4..da30479f 100644
+index a0edaf26..4402edf2 100644
 --- a/src/checkpoint.c
 +++ b/src/checkpoint.c
-@@ -16,12 +16,18 @@
- 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+@@ -1,465 +1,476 @@
+-/* Checkpoint management for tar.
 -
+-   Copyright 2007-2024 Free Software Foundation, Inc.
+-
+-   This file is part of GNU tar.
+-
+-   GNU tar is free software; you can redistribute it and/or modify
+-   it under the terms of the GNU General Public License as published by
+-   the Free Software Foundation; either version 3 of the License, or
+-   (at your option) any later version.
+-
+-   GNU tar is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-   GNU General Public License for more details.
+-
+-   You should have received a copy of the GNU General Public License
+-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+-
+-#include <system.h>
+-#include "common.h"
+-
+-#include <wordsplit.h>
+-
+-#include <flexmember.h>
+-#include <fprintftime.h>
+-
+-#include <sys/ioctl.h>
+-#include <termios.h>
+-#include <signal.h>
+-
+-enum checkpoint_opcode
+-  {
+-    cop_dot,
+-    cop_bell,
+-    cop_echo,
+-    cop_ttyout,
+-    cop_sleep,
+-    cop_exec,
+-    cop_totals,
+-    cop_wait
+-  };
+-
+-struct checkpoint_action
+-{
+-  struct checkpoint_action *next;
+-  enum checkpoint_opcode opcode;
+-  union
+-  {
+-    time_t time;
+-    char *command;
+-    int signal;
+-  } v;
+-  char commandbuf[FLEXIBLE_ARRAY_MEMBER];
+-};
+-
+-/* Checkpointing counter */
+-static intmax_t checkpoint;
+-
+-/* List of checkpoint actions */
+-static struct checkpoint_action *checkpoint_action,
+-  **checkpoint_action_tail = &checkpoint_action;
+-
+-/* State of the checkpoint system */
+-static enum {
+-  CHKP_INIT,       /* Needs initialization */
+-  CHKP_COMPILE,    /* Actions are being compiled */
+-  CHKP_RUN         /* Actions are being run */
+-} checkpoint_state;
+-/* Blocked signals */
+-static sigset_t sigs;
+-
+-static struct checkpoint_action *
+-alloc_action (enum checkpoint_opcode opcode, char const *quoted_string)
+-{
+-  idx_t quoted_size = quoted_string ? strlen (quoted_string) + 1 : 0;
+-  struct checkpoint_action *p = xmalloc (FLEXSIZEOF (struct checkpoint_action,
+-						     commandbuf, quoted_size));
+-  *checkpoint_action_tail = p;
+-  checkpoint_action_tail = &p->next;
+-  p->next = NULL;
+-  p->opcode = opcode;
+-  if (quoted_string)
+-    {
+-      p->v.command = memcpy (p->commandbuf, quoted_string, quoted_size);
+-      unquote_string (p->v.command);
+-    }
+-  return p;
+-}
+-
+-void
+-checkpoint_compile_action (const char *str)
+-{
+-  if (checkpoint_state == CHKP_INIT)
+-    {
+-      sigemptyset (&sigs);
+-      checkpoint_state = CHKP_COMPILE;
+-    }
+-
+-  if (strcmp (str, ".") == 0 || strcmp (str, "dot") == 0)
+-    alloc_action (cop_dot, NULL);
+-  else if (strcmp (str, "bell") == 0)
+-    alloc_action (cop_bell, NULL);
+-  else if (strcmp (str, "echo") == 0)
+-    alloc_action (cop_echo, NULL)->v.command = NULL;
+-  else if (strncmp (str, "echo=", 5) == 0)
+-    alloc_action (cop_echo, str + 5);
+-  else if (strncmp (str, "exec=", 5) == 0)
+-    alloc_action (cop_exec, str + 5);
+-  else if (strncmp (str, "ttyout=", 7) == 0)
+-    alloc_action (cop_ttyout, str + 7);
+-  else if (strncmp (str, "sleep=", 6) == 0)
+-    {
+-      char const *arg = str + 6;
+-      char *p;
+-      alloc_action (cop_sleep, NULL)->v.time
+-	= stoint (arg, &p, NULL, 0, TYPE_MAXIMUM (time_t));
+-      if ((p == arg) | *p)
+-	paxfatal (0, _("%s: not a valid timeout"), str);
+-    }
+-  else if (strcmp (str, "totals") == 0)
+-    alloc_action (cop_totals, NULL);
+-  else if (strncmp (str, "wait=", 5) == 0)
+-    {
+-      int sig = decode_signal (str + 5);
+-      alloc_action (cop_wait, NULL)->v.signal = sig;
+-      sigaddset (&sigs, sig);
+-    }
+-  else
+-    paxfatal (0, _("%s: unknown checkpoint action"), str);
+-}
+-
+-void
+-checkpoint_finish_compile (void)
+-{
+-  if (checkpoint_state == CHKP_INIT
+-      && checkpoint_option
+-      && !checkpoint_action)
+-    {
+-      /* Provide a historical default */
+-      checkpoint_compile_action ("echo");
+-    }
+-
+-  if (checkpoint_state == CHKP_COMPILE)
+-    {
+-      sigprocmask (SIG_BLOCK, &sigs, NULL);
+-
+-      if (!checkpoint_option)
+-	/* set default checkpoint rate */
+-	checkpoint_option = DEFAULT_CHECKPOINT;
+-
+-      checkpoint_state = CHKP_RUN;
+-    }
+-}
+-
+-static intmax_t
+-getwidth (FILE *fp)
+-{
+-  char const *columns;
+-
+-#ifdef TIOCGWINSZ
+-  struct winsize ws;
+-  if (ioctl (fileno (fp), TIOCGWINSZ, &ws) == 0 && 0 < ws.ws_col)
+-    return ws.ws_col;
+-#endif
+-
+-  columns = getenv ("COLUMNS");
+-  if (columns)
+-    {
+-      char *end;
+-      intmax_t col = stoint (columns, &end, NULL, 0, INTMAX_MAX);
+-      if (! (*end | !col))
+-	return col;
+-    }
+-
+-  return 80;
+-}
+-
+-static char *
+-getarg (char const *input, char const **endp, char **argbuf, idx_t *arglen)
+-{
+-  if (input[0] == '{')
+-    {
+-      char *p = strchr (input + 1, '}');
+-      if (p)
+-	{
+-	  idx_t n = p - input;
+-	  if (n > *arglen)
+-	    *argbuf = xpalloc (*argbuf, arglen, n - *arglen, -1, 1);
+-	  n--;
+-	  *endp = p + 1;
+-	  (*argbuf)[n] = 0;
+-	  return memcpy (*argbuf, input + 1, n);
+-	}
+-    }
+-
+-  *endp = input;
+-  return NULL;
+-}
+-
+-static bool tty_cleanup;
+-
+-static const char *def_format =
+-  "%{%Y-%m-%d %H:%M:%S}t: %ds, %{read,wrote}T%*\r";
+-
+-static intmax_t
+-format_checkpoint_string (FILE *fp, intmax_t len,
+-			  const char *input, bool do_write,
+-			  intmax_t cpn)
+-{
+-  const char *opstr = do_write ? gettext ("write") : gettext ("read");
+-  const char *ip;
+-
+-  static char *argbuf = NULL;
+-  static idx_t arglen = 0;
+-  char *arg = NULL;
+-
+-  if (!input)
+-    {
+-      if (do_write)
+-	/* TRANSLATORS: This is a "checkpoint of write operation",
+-	 *not* "Writing a checkpoint". */
+-	input = gettext ("Write checkpoint %u");
+-      else
+-	/* TRANSLATORS: This is a "checkpoint of read operation",
+-	 *not* "Reading a checkpoint". */
+-	input = gettext ("Read checkpoint %u");
+-    }
+-
+-  for (ip = input; *ip; ip++)
+-    {
+-      if (*ip == '%')
+-	{
+-	  if (*++ip == '{')
+-	    {
+-	      arg = getarg (ip, &ip, &argbuf, &arglen);
+-	      if (!arg)
+-		{
+-		  fputc ('%', fp);
+-		  fputc (*ip, fp);
+-		  len = add_printf (len, 2);
+-		  continue;
+-		}
+-	    }
+-	  switch (*ip)
+-	    {
+-	    case 'c':
+-	      len = add_printf (len,
+-				format_checkpoint_string (fp, len, def_format,
+-							  do_write, cpn));
+-	      break;
+-
+-	    case 'u':
+-	      len = add_printf (len, fprintf (fp, "%jd", cpn));
+-	      break;
+-
+-	    case 's':
+-	      fputs (opstr, fp);
+-	      len = add_printf (len, strlen (opstr));
+-	      break;
+-
+-	    case 'd':
+-	      len = add_printf (len,
+-				fprintf (fp, "%.0f",
+-					 compute_duration_ns () / BILLION));
+-	      break;
+-
+-	    case 'T':
+-	      {
+-		static char const *const checkpoint_total_format[]
+-		  = { "R", "W", "D" };
+-		char const *const *fmt = checkpoint_total_format, *fmtbuf[3];
+-		struct wordsplit ws;
+-		compute_duration_ns ();
+-
+-		if (arg)
+-		  {
+-		    ws.ws_delim = ",";
+-		    if (wordsplit (arg, &ws,
+-				   (WRDSF_NOVAR | WRDSF_NOCMD
+-				    | WRDSF_QUOTE | WRDSF_DELIM))
+-			!= WRDSE_OK)
+-		      paxerror (0, _("cannot split string '%s': %s"),
+-				arg, wordsplit_strerror (&ws));
+-		    else if (3 < ws.ws_wordc)
+-		      paxerror (0, _("too many words in '%s'"), arg);
+-		    else
+-		      {
+-			int i;
+-
+-			for (i = 0; i < ws.ws_wordc; i++)
+-			  fmtbuf[i] = ws.ws_wordv[i];
+-			for (; i < 3; i++)
+-			  fmtbuf[i] = NULL;
+-			fmt = fmtbuf;
+-		      }
+-		  }
+-		len = add_printf (len, format_total_stats (fp, fmt, ',', 0));
+-		if (arg)
+-		  wordsplit_free (&ws);
+-	      }
+-	      break;
+-
+-	    case 't':
+-	      {
+-		struct timespec ts = current_timespec ();
+-		const char *fmt = arg ? arg : "%c";
+-		struct tm *tm = localtime (&ts.tv_sec);
+-		len = add_printf (len,
+-				  (tm ? fprintftime (fp, fmt, tm, 0, ts.tv_nsec)
+-				   : fprintf (fp, "????""-??""-?? ??:??:??")));
+-	      }
+-	      break;
+-
+-	    case '*':
+-	      if (0 <= len)
+-		{
+-		  intmax_t w;
+-		  if (!arg)
+-		    w = getwidth (fp);
+-		  else
+-		    {
+-		      char *end;
+-		      w = stoint (arg, &end, NULL, 0, INTMAX_MAX);
+-		      if ((end == arg) | *end)
+-			w = 80;
+-		    }
+-		  for (; w > len; len++)
+-		    fputc (' ', fp);
+-		}
+-	      break;
+-
+-	    default:
+-	      fputc ('%', fp);
+-	      fputc (*ip, fp);
+-	      len = add_printf (len, 2);
+-	      break;
+-	    }
+-	  arg = NULL;
+-	}
+-      else
+-	{
+-	  fputc (*ip, fp);
+-	  if (*ip == '\r')
+-	    {
+-	      len = 0;
+-	      tty_cleanup = true;
+-	    }
+-	  else
+-	    len = add_printf (len, 1);
+-	}
+-    }
+-  fflush (fp);
+-  return len;
+-}
+-
+-static FILE *tty = NULL;
+-
+-static void
+-run_checkpoint_actions (bool do_write)
+-{
+-  struct checkpoint_action *p;
+-
+-  for (p = checkpoint_action; p; p = p->next)
+-    {
+-      switch (p->opcode)
+-	{
+-	case cop_dot:
+-	  fputc ('.', stdlis);
+-	  fflush (stdlis);
+-	  break;
+-
+-	case cop_bell:
+-	  if (!tty)
+-	    tty = fopen ("/dev/tty", "w");
+-	  if (tty)
+-	    {
+-	      fputc ('\a', tty);
+-	      fflush (tty);
+-	    }
+-	  break;
+-
+-	case cop_echo:
+-	  {
+-	    int n = fprintf (stderr, "%s: ", program_name);
+-	    format_checkpoint_string (stderr, n, p->v.command, do_write,
+-				      checkpoint);
+-	    fputc ('\n', stderr);
+-	  }
+-	  break;
+-
+-	case cop_ttyout:
+-	  if (!tty)
+-	    tty = fopen ("/dev/tty", "w");
+-	  if (tty)
+-	    format_checkpoint_string (tty, 0, p->v.command, do_write,
+-				      checkpoint);
+-	  break;
+-
+-	case cop_sleep:
+-	  sleep (p->v.time);
+-	  break;
+-
+-	case cop_exec:
+-	  sys_exec_checkpoint_script (p->v.command,
+-				      archive_name_cursor[0],
+-				      checkpoint);
+-	  break;
+-
+-	case cop_totals:
+-	  compute_duration_ns ();
+-	  print_total_stats ();
+-	  break;
+-
+-	case cop_wait:
+-	  {
+-	    int n;
+-	    sigwait (&sigs, &n);
+-	  }
+-	}
+-    }
+-}
+-
+-void
+-checkpoint_flush_actions (void)
+-{
+-  struct checkpoint_action *p;
+-
+-  for (p = checkpoint_action; p; p = p->next)
+-    {
+-      switch (p->opcode)
+-	{
+-	case cop_ttyout:
+-	  if (tty && tty_cleanup)
+-	    {
+-	      intmax_t w = getwidth (tty);
+-	      while (w--)
+-		fputc (' ', tty);
+-	      fputc ('\r', tty);
+-	      fflush (tty);
+-	    }
+-	  break;
+-	default:
+-	  /* nothing */;
+-	}
+-    }
+-}
+-
+-void
+-checkpoint_run (bool do_write)
+-{
+-  if (checkpoint_option && !(++checkpoint % checkpoint_option))
+-    run_checkpoint_actions (do_write);
+-}
+-
+-void
+-checkpoint_finish (void)
+-{
+-  if (checkpoint_option)
+-    {
+-      checkpoint_flush_actions ();
+-      if (tty)
+-	fclose (tty);
+-    }
+-}
++/* Checkpoint management for tar.
++
++   Copyright 2007-2024 Free Software Foundation, Inc.
++
++   This file is part of GNU tar.
++
++   GNU tar is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   GNU tar is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
++#ifdef _WIN32
 +#define _WINNT_
 +#define _WINSOCK2API_
 +#define _WINSOCKAPI_
- #include <system.h>
- #include "common.h"
- #include "wordsplit.h"
- #include <sys/ioctl.h>
++#endif
++#include <system.h>
++#include "common.h"
++
++#include <wordsplit.h>
++
++#include <flexmember.h>
++#include <fprintftime.h>
++
++#include <sys/ioctl.h>
 +#ifndef _WIN32
- #include <termios.h>
++#include <termios.h>
 +#else
 +#include <sys/time.h>
 +#endif
- #include "fprintftime.h"
- #include <signal.h>
- 
-@@ -429,7 +435,10 @@ run_checkpoint_actions (bool do_write)
- 	case cop_wait:
- 	  {
- 	    int n;
++#include <signal.h>
++
++enum checkpoint_opcode
++  {
++    cop_dot,
++    cop_bell,
++    cop_echo,
++    cop_ttyout,
++    cop_sleep,
++    cop_exec,
++    cop_totals,
++    cop_wait
++  };
++
++struct checkpoint_action
++{
++  struct checkpoint_action *next;
++  enum checkpoint_opcode opcode;
++  union
++  {
++    time_t time;
++    char *command;
++    int signal;
++  } v;
++  char commandbuf[FLEXIBLE_ARRAY_MEMBER];
++};
++
++/* Checkpointing counter */
++static intmax_t checkpoint;
++
++/* List of checkpoint actions */
++static struct checkpoint_action *checkpoint_action,
++  **checkpoint_action_tail = &checkpoint_action;
++
++/* State of the checkpoint system */
++static enum {
++  CHKP_INIT,       /* Needs initialization */
++  CHKP_COMPILE,    /* Actions are being compiled */
++  CHKP_RUN         /* Actions are being run */
++} checkpoint_state;
++/* Blocked signals */
++static sigset_t sigs;
++
++static struct checkpoint_action *
++alloc_action (enum checkpoint_opcode opcode, char const *quoted_string)
++{
++  idx_t quoted_size = quoted_string ? strlen (quoted_string) + 1 : 0;
++  struct checkpoint_action *p = xmalloc (FLEXSIZEOF (struct checkpoint_action,
++						     commandbuf, quoted_size));
++  *checkpoint_action_tail = p;
++  checkpoint_action_tail = &p->next;
++  p->next = NULL;
++  p->opcode = opcode;
++  if (quoted_string)
++    {
++      p->v.command = memcpy (p->commandbuf, quoted_string, quoted_size);
++      unquote_string (p->v.command);
++    }
++  return p;
++}
++
++void
++checkpoint_compile_action (const char *str)
++{
++  if (checkpoint_state == CHKP_INIT)
++    {
++      sigemptyset (&sigs);
++      checkpoint_state = CHKP_COMPILE;
++    }
++
++  if (strcmp (str, ".") == 0 || strcmp (str, "dot") == 0)
++    alloc_action (cop_dot, NULL);
++  else if (strcmp (str, "bell") == 0)
++    alloc_action (cop_bell, NULL);
++  else if (strcmp (str, "echo") == 0)
++    alloc_action (cop_echo, NULL)->v.command = NULL;
++  else if (strncmp (str, "echo=", 5) == 0)
++    alloc_action (cop_echo, str + 5);
++  else if (strncmp (str, "exec=", 5) == 0)
++    alloc_action (cop_exec, str + 5);
++  else if (strncmp (str, "ttyout=", 7) == 0)
++    alloc_action (cop_ttyout, str + 7);
++  else if (strncmp (str, "sleep=", 6) == 0)
++    {
++      char const *arg = str + 6;
++      char *p;
++      alloc_action (cop_sleep, NULL)->v.time
++	= stoint (arg, &p, NULL, 0, TYPE_MAXIMUM (time_t));
++      if ((p == arg) | *p)
++	paxfatal (0, _("%s: not a valid timeout"), str);
++    }
++  else if (strcmp (str, "totals") == 0)
++    alloc_action (cop_totals, NULL);
++  else if (strncmp (str, "wait=", 5) == 0)
++    {
++      int sig = decode_signal (str + 5);
++      alloc_action (cop_wait, NULL)->v.signal = sig;
++      sigaddset (&sigs, sig);
++    }
++  else
++    paxfatal (0, _("%s: unknown checkpoint action"), str);
++}
++
++void
++checkpoint_finish_compile (void)
++{
++  if (checkpoint_state == CHKP_INIT
++      && checkpoint_option
++      && !checkpoint_action)
++    {
++      /* Provide a historical default */
++      checkpoint_compile_action ("echo");
++    }
++
++  if (checkpoint_state == CHKP_COMPILE)
++    {
++      sigprocmask (SIG_BLOCK, &sigs, NULL);
++
++      if (!checkpoint_option)
++	/* set default checkpoint rate */
++	checkpoint_option = DEFAULT_CHECKPOINT;
++
++      checkpoint_state = CHKP_RUN;
++    }
++}
++
++static intmax_t
++getwidth (FILE *fp)
++{
++  char const *columns;
++
++#ifdef TIOCGWINSZ
++  struct winsize ws;
++  if (ioctl (fileno (fp), TIOCGWINSZ, &ws) == 0 && 0 < ws.ws_col)
++    return ws.ws_col;
++#endif
++
++  columns = getenv ("COLUMNS");
++  if (columns)
++    {
++      char *end;
++      intmax_t col = stoint (columns, &end, NULL, 0, INTMAX_MAX);
++      if (! (*end | !col))
++	return col;
++    }
++
++  return 80;
++}
++
++static char *
++getarg (char const *input, char const **endp, char **argbuf, idx_t *arglen)
++{
++  if (input[0] == '{')
++    {
++      char *p = strchr (input + 1, '}');
++      if (p)
++	{
++	  idx_t n = p - input;
++	  if (n > *arglen)
++	    *argbuf = xpalloc (*argbuf, arglen, n - *arglen, -1, 1);
++	  n--;
++	  *endp = p + 1;
++	  (*argbuf)[n] = 0;
++	  return memcpy (*argbuf, input + 1, n);
++	}
++    }
++
++  *endp = input;
++  return NULL;
++}
++
++static bool tty_cleanup;
++
++static const char *def_format =
++  "%{%Y-%m-%d %H:%M:%S}t: %ds, %{read,wrote}T%*\r";
++
++static intmax_t
++format_checkpoint_string (FILE *fp, intmax_t len,
++			  const char *input, bool do_write,
++			  intmax_t cpn)
++{
++  const char *opstr = do_write ? gettext ("write") : gettext ("read");
++  const char *ip;
++
++  static char *argbuf = NULL;
++  static idx_t arglen = 0;
++  char *arg = NULL;
++
++  if (!input)
++    {
++      if (do_write)
++	/* TRANSLATORS: This is a "checkpoint of write operation",
++	 *not* "Writing a checkpoint". */
++	input = gettext ("Write checkpoint %u");
++      else
++	/* TRANSLATORS: This is a "checkpoint of read operation",
++	 *not* "Reading a checkpoint". */
++	input = gettext ("Read checkpoint %u");
++    }
++
++  for (ip = input; *ip; ip++)
++    {
++      if (*ip == '%')
++	{
++	  if (*++ip == '{')
++	    {
++	      arg = getarg (ip, &ip, &argbuf, &arglen);
++	      if (!arg)
++		{
++		  fputc ('%', fp);
++		  fputc (*ip, fp);
++		  len = add_printf (len, 2);
++		  continue;
++		}
++	    }
++	  switch (*ip)
++	    {
++	    case 'c':
++	      len = add_printf (len,
++				format_checkpoint_string (fp, len, def_format,
++							  do_write, cpn));
++	      break;
++
++	    case 'u':
++	      len = add_printf (len, fprintf (fp, "%jd", cpn));
++	      break;
++
++	    case 's':
++	      fputs (opstr, fp);
++	      len = add_printf (len, strlen (opstr));
++	      break;
++
++	    case 'd':
++	      len = add_printf (len,
++				fprintf (fp, "%.0f",
++					 compute_duration_ns () / BILLION));
++	      break;
++
++	    case 'T':
++	      {
++		static char const *const checkpoint_total_format[]
++		  = { "R", "W", "D" };
++		char const *const *fmt = checkpoint_total_format, *fmtbuf[3];
++		struct wordsplit ws;
++		compute_duration_ns ();
++
++		if (arg)
++		  {
++		    ws.ws_delim = ",";
++		    if (wordsplit (arg, &ws,
++				   (WRDSF_NOVAR | WRDSF_NOCMD
++				    | WRDSF_QUOTE | WRDSF_DELIM))
++			!= WRDSE_OK)
++		      paxerror (0, _("cannot split string '%s': %s"),
++				arg, wordsplit_strerror (&ws));
++		    else if (3 < ws.ws_wordc)
++		      paxerror (0, _("too many words in '%s'"), arg);
++		    else
++		      {
++			int i;
++
++			for (i = 0; i < ws.ws_wordc; i++)
++			  fmtbuf[i] = ws.ws_wordv[i];
++			for (; i < 3; i++)
++			  fmtbuf[i] = NULL;
++			fmt = fmtbuf;
++		      }
++		  }
++		len = add_printf (len, format_total_stats (fp, fmt, ',', 0));
++		if (arg)
++		  wordsplit_free (&ws);
++	      }
++	      break;
++
++	    case 't':
++	      {
++		struct timespec ts = current_timespec ();
++		const char *fmt = arg ? arg : "%c";
++		struct tm *tm = localtime (&ts.tv_sec);
++		len = add_printf (len,
++				  (tm ? fprintftime (fp, fmt, tm, 0, ts.tv_nsec)
++				   : fprintf (fp, "????""-??""-?? ??:??:??")));
++	      }
++	      break;
++
++	    case '*':
++	      if (0 <= len)
++		{
++		  intmax_t w;
++		  if (!arg)
++		    w = getwidth (fp);
++		  else
++		    {
++		      char *end;
++		      w = stoint (arg, &end, NULL, 0, INTMAX_MAX);
++		      if ((end == arg) | *end)
++			w = 80;
++		    }
++		  for (; w > len; len++)
++		    fputc (' ', fp);
++		}
++	      break;
++
++	    default:
++	      fputc ('%', fp);
++	      fputc (*ip, fp);
++	      len = add_printf (len, 2);
++	      break;
++	    }
++	  arg = NULL;
++	}
++      else
++	{
++	  fputc (*ip, fp);
++	  if (*ip == '\r')
++	    {
++	      len = 0;
++	      tty_cleanup = true;
++	    }
++	  else
++	    len = add_printf (len, 1);
++	}
++    }
++  fflush (fp);
++  return len;
++}
++
++static FILE *tty = NULL;
++
++static void
++run_checkpoint_actions (bool do_write)
++{
++  struct checkpoint_action *p;
++
++  for (p = checkpoint_action; p; p = p->next)
++    {
++      switch (p->opcode)
++	{
++	case cop_dot:
++	  fputc ('.', stdlis);
++	  fflush (stdlis);
++	  break;
++
++	case cop_bell:
++	  if (!tty)
++	    tty = fopen ("/dev/tty", "w");
++	  if (tty)
++	    {
++	      fputc ('\a', tty);
++	      fflush (tty);
++	    }
++	  break;
++
++	case cop_echo:
++	  {
++	    int n = fprintf (stderr, "%s: ", program_name);
++	    format_checkpoint_string (stderr, n, p->v.command, do_write,
++				      checkpoint);
++	    fputc ('\n', stderr);
++	  }
++	  break;
++
++	case cop_ttyout:
++	  if (!tty)
++	    tty = fopen ("/dev/tty", "w");
++	  if (tty)
++	    format_checkpoint_string (tty, 0, p->v.command, do_write,
++				      checkpoint);
++	  break;
++
++	case cop_sleep:
++	  sleep (p->v.time);
++	  break;
++
++	case cop_exec:
++	  sys_exec_checkpoint_script (p->v.command,
++				      archive_name_cursor[0],
++				      checkpoint);
++	  break;
++
++	case cop_totals:
++	  compute_duration_ns ();
++	  print_total_stats ();
++	  break;
++
++	case cop_wait:
++	  {
++	    int n;
 +#ifndef _WIN32
- 	    sigwait (&sigs, &n);
++	    sigwait (&sigs, &n);
 +#endif // !_WIN32
 +
- 	  }
- 	}
-     }
++	  }
++	}
++    }
++}
++
++void
++checkpoint_flush_actions (void)
++{
++  struct checkpoint_action *p;
++
++  for (p = checkpoint_action; p; p = p->next)
++    {
++      switch (p->opcode)
++	{
++	case cop_ttyout:
++	  if (tty && tty_cleanup)
++	    {
++	      intmax_t w = getwidth (tty);
++	      while (w--)
++		fputc (' ', tty);
++	      fputc ('\r', tty);
++	      fflush (tty);
++	    }
++	  break;
++	default:
++	  /* nothing */;
++	}
++    }
++}
++
++void
++checkpoint_run (bool do_write)
++{
++  if (checkpoint_option && !(++checkpoint % checkpoint_option))
++    run_checkpoint_actions (do_write);
++}
++
++void
++checkpoint_finish (void)
++{
++  if (checkpoint_option)
++    {
++      checkpoint_flush_actions ();
++      if (tty)
++	fclose (tty);
++    }
++}
 diff --git a/src/common.h b/src/common.h
-index 89912567..c5e0c295 100644
+index df87478c..ae60aaf7 100644
 --- a/src/common.h
 +++ b/src/common.h
 @@ -20,6 +20,16 @@
@@ -97,54 +1020,55 @@ index 89912567..c5e0c295 100644
 +#define _WINSOCKAPI_
 +#endif
 +
- /* The checksum field is filled with this while the checksum is computed.  */
- #define CHKBLANKS	"        "	/* 8 blanks, no null */
+ /* Some constants from POSIX are given names.  */
+ enum
+   {
+@@ -31,7 +41,7 @@ enum
  
-@@ -351,6 +361,11 @@ GLOBAL bool posixly_correct;
+ 
+ /* Some various global definitions.  */
+-
++#include <paxlib.h>
+ enum
+   {
+     TAREXIT_SUCCESS = PAXEXIT_SUCCESS,
+@@ -55,7 +65,7 @@ enum
+ #include <intprops.h>
+ #include <inttostr.h>
+ #include <modechange.h>
+-#include <paxlib.h>
++
+ #include <progname.h>
+ #include <quote.h>
+ #include <safe-read.h>
+@@ -414,7 +424,11 @@ extern enum access_mode access_mode;
  
  /* File descriptor for archive file.  */
- GLOBAL int archive;
+ extern int archive;
+-
 +#ifndef _WIN32
 +#define archive_child archive
 +#else
-+GLOBAL int archive_child;
++extern int archive_child;
 +#endif
- 
- /* Nonzero when outputting to /dev/null.  */
- GLOBAL bool dev_null_output;
-@@ -749,7 +764,9 @@ void write_error_details (char const *name, size_t status, size_t size);
+ /* Timestamps: */
+ extern struct timespec start_time;        /* when we started execution */
+ extern struct timespec volume_start_time; /* when the current volume was
+@@ -753,7 +767,9 @@ void file_removed_diag (const char *name, bool top_level,
+ 			void (*diagfn) (char const *name));
  _Noreturn void write_fatal (char const *name);
- _Noreturn void write_fatal_details (char const *name, ssize_t status, size_t size);
  
 +#ifndef _WIN32
  pid_t xfork (void);
 +#endif // !_WIN32
  void xpipe (int fd[2]);
  
- void *page_aligned_alloc (void **ptr, size_t size);
+ int set_file_atime (int fd, int parentfd, char const *file,
 diff --git a/src/compare.c b/src/compare.c
-index 4f9824c2..a4acf9f1 100644
+index f5493975..40c96e72 100644
 --- a/src/compare.c
 +++ b/src/compare.c
-@@ -267,7 +267,7 @@ diff_link (void)
- 				      current_stat_info.link_name));
- }
- 
--#ifdef HAVE_READLINK
-+#if defined HAVE_READLINK || defined _WIN32
- static void
- diff_symlink (void)
- {
-@@ -496,7 +496,7 @@ diff_archive (void)
-       diff_link ();
-       break;
- 
--#ifdef HAVE_READLINK
-+#if defined HAVE_READLINK || defined _WIN32
-     case SYMTYPE:
-       diff_symlink ();
-       break;
-@@ -558,7 +558,7 @@ verify_volume (void)
+@@ -546,7 +546,7 @@ verify_volume (void)
       fsync.  So, until we know better, or maybe to please Marty, let's do it
       the unbelievable way :-).  */
  
@@ -153,24 +1077,11 @@ index 4f9824c2..a4acf9f1 100644
    fsync (archive);
  #endif
  #ifdef FDFLUSH
-diff --git a/src/create.c b/src/create.c
-index 81b2e17a..98ae1b4e 100644
---- a/src/create.c
-+++ b/src/create.c
-@@ -1870,7 +1870,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
- 
-       return allocated;
-     }
--#ifdef HAVE_READLINK
-+#if defined HAVE_READLINK || defined _WIN32
-   else if (S_ISLNK (st->stat.st_mode))
-     {
-       st->link_name = areadlinkat_with_size (parentfd, name, st->stat.st_size);
 diff --git a/src/extract.c b/src/extract.c
-index 314d8bc0..5c9e3b41 100644
+index f741943f..ca910722 100644
 --- a/src/extract.c
 +++ b/src/extract.c
-@@ -1202,7 +1202,7 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
+@@ -1227,7 +1227,7 @@ open_output_file (char const *file_name, char typeflag, mode_t mode,
    /* If O_NOFOLLOW is needed but does not work, check for a symlink
       separately.  There's a race condition, but that cannot be avoided
       on hosts lacking O_NOFOLLOW.  */
@@ -179,27 +1090,18 @@ index 314d8bc0..5c9e3b41 100644
        && overwriting_old_files && ! dereference_option)
      {
        char buf[1];
-@@ -1560,7 +1560,7 @@ extract_link (char *file_name, MAYBE_UNUSED int typeflag)
- static int
- extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
- {
--#ifdef HAVE_SYMLINK
-+#if defined HAVE_SYMLINK || defined REPLACE_SYMLINK
-   bool interdir_made = false;
- 
-   if (! absolute_names_option
-@@ -1601,6 +1601,9 @@ extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
+@@ -1623,6 +1623,9 @@ extract_symlink (char *file_name, MAYBE_UNUSED char typeflag)
  }
  
  #if S_IFCHR || S_IFBLK
 +#ifndef S_IFBLK
 +# define S_IFBLK 0
 +#endif
- static int
- extract_node (char *file_name, int typeflag)
+ static bool
+ extract_node (char *file_name, char typeflag)
  {
 diff --git a/src/map.c b/src/map.c
-index e0a3bc16..2bf47cff 100644
+index fcd75f42..8b29b022 100644
 --- a/src/map.c
 +++ b/src/map.c
 @@ -21,7 +21,9 @@
@@ -212,7 +1114,7 @@ index e0a3bc16..2bf47cff 100644
  
  struct mapentry
  {
-@@ -189,8 +191,12 @@ static Hash_table *owner_map;
+@@ -187,8 +189,12 @@ static Hash_table *owner_map;
  static uintmax_t
  name_to_uid (char const *name)
  {
@@ -225,7 +1127,7 @@ index e0a3bc16..2bf47cff 100644
  }
  
  void
-@@ -239,8 +245,12 @@ static Hash_table *group_map;
+@@ -228,8 +234,12 @@ static Hash_table *group_map;
  static uintmax_t
  name_to_gid (char const *name)
  {
@@ -239,10 +1141,10 @@ index e0a3bc16..2bf47cff 100644
  
  void
 diff --git a/src/misc.c b/src/misc.c
-index 73c04646..d4d947f4 100644
+index 0d7407bc..3e538cd8 100644
 --- a/src/misc.c
 +++ b/src/misc.c
-@@ -1191,6 +1191,7 @@ file_removed_diag (const char *name, bool top_level,
+@@ -1206,6 +1206,7 @@ file_removed_diag (const char *name, bool top_level,
      diagfn (name);
  }
  
@@ -250,7 +1152,7 @@ index 73c04646..d4d947f4 100644
  /* Fork, aborting if unsuccessful.  */
  pid_t
  xfork (void)
-@@ -1200,6 +1201,7 @@ xfork (void)
+@@ -1215,6 +1216,7 @@ xfork (void)
      call_arg_fatal ("fork", _("child process"));
    return p;
  }
@@ -259,10 +1161,10 @@ index 73c04646..d4d947f4 100644
  /* Create a pipe, aborting if unsuccessful.  */
  void
 diff --git a/src/names.c b/src/names.c
-index d3027379..ec07592e 100644
+index 49132fe1..63f0e7fa 100644
 --- a/src/names.c
 +++ b/src/names.c
-@@ -473,6 +473,7 @@ static gid_t cached_no_such_gid;
+@@ -476,6 +476,7 @@ static gid_t cached_no_such_gid;
  void
  uid_to_uname (uid_t uid, char **uname)
  {
@@ -270,7 +1172,7 @@ index d3027379..ec07592e 100644
    struct passwd *passwd;
  
    if (uid != 0 && uid == cached_no_such_uid)
-@@ -497,12 +498,16 @@ uid_to_uname (uid_t uid, char **uname)
+@@ -500,12 +501,16 @@ uid_to_uname (uid_t uid, char **uname)
  	}
      }
    *uname = xstrdup (cached_uname);
@@ -287,7 +1189,7 @@ index d3027379..ec07592e 100644
    struct group *group;
  
    if (gid != 0 && gid == cached_no_such_gid)
-@@ -527,12 +532,16 @@ gid_to_gname (gid_t gid, char **gname)
+@@ -530,6 +535,9 @@ gid_to_gname (gid_t gid, char **gname)
  	}
      }
    *gname = xstrdup (cached_gname);
@@ -296,54 +1198,60 @@ index d3027379..ec07592e 100644
 +#endif
  }
  
- /* Given UNAME, set the corresponding UID and return 1, or else, return 0.  */
- int
+ /* Given UNAME, set the corresponding UID and return true,
+@@ -537,6 +545,7 @@ gid_to_gname (gid_t gid, char **gname)
+ bool
  uname_to_uid (char const *uname, uid_t *uidp)
  {
 +#ifndef _WIN32
    struct passwd *passwd;
  
    if (cached_no_such_uname
-@@ -557,12 +566,16 @@ uname_to_uid (char const *uname, uid_t *uidp)
+@@ -561,6 +570,9 @@ uname_to_uid (char const *uname, uid_t *uidp)
      }
    *uidp = cached_uid;
-   return 1;
+   return true;
 +#else
-+  return 0;
++  return false;
 +#endif
  }
  
- /* Given GNAME, set the corresponding GID and return 1, or else, return 0.  */
- int
+ /* Given GNAME, set the corresponding GID and return true,
+@@ -568,6 +580,7 @@ uname_to_uid (char const *uname, uid_t *uidp)
+ bool
  gname_to_gid (char const *gname, gid_t *gidp)
  {
 +#ifndef _WIN32
    struct group *group;
  
    if (cached_no_such_gname
-@@ -587,6 +600,9 @@ gname_to_gid (char const *gname, gid_t *gidp)
+@@ -592,6 +605,9 @@ gname_to_gid (char const *gname, gid_t *gidp)
      }
    *gidp = cached_gid;
-   return 1;
+   return true;
 +#else
-+  return 0;
++  return false;
 +#endif
  }
  
  
 diff --git a/src/system.c b/src/system.c
-index b7e39f7c..2317f593 100644
+index c0211642..0b4d95b2 100644
 --- a/src/system.c
 +++ b/src/system.c
-@@ -16,8 +16,19 @@
+@@ -16,12 +16,23 @@
     with this program.  If not, see <http://www.gnu.org/licenses/>.  */
  
  #include <system.h>
+-
+ #if HAVE_SYS_MTIO_H
+ # include <sys/ioctl.h>
+ # include <sys/mtio.h>
+ #endif
+ 
 +#include "execute.h"
 +#include "spawn.h"
 +#include <sys/wait.h>
- #include <system-ioctl.h>
--
 +//rather than manually include the entire windows header lets just define these.
 +#ifdef _WIN32
 +#ifndef DWORD
@@ -356,15 +1264,24 @@ index b7e39f7c..2317f593 100644
  #include "common.h"
  #include <priv-set.h>
  #include <rmt.h>
-@@ -26,6 +37,7 @@
+@@ -29,9 +40,16 @@
+ #include <wordsplit.h>
  #include <poll.h>
  #include <parse-datetime.h>
++#include "config.h"
++#ifndef HAVE_WAITPID
++#ifdef _GL_SYS_WAIT_H
++#define HAVE_WAITPID 1
++#endif
++#endif
+ 
+ bool dev_null_output;
  
 +#ifndef _WIN32
  static _Noreturn void
  xexec (const char *cmd)
  {
-@@ -39,7 +51,7 @@ xexec (const char *cmd)
+@@ -45,7 +63,7 @@ xexec (const char *cmd)
    execv ("/bin/sh", argv);
    exec_fatal (cmd);
  }
@@ -373,13 +1290,22 @@ index b7e39f7c..2317f593 100644
  /* True if the archive is seekable via ioctl and MTIOCTOP,
     or if it is not known whether it is seekable.
     False if it is known to be not seekable.  */
-@@ -161,7 +173,18 @@ sys_exec_setmtime_script (const char *script_name,
-   FATAL_ERROR ((0, 0, _("--set-mtime-command not implemented on this platform")));
+@@ -75,7 +93,7 @@ mtioseek (bool count_files, off_t count)
+   return false;
+ }
+ 
+-#if !HAVE_WAITPID /* MingW, MSVC 14.  */
++#ifndef HAVE_WAITPID /* MingW, MSVC 14.  */
+ 
+ bool
+ sys_get_archive_stat (void)
+@@ -167,6 +185,18 @@ sys_exec_setmtime_script (const char *script_name,
+   paxfatal (0, _("--set-mtime-command not implemented on this platform"));
  }
  #else
 +#ifdef _WIN32
- 
-+int
++
++bool
 +sys_exec_setmtime_script (const char *script_name,
 +			  int dirfd,
 +			  const char *file_name,
@@ -389,10 +1315,10 @@ index b7e39f7c..2317f593 100644
 +  FATAL_ERROR ((0, 0, _("--set-mtime-command not implemented on this platform")));
 +}
 +#endif
- extern union block *record_start; /* FIXME */
  
  bool
-@@ -242,8 +265,10 @@ sys_spawn_shell (void)
+ sys_get_archive_stat (void)
+@@ -246,8 +276,10 @@ sys_spawn_shell (void)
  {
    pid_t child;
    const char *shell = getenv ("SHELL");
@@ -403,7 +1329,7 @@ index b7e39f7c..2317f593 100644
    child = xfork ();
    if (child == 0)
      {
-@@ -261,6 +286,20 @@ sys_spawn_shell (void)
+@@ -265,6 +297,20 @@ sys_spawn_shell (void)
  	    break;
  	  }
      }
@@ -415,7 +1341,7 @@ index b7e39f7c..2317f593 100644
 +  arg_arr[2] =  NULL;
 +
 +
-+  errno = execute(shell,shell,(void*)arg_arr,NULL,false,false,false,false,true,false,NULL);
++  errno = execute(shell,shell,(void*)arg_arr,NULL,NULL,false,false,false,false,true,false,NULL);
 +  if (errno != EINTR)
 +	  {
 +	    waitpid_error (shell);
@@ -424,7 +1350,7 @@ index b7e39f7c..2317f593 100644
  }
  
  bool
-@@ -365,6 +404,7 @@ sys_child_open_for_compress (void)
+@@ -366,6 +412,7 @@ sys_child_open_for_compress (void)
  
    signal (SIGPIPE, SIG_IGN);
    xpipe (parent_pipe);
@@ -432,7 +1358,7 @@ index b7e39f7c..2317f593 100644
    child_pid = xfork ();
  
    if (child_pid > 0)
-@@ -384,6 +424,8 @@ sys_child_open_for_compress (void)
+@@ -385,6 +432,8 @@ sys_child_open_for_compress (void)
    xdup2 (parent_pipe[PREAD], STDIN_FILENO);
    xclose (parent_pipe[PWRITE]);
  
@@ -441,7 +1367,7 @@ index b7e39f7c..2317f593 100644
    /* Check if we need a grandchild tar.  This happens only if either:
       a) the file is to be accessed by rmt: compressor doesn't know how;
       b) the file is not a plain file.  */
-@@ -398,8 +440,8 @@ sys_child_open_for_compress (void)
+@@ -399,8 +448,8 @@ sys_child_open_for_compress (void)
  	 compressor.  */
        if (strcmp (archive_name_array[0], "-"))
  	{
@@ -452,7 +1378,7 @@ index b7e39f7c..2317f593 100644
  	    {
  	      int saved_errno = errno;
  
-@@ -408,12 +450,56 @@ sys_child_open_for_compress (void)
+@@ -409,12 +458,56 @@ sys_child_open_for_compress (void)
  	      errno = saved_errno;
  	      open_fatal (archive_name_array[0]);
  	    }
@@ -472,7 +1398,7 @@ index b7e39f7c..2317f593 100644
 +	  fd[1] = archive;
 +	  fd[0] = archive_child;*/
 +	  //return create_pipe_out(_("tar (child)"),"/bin/sh",argv,NULL,NULL,NULL,true,true,fd);
-+	  int new_pid=0;
++	  pid_t new_pid=0;
 +	  posix_spawn_file_actions_t action;
 +	  //posix_spawnattr_t attr; //dont think any flags are relaly supported other than process group looking through gnu spawni.c code
 +	  posix_spawn_file_actions_init(&action);
@@ -511,7 +1437,7 @@ index b7e39f7c..2317f593 100644
    /* We do need a grandchild tar.  */
  
    xpipe (child_pipe);
-@@ -496,10 +582,15 @@ sys_child_open_for_compress (void)
+@@ -497,10 +590,15 @@ sys_child_open_for_compress (void)
      }
  
    wait_for_grandchild (grandchild_pid);
@@ -528,14 +1454,14 @@ index b7e39f7c..2317f593 100644
  {
    int i;
    const char *p, *prog = NULL;
-@@ -526,7 +617,23 @@ run_decompress_program (void)
- 	      sizeof(ws.ws_wordv[0])*ws.ws_wordc);
+@@ -525,7 +623,23 @@ run_decompress_program (void)
+ 	       ws.ws_wordc * sizeof *ws.ws_wordv);
        ws.ws_wordv[ws.ws_wordc] = (char *) "-d";
        prog = p;
 +#ifndef _WIN32
        execvp (ws.ws_wordv[0], ws.ws_wordv);
 +#else
-+	  int new_pid = 0;
++	  pid_t new_pid = 0;
 +	  int spawn_res = posix_spawnp(&new_pid, ws.ws_wordv[0], action, NULL, ws.ws_wordv, NULL);
 +	  char* errMsg = "";
 +	  char* errMsg2 = "";
@@ -552,7 +1478,7 @@ index b7e39f7c..2317f593 100644
        ws.ws_wordv[ws.ws_wordc] = NULL;
      }
    if (!prog)
-@@ -542,8 +649,9 @@ sys_child_open_for_uncompress (void)
+@@ -541,8 +655,9 @@ sys_child_open_for_uncompress (void)
    int child_pipe[2];
    pid_t grandchild_pid;
    pid_t child_pid;
@@ -563,7 +1489,7 @@ index b7e39f7c..2317f593 100644
    child_pid = xfork ();
  
    if (child_pid > 0)
-@@ -562,7 +670,7 @@ sys_child_open_for_uncompress (void)
+@@ -561,7 +676,7 @@ sys_child_open_for_uncompress (void)
  
    xdup2 (parent_pipe[PWRITE], STDOUT_FILENO);
    xclose (parent_pipe[PREAD]);
@@ -572,7 +1498,7 @@ index b7e39f7c..2317f593 100644
    /* Check if we need a grandchild tar.  This happens only if either:
       a) we're reading stdin: to force unblocking;
       b) the file is to be accessed by rmt: compressor doesn't know how;
-@@ -575,14 +683,35 @@ sys_child_open_for_uncompress (void)
+@@ -574,14 +689,35 @@ sys_child_open_for_uncompress (void)
        /* We don't need a grandchild tar.  Open the archive and launch the
  	 uncompressor.  */
  
@@ -612,7 +1538,7 @@ index b7e39f7c..2317f593 100644
    /* We do need a grandchild tar.  */
  
    xpipe (child_pipe);
-@@ -651,9 +780,10 @@ sys_child_open_for_uncompress (void)
+@@ -642,9 +778,10 @@ sys_child_open_for_uncompress (void)
    xclose (STDOUT_FILENO);
  
    wait_for_grandchild (grandchild_pid);
@@ -624,7 +1550,7 @@ index b7e39f7c..2317f593 100644
  
  static void
  dec_to_env (char const *envar, uintmax_t num)
-@@ -762,6 +892,7 @@ sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
+@@ -752,6 +889,7 @@ sys_exec_command (char *file_name, char typechar, struct tar_stat_info *st)
    int p[2];
  
    xpipe (p);
@@ -632,7 +1558,7 @@ index b7e39f7c..2317f593 100644
    pipe_handler = signal (SIGPIPE, SIG_IGN);
    global_pid = xfork ();
  
-@@ -779,6 +910,24 @@ sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
+@@ -769,6 +907,24 @@ sys_exec_command (char *file_name, char typechar, struct tar_stat_info *st)
  
    priv_set_restore_linkdir ();
    xexec (to_command_option);
@@ -643,7 +1569,7 @@ index b7e39f7c..2317f593 100644
 +  posix_spawn_file_actions_adddup2(&action, p[PREAD], STDIN_FILENO);
 +  stat_to_env(file_name, typechar, st); //yeah we are poluting our env but it looks like these are not used elsewhere, easier than having to o a ful lenv copy + add
 +  priv_set_restore_linkdir();
-+  int new_pid = 0;
++  pid_t new_pid = 0;
 +  char* argv[2];
 +
 +  argv[0] = (char*)to_command_option;//we cant use sh in windows to execute the command
@@ -657,14 +1583,18 @@ index b7e39f7c..2317f593 100644
  }
  
  void
-@@ -825,14 +974,43 @@ sys_exec_info_script (const char **archive_name, int volume_number)
+@@ -811,16 +967,45 @@ sys_exec_info_script (const char **archive_name, intmax_t volume_number)
+ {
+   int p[2];
    static void (*saved_handler) (int sig);
- 
+-
++  pid_t pid;
    xpipe (p);
 + #ifndef _WIN32
    saved_handler = signal (SIGPIPE, SIG_IGN);
  
-   pid = xfork ();
+-  pid_t pid = xfork ();
++  pid = xfork ();
  
 -  if (pid != 0)
 -    {
@@ -678,52 +1608,56 @@ index b7e39f7c..2317f593 100644
 +  posix_spawn_file_actions_adddup2(&action, p[PWRITE], p[PWRITE]);
 +  posix_spawn_file_actions_addclose(&action, p[PREAD]);
 +#endif
-+	  setenv("TAR_VERSION", PACKAGE_VERSION, 1);
-+	  setenv("TAR_ARCHIVE", *archive_name, 1);
-+	  setenv("TAR_VOLUME", STRINGIFY_BIGINT(volume_number, uintbuf), 1);
-+	  setenv("TAR_BLOCKING_FACTOR",
-+		  STRINGIFY_BIGINT(blocking_factor, uintbuf), 1);
-+	  setenv("TAR_SUBCOMMAND", subcommand_string(subcommand_option), 1);
-+	  setenv("TAR_FORMAT",
-+		  archive_format_string(current_format == DEFAULT_FORMAT ?
-+			  archive_format : current_format), 1);
-+	  setenv("TAR_FD", STRINGIFY_BIGINT(p[PWRITE], uintbuf), 1);
+ 
++  str_to_env ("TAR_VERSION", PACKAGE_VERSION);
++  str_to_env ("TAR_ARCHIVE", *archive_name);
++  dec_to_env ("TAR_VOLUME", volume_number);
++  dec_to_env ("TAR_BLOCKING_FACTOR", blocking_factor);
++  setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
++  setenv ("TAR_FORMAT",
++	  archive_format_string (current_format == DEFAULT_FORMAT ?
++				 archive_format : current_format), 1);
++  dec_to_env ("TAR_FD", p[PWRITE]);
 +
 +	  priv_set_restore_linkdir();
 +#ifndef _WIN32
 +	  xclose(p[PREAD]);
 +	  xexec(info_script_option);
 +  }
- 
++
 +      /* Master */
 +#else
 +	int spawn_res = posix_spawnp(&pid, info_script_option, &action, NULL, NULL, NULL);
 +	if (spawn_res != 0)
 +		exec_fatal(info_script_option);
 +#endif
-       int rc;
        int status;
        char *buf = NULL;
-@@ -865,27 +1043,9 @@ sys_exec_info_script (const char **archive_name, int volume_number)
- 	    free (buf);
- 	  return WEXITSTATUS (status);
+       size_t size = 0;
+@@ -848,7 +1033,6 @@ sys_exec_info_script (const char **archive_name, intmax_t volume_number)
+ 	  close_error (info_script_option);
+ 	  return -1;
  	}
 -
-       free (buf);
-       return -1;
--    }
+       while (waitpid (pid, &status, 0) < 0)
+ 	if (errno != EINTR)
+ 	  {
+@@ -859,23 +1043,6 @@ sys_exec_info_script (const char **archive_name, intmax_t volume_number)
  
+       signal (SIGPIPE, saved_handler);
+       return WIFEXITED (status) ? WEXITSTATUS (status) : -1;
+-    }
+-
 -  /* Child */
--  setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
--  setenv ("TAR_ARCHIVE", *archive_name, 1);
--  setenv ("TAR_VOLUME", STRINGIFY_BIGINT (volume_number, uintbuf), 1);
--  setenv ("TAR_BLOCKING_FACTOR",
--	  STRINGIFY_BIGINT (blocking_factor, uintbuf), 1);
+-  str_to_env ("TAR_VERSION", PACKAGE_VERSION);
+-  str_to_env ("TAR_ARCHIVE", *archive_name);
+-  dec_to_env ("TAR_VOLUME", volume_number);
+-  dec_to_env ("TAR_BLOCKING_FACTOR", blocking_factor);
 -  setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
 -  setenv ("TAR_FORMAT",
 -	  archive_format_string (current_format == DEFAULT_FORMAT ?
 -				 archive_format : current_format), 1);
--  setenv ("TAR_FD", STRINGIFY_BIGINT (p[PWRITE], uintbuf), 1);
+-  dec_to_env ("TAR_FD", p[PWRITE]);
 -
 -  xclose (p[PREAD]);
 -
@@ -732,26 +1666,28 @@ index b7e39f7c..2317f593 100644
  }
  
  void
-@@ -895,25 +1055,15 @@ sys_exec_checkpoint_script (const char *script_name,
+@@ -883,24 +1050,17 @@ sys_exec_checkpoint_script (const char *script_name,
+ 			    const char *archive_name,
+ 			    intmax_t checkpoint_number)
  {
-   pid_t pid;
-   char uintbuf[UINTMAX_STRSIZE_BOUND];
+-  pid_t pid = xfork ();
 -
-+  #ifdef _WIN32
-+  posix_spawn_file_actions_t action;
-+  posix_spawn_file_actions_init(&action);
-+#else
-   pid = xfork ();
- 
 -  if (pid != 0)
 -    {
 -      /* Master */
 -
 -      int status;
--
--      while (waitpid (pid, &status, 0) == -1)
++  pid_t pid;
++  #ifdef _WIN32
++  posix_spawn_file_actions_t action;
++  posix_spawn_file_actions_init(&action);
++#else
++  pid = xfork ();
+ 
+-      while (waitpid (pid, &status, 0) < 0)
 -	if (errno != EINTR)
 +  if (pid == 0) //child first to minimize win32 dupe code and yes poluting our env
++      while (waitpid (pid, &status, 0) == -1)
  	  {
 -	    waitpid_error (script_name);
 -	    break;
@@ -762,11 +1698,11 @@ index b7e39f7c..2317f593 100644
 -
 +#endif
    /* Child */
-   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
-   setenv ("TAR_ARCHIVE", archive_name, 1);
-@@ -925,9 +1075,27 @@ sys_exec_checkpoint_script (const char *script_name,
- 	  archive_format_string (current_format == DEFAULT_FORMAT ?
- 				 archive_format : current_format), 1);
+   str_to_env ("TAR_VERSION", PACKAGE_VERSION);
+   str_to_env ("TAR_ARCHIVE", archive_name);
+@@ -911,9 +1071,27 @@ sys_exec_checkpoint_script (const char *script_name,
+ 	      archive_format_string (current_format == DEFAULT_FORMAT
+ 				     ? archive_format : current_format));
    priv_set_restore_linkdir ();
 +#ifdef _WIN32
 +	  int spawn_res = posix_spawnp(&pid, script_name, &action, NULL, NULL, NULL);
@@ -777,9 +1713,9 @@ index b7e39f7c..2317f593 100644
  }
 +#endif
 +      /* Master */
-+
-+      int status;
  
++      int status;
++
 +      while (waitpid (pid, &status, 0) == -1)
 +	if (errno != EINTR)
 +	  {
@@ -789,10 +1725,10 @@ index b7e39f7c..2317f593 100644
 +  
 +}
 +#ifndef _WIN32
- int
+ bool
  sys_exec_setmtime_script (const char *script_name,
  			  int dirfd,
-@@ -1089,5 +1257,5 @@ sys_exec_setmtime_script (const char *script_name,
+@@ -1072,5 +1250,5 @@ sys_exec_setmtime_script (const char *script_name,
  
    return rc;
  }
@@ -800,10 +1736,10 @@ index b7e39f7c..2317f593 100644
 +#endif
  #endif /* not MSDOS */
 diff --git a/src/tar.c b/src/tar.c
-index 98132e79..e124cef3 100644
+index c6b3b007..bcb38515 100644
 --- a/src/tar.c
 +++ b/src/tar.c
-@@ -105,7 +105,7 @@ confirm (const char *message_action, const char *message_name)
+@@ -185,7 +185,7 @@ confirm (const char *message_action, const char *message_name)
      {
        if (archive == 0 || stdin_used_by)
  	{
@@ -812,8 +1748,8 @@ index 98132e79..e124cef3 100644
  	  if (! confirm_file)
  	    open_fatal (TTY_NAME);
  	}
-@@ -1033,11 +1033,15 @@ decode_signal (const char *name)
-     char const *name;
+@@ -1100,11 +1100,15 @@ decode_signal (const char *name)
+     char name[sizeof "USR1"];
      int signo;
    } const sigtab[] = {
 +#ifndef _WIN32
@@ -826,9 +1762,9 @@ index 98132e79..e124cef3 100644
 +    { "INT", SIGINT }
 +#endif
    };
-   struct sigtab const *p;
+   enum { nsigtab = sizeof sigtab / sizeof *sigtab };
    char const *s = name;
-@@ -2781,6 +2785,10 @@ main (int argc, char **argv)
+@@ -2834,6 +2838,10 @@ main (int argc, char **argv)
    set_program_name (argv[0]);
  #ifdef ENABLE_ERROR_PRINT_PROGNAME
    error_print_progname = tar_print_progname;
@@ -839,8 +1775,8 @@ index 98132e79..e124cef3 100644
  #endif
    setlocale (LC_ALL, "");
    bindtextdomain (PACKAGE, LOCALEDIR);
-@@ -2806,8 +2814,9 @@ main (int argc, char **argv)
-   archive_names = 0;
+@@ -2853,8 +2861,9 @@ main (int argc, char **argv)
+ 		     " of the standard file descriptors"));
  
    /* System V fork+wait does not work if SIGCHLD is ignored.  */
 +#ifndef _WIN32
