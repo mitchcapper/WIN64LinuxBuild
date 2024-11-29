@@ -13,9 +13,11 @@ function gnulib_dump_patches(){
 function gnulib_switch_to_master_and_patch(){
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
-		sed -i -E "s#(gnulib_tool=.+gnulib-tool)\$#\1.py#" bootstrap
+		#sed -i -E "s#(gnulib_tool=.+gnulib-tool)\$#\1.py#" bootstrap
+		export GNULIB_TOOL_IMPL="py"
 	else
-		sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
+		#sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
+		export GNULIB_TOOL_IMPL="sh"
 	fi
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
 
@@ -46,9 +48,9 @@ function gnulib_switch_to_master_and_patch(){
 			FINAL_LINE=${FINAL_LINE//" gnulib-tests "/" "}
 			sed -E -i 's/\-\-with\-tests/--without-tests/g' bootstrap.conf
 			sed -E -i 's/\-\-tests\-base[^ ]+//g' bootstrap.conf
-			if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
-				sed -E -i 's#--automake-subdir##g' bootstrap.conf
-			fi
+			#if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
+				#sed -E -i 's#--automake-subdir##g' bootstrap.conf
+			#fi
 			sed -E -i 's/gnulib\-tests[^s]*//g' configure.ac
 
 			rm -fr gnulib-tests
