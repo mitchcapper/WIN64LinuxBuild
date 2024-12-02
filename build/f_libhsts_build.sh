@@ -31,6 +31,7 @@ fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
 		gnulib_ensure_buildaux_scripts_copied
 		autoreconf --symlink --verbose --install
+		libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
 		SKIP_STEP=""
 	fi
 	

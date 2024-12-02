@@ -35,6 +35,7 @@ fi
 	if [[ -z $SKIP_STEP ||  $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
 		sed -i -E 's#(ESTS\],\[test .x)#\1ZZZ#g' configure.ac #disable unit tests that will fail
 		sed -i -E 's#autoreconf --install --force#autoreconf --install#g' autogen.sh
+		libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
 		gnulib_ensure_buildaux_scripts_copied;
 		./autogen.sh
 		SKIP_STEP=""

@@ -61,7 +61,9 @@ fi
 		if [[ -z $SKIP_STEP || $SKIP_STEP == "bootstrap" ]]; then
 			gnulib_add_addl_modules_to_bootstrap;		
 			gnulib_ensure_buildaux_scripts_copied;
+			libtoolize --install --verbose #this is normally part of autoreconf to install the build-aux we removed earlier like ltmain.sh as we need the right version  while bootstrap will run autoreconf it wont do the install at the parent dir level.  We also want this run before the bootstrap so as to not override gnulibs installs
 			setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
+			libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
 			./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po --force
 			gnulib_ensure_buildaux_scripts_copied --forced;
 			SKIP_STEP=""

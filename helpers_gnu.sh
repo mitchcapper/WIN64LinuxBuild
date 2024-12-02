@@ -128,6 +128,22 @@ function gnulib_add_addl_modules_to_bootstrap(){
 		echo "${BOOT_FILE/TOREPLACEZSTR/"$CUR_MODULES"$'\n'}" > bootstrap.conf
 	fi
 }
+		
+function libtool_fixes(){
+	# even when symlink is used for autotools the m4 macro and the build-aux/ltmain.sh are still copied so fine to edit directly
+	# first the newer libtools have more windows support but that makes things actually a bit harder as it has some issues
+	# first it puts the export symbol commands in a .exp file but that is used by the compiler too so .expsym is better and used elsewhere
+	# Secondly it does -Fe [arg] but it needs to be next to the -Fe[arg]
+#	local POS_FILES=("build-aux/ltmain.sh" "m4/libtool.m4")
+#	for fl in "${POS_FILES[@]}"; do
+#		if [[ -e "$fl" ]]; then
+
+			sed -i -E "s/(\\.exp)/\1sym/g;s/expsymsym/expsym/g;s/-Fe /-Fe/g" "$@"
+			sed -i -E "s/func_convert_core_msys_to_w32 \(/func_convert_core_msys_to_w32  (){ func_convert_core_msys_to_w32_result=\$1; }\\nfunc_convert_core_msys_to_w32_old (/" "$@"
+			#sed -i -E "s#(gnulib_tool=.+gnulib-tool)\$#\1.py#" bootstrap
+#		fi
+	#done
+}
 function setup_gnulibtool_py_autoconfwrapper(){
 	if [[ $BLD_CONFIG_GNU_LIBS_AUTORECONF_WRAPPER -eq 1 ]]; then
 		local TARGET_FL="${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
