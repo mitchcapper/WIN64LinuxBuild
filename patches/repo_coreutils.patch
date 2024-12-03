@@ -1,8 +1,58 @@
+diff --git a/src/cat.c b/src/cat.c
+index b7aa853af..8cc8eab8a 100644
+--- a/src/cat.c
++++ b/src/cat.c
+@@ -708,6 +708,7 @@ main (int argc, char **argv)
+ 
+       if (stat_buf.st_dev == out_dev && stat_buf.st_ino == out_ino)
+         {
++#ifndef _WIN32
+           if (out_flags < -1)
+             out_flags = fcntl (STDOUT_FILENO, F_GETFL);
+           bool exhausting = 0 <= out_flags && out_flags & O_APPEND;
+@@ -717,6 +718,9 @@ main (int argc, char **argv)
+               if (0 <= in_pos)
+                 exhausting = in_pos < lseek (STDOUT_FILENO, 0, SEEK_CUR);
+             }
++#else
++          bool exhausting = out_isreg && (lseek (input_desc, 0, SEEK_CUR) < stat_buf.st_size);
++#endif          
+           if (exhausting)
+             {
+               error (0, 0, _("%s: input file is output file"), quotef (infile));
+diff --git a/src/cksum.c b/src/cksum.c
+index 5900d141e..abd846e51 100644
+--- a/src/cksum.c
++++ b/src/cksum.c
+@@ -267,13 +267,21 @@ crc_sum_stream (FILE *stream, void *resstream, uintmax_t *length)
+   static bool (*cksum_fp) (FILE *, uint_fast32_t *, uintmax_t *);
+   if (! cksum_fp)
+     {
++#if USE_AVX512_CRC32      
+       if (avx512_supported ())
+         cksum_fp = cksum_avx512;
+-      else if (avx2_supported ())
++      else
++#endif      
++#if USE_AVX2_CRC32
++      if (avx2_supported ())
+         cksum_fp = cksum_avx2;
+-      else if (pclmul_supported ())
++      else 
++#endif
++#if USE_PCLMUL_CRC32
++      if (pclmul_supported ())
+         cksum_fp = cksum_pclmul;
+       else
++#endif      
+         cksum_fp = cksum_slice8;
+     }
+ 
 diff --git a/src/copy.c b/src/copy.c
-index ddc9eab30..995ebfd39 100644
+index b1ac52c79..ddde3f4a2 100644
 --- a/src/copy.c
 +++ b/src/copy.c
-@@ -23,6 +23,10 @@
+@@ -22,6 +22,10 @@
  #include <sys/types.h>
  #include <selinux/selinux.h>
  
@@ -13,7 +63,7 @@ index ddc9eab30..995ebfd39 100644
  #if HAVE_HURD_H
  # include <hurd.h>
  #endif
-@@ -899,6 +903,9 @@ set_owner (const struct cp_options *x, char const *dst_name,
+@@ -920,6 +924,9 @@ set_owner (const struct cp_options *x, char const *dst_name,
             struct stat const *src_sb, bool new_dst,
             struct stat const *dst_sb)
  {
@@ -23,61 +73,61 @@ index ddc9eab30..995ebfd39 100644
    uid_t uid = src_sb->st_uid;
    gid_t gid = src_sb->st_gid;
  
-@@ -1271,7 +1278,7 @@ copy_reg (char const *src_name, char const *dst_name,
+@@ -1263,7 +1270,7 @@ copy_reg (char const *src_name, char const *dst_name,
  
    /* Compare the source dev/ino from the open file to the incoming,
       saved ones obtained via a previous call to stat.  */
--  if (! SAME_INODE (*src_sb, src_open_sb))
-+  if (src_sb->st_ino && ! SAME_INODE (*src_sb, src_open_sb))
+-  if (! psame_inode (src_sb, &src_open_sb))
++  if (src_sb->st_ino && ! psame_inode (src_sb, &src_open_sb))
      {
        error (0, 0,
               _("skipping file %s, as it was replaced while being copied"),
-@@ -1744,7 +1751,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+@@ -1741,7 +1748,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
    struct stat tmp_src_sb;
  
    bool same_link;
--  bool same = SAME_INODE (*src_sb, *dst_sb);
-+  bool same = src_sb->st_ino &&  SAME_INODE (*src_sb, *dst_sb);
+-  bool same = psame_inode (src_sb, dst_sb);
++  bool same = src_sb->st_ino && psame_inode (src_sb, dst_sb);
  
    *return_now = false;
  
-@@ -1805,7 +1812,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+@@ -1802,7 +1809,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
        src_sb_link = &tmp_src_sb;
        dst_sb_link = &tmp_dst_sb;
  
--      same_link = SAME_INODE (*src_sb_link, *dst_sb_link);
-+      same_link = src_sb_link->st_ino && SAME_INODE (*src_sb_link, *dst_sb_link);
+-      same_link = psame_inode (src_sb_link, dst_sb_link);
++      same_link = src_sb_link->st_ino && psame_inode (src_sb_link, dst_sb_link);
  
        /* If both are symlinks, then it's ok, but only if the destination
           will be unlinked before being opened.  This is like the test
-@@ -1893,7 +1900,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+@@ -1890,7 +1897,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
       hard links to the same file.  */
    if (!S_ISLNK (src_sb_link->st_mode) && !S_ISLNK (dst_sb_link->st_mode))
      {
--      if (!SAME_INODE (*src_sb_link, *dst_sb_link))
-+      if (src_sb_link->st_ino && !SAME_INODE (*src_sb_link, *dst_sb_link))
+-      if (!psame_inode (src_sb_link, dst_sb_link))
++      if (!SAME_INODE (*src_sb_link, *dst_sb_link))
          return true;
  
        /* If they are the same file, it's ok if we're making hard links.  */
-@@ -1954,7 +1961,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+@@ -1951,7 +1958,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
        else if (fstatat (dst_dirfd, dst_relname, &tmp_dst_sb, 0) != 0)
          return true;
  
--      if ( ! SAME_INODE (tmp_src_sb, tmp_dst_sb))
-+      if (tmp_src_sb.st_ino && ! SAME_INODE (tmp_src_sb, tmp_dst_sb))
+-      if (!psame_inode (&tmp_src_sb, &tmp_dst_sb))
++      if (tmp_src_sb.st_ino && !psame_inode (&tmp_src_sb, &tmp_dst_sb))
          return true;
  
        if (x->hard_link)
-@@ -2173,7 +2180,7 @@ source_is_dst_backup (char const *srcbase, struct stat const *src_st,
+@@ -2171,7 +2178,7 @@ source_is_dst_backup (char const *srcbase, struct stat const *src_st,
    struct stat dst_back_sb;
    int dst_back_status = fstatat (dst_dirfd, dst_back, &dst_back_sb, 0);
    free (dst_back);
--  return dst_back_status == 0 && SAME_INODE (*src_st, dst_back_sb);
-+  return dst_back_status == 0 && src_st->st_ino && SAME_INODE (*src_st, dst_back_sb);
+-  return dst_back_status == 0 && psame_inode (src_st, &dst_back_sb);
++  return dst_back_status == 0 && src_st->st_ino && psame_inode (src_st, &dst_back_sb);
  }
  
  /* Copy the file SRC_NAME to the file DST_NAME aka DST_DIRFD+DST_RELNAME.
-@@ -2254,7 +2261,7 @@ copy_internal (char const *src_name, char const *dst_name,
+@@ -2246,7 +2253,7 @@ copy_internal (char const *src_name, char const *dst_name,
  
        src_mode = src_sb.st_mode;
  
@@ -86,7 +136,7 @@ index ddc9eab30..995ebfd39 100644
          {
            error (0, 0, ! x->install_mode /* cp */
                   ? _("-r not specified; omitting directory %s")
-@@ -2277,7 +2284,7 @@ copy_internal (char const *src_name, char const *dst_name,
+@@ -2269,7 +2276,7 @@ copy_internal (char const *src_name, char const *dst_name,
       This check is enabled only if x->src_info is non-null.  */
    if (command_line_arg && x->src_info)
      {
@@ -95,7 +145,7 @@ index ddc9eab30..995ebfd39 100644
             && x->backup_type == no_backups
             && seen_file (x->src_info, src_name, &src_sb))
          {
-@@ -2348,7 +2355,7 @@ copy_internal (char const *src_name, char const *dst_name,
+@@ -2354,7 +2361,7 @@ copy_internal (char const *src_name, char const *dst_name,
                return false;
              }
  
@@ -104,7 +154,7 @@ index ddc9eab30..995ebfd39 100644
              {
                /* When preserving timestamps (but not moving within a file
                   system), don't worry if the destination timestamp is
-@@ -2893,7 +2900,7 @@ skip:
+@@ -2877,7 +2884,7 @@ skip:
    if (! set_process_security_ctx (src_name, dst_name, src_mode, new_dst, x))
      return false;
  
@@ -113,7 +163,7 @@ index ddc9eab30..995ebfd39 100644
      {
        struct dir_list *dir;
  
-@@ -2916,7 +2923,7 @@ skip:
+@@ -2900,7 +2907,7 @@ skip:
        dir->ino = src_sb.st_ino;
        dir->dev = src_sb.st_dev;
  
@@ -122,20 +172,20 @@ index ddc9eab30..995ebfd39 100644
          {
            /* POSIX says mkdir's behavior is implementation-defined when
               (src_mode & ~S_IRWXUGO) != 0.  However, common practice is
-@@ -3025,7 +3032,7 @@ skip:
+@@ -3009,7 +3016,7 @@ skip:
                              || stat (".", &dot_sb) != 0
                              || (fstatat (dst_dirfd, dst_parent, &dst_parent_sb,
                                           0) != 0)
--                            || SAME_INODE (dot_sb, dst_parent_sb));
-+                            || (dot_sb.st_ino && SAME_INODE (dot_sb, dst_parent_sb)));
+-                            || psame_inode (&dot_sb, &dst_parent_sb));
++                            || (dot_sb.st_ino && psame_inode (&dot_sb, &dst_parent_sb)));
            free (dst_parent);
  
            if (! in_current_dir)
 diff --git a/src/cp.c b/src/cp.c
-index 412ef500b..667259f98 100644
+index 127b5603f..d7521130b 100644
 --- a/src/cp.c
 +++ b/src/cp.c
-@@ -340,6 +340,7 @@ re_protect (char const *const_dst_name, char const *dst_src_name,
+@@ -346,6 +346,7 @@ re_protect (char const *const_dst_name, char const *dst_src_name,
  
        if (x->preserve_ownership)
          {
@@ -143,7 +193,7 @@ index 412ef500b..667259f98 100644
            if (lchownat (dst_dirfd, relname, p->st.st_uid, p->st.st_gid)
                != 0)
              {
-@@ -353,6 +354,7 @@ re_protect (char const *const_dst_name, char const *dst_src_name,
+@@ -359,6 +360,7 @@ re_protect (char const *const_dst_name, char const *dst_src_name,
                   the group, but ignore the possible error. */
                ignore_value (lchownat (dst_dirfd, relname, -1, p->st.st_gid));
              }
@@ -152,10 +202,10 @@ index 412ef500b..667259f98 100644
  
        if (x->preserve_mode)
 diff --git a/src/csplit.c b/src/csplit.c
-index 4052ca908..2bcb09544 100644
+index babb73949..cba72fb09 100644
 --- a/src/csplit.c
 +++ b/src/csplit.c
-@@ -1384,7 +1384,11 @@ main (int argc, char **argv)
+@@ -1371,7 +1371,11 @@ main (int argc, char **argv)
      static int const sig[] =
        {
          /* The usual suspects.  */
@@ -168,10 +218,10 @@ index 4052ca908..2bcb09544 100644
          SIGPOLL,
  #endif
 diff --git a/src/dd.c b/src/dd.c
-index 21f7a4ede..e2381caa7 100644
+index c05dfa01a..d443b9850 100644
 --- a/src/dd.c
 +++ b/src/dd.c
-@@ -639,6 +639,7 @@ Each FLAG symbol may be:\n\
+@@ -634,6 +634,7 @@ Each FLAG symbol may be:\n\
          fputs (_("  text      use text I/O for data\n"), stdout);
  
        {
@@ -179,7 +229,7 @@ index 21f7a4ede..e2381caa7 100644
          printf (_("\
  \n\
  Sending a %s signal to a running 'dd' process makes it\n\
-@@ -647,6 +648,7 @@ print I/O statistics to standard error and then resume copying.\n\
+@@ -642,6 +643,7 @@ print I/O statistics to standard error and then resume copying.\n\
  Options are:\n\
  \n\
  "), SIGINFO == SIGUSR1 ? "USR1" : "INFO");
@@ -187,7 +237,7 @@ index 21f7a4ede..e2381caa7 100644
        }
  
        fputs (HELP_OPTION_DESCRIPTION, stdout);
-@@ -867,7 +869,9 @@ siginfo_handler (int sig)
+@@ -862,7 +864,9 @@ siginfo_handler (int sig)
  static void
  install_signal_handlers (void)
  {
@@ -197,7 +247,7 @@ index 21f7a4ede..e2381caa7 100644
  
  #if SA_NOCLDSTOP
  
-@@ -898,12 +902,13 @@ install_signal_handlers (void)
+@@ -893,12 +897,13 @@ install_signal_handlers (void)
      }
  
  #else
@@ -212,7 +262,7 @@ index 21f7a4ede..e2381caa7 100644
    if (signal (SIGINT, SIG_IGN) != SIG_IGN)
      {
        signal (SIGINT, interrupt_handler);
-@@ -1180,7 +1185,7 @@ static idx_t
+@@ -1175,7 +1180,7 @@ static idx_t
  iwrite (int fd, char const *buf, idx_t size)
  {
    idx_t total_written = 0;
@@ -221,7 +271,7 @@ index 21f7a4ede..e2381caa7 100644
    if ((output_flags & O_DIRECT) && size < output_blocksize)
      {
        int old_flags = fcntl (STDOUT_FILENO, F_GETFL);
-@@ -1204,7 +1209,7 @@ iwrite (int fd, char const *buf, idx_t size)
+@@ -1199,7 +1204,7 @@ iwrite (int fd, char const *buf, idx_t size)
        /* After the subsequent fsync we'll call invalidate_cache
           to attempt to clear all data from the page cache.  */
      }
@@ -230,7 +280,7 @@ index 21f7a4ede..e2381caa7 100644
    while (total_written < size)
      {
        ssize_t nwritten = 0;
-@@ -1675,6 +1680,10 @@ scanargs (int argc, char *const *argv)
+@@ -1670,6 +1675,10 @@ scanargs (int argc, char *const *argv)
        || multiple_bits_set (output_flags & (O_DIRECT | O_NOCACHE)))
      error (EXIT_FAILURE, 0, _("cannot combine direct and nocache"));
  
@@ -241,7 +291,7 @@ index 21f7a4ede..e2381caa7 100644
    if (input_flags & O_NOCACHE)
      {
        i_nocache = true;
-@@ -2051,12 +2060,17 @@ copy_with_unblock (char const *buf, idx_t nread)
+@@ -2046,12 +2055,17 @@ copy_with_unblock (char const *buf, idx_t nread)
  static void
  set_fd_flags (int fd, int add_flags, char const *name)
  {
@@ -259,7 +309,7 @@ index 21f7a4ede..e2381caa7 100644
        int new_flags = old_flags | add_flags;
        bool ok = true;
        if (old_flags < 0)
-@@ -2082,15 +2096,22 @@ set_fd_flags (int fd, int add_flags, char const *name)
+@@ -2077,15 +2091,22 @@ set_fd_flags (int fd, int add_flags, char const *name)
                  }
                new_flags &= ~ (O_DIRECTORY | O_NOLINKS);
              }
@@ -284,10 +334,10 @@ index 21f7a4ede..e2381caa7 100644
  
  /* The main loop.  */
 diff --git a/src/df.c b/src/df.c
-index 7511162cb..1e39d2a37 100644
+index 66c84b853..a8c6284df 100644
 --- a/src/df.c
 +++ b/src/df.c
-@@ -752,6 +752,9 @@ filter_mount_list (bool devices_only)
+@@ -744,6 +744,9 @@ filter_mount_list (bool devices_only)
        else
          {
            /* If we've already seen this device...  */
@@ -297,7 +347,7 @@ index 7511162cb..1e39d2a37 100644
            struct devlist *seen_dev = devlist_for_dev (buf.st_dev);
  
            if (seen_dev)
-@@ -1082,7 +1085,10 @@ get_dev (char const *device, char const *mount_point, char const *file,
+@@ -1074,7 +1077,10 @@ get_dev (char const *device, char const *mount_point, char const *file,
              }
          }
      }
@@ -310,10 +360,10 @@ index 7511162cb..1e39d2a37 100644
      return;
  
 diff --git a/src/digest.c b/src/digest.c
-index 5490f96a4..859958e26 100644
+index 399a97a56..84f8ac91c 100644
 --- a/src/digest.c
 +++ b/src/digest.c
-@@ -1360,7 +1360,11 @@ main (int argc, char **argv)
+@@ -1367,7 +1367,11 @@ main (int argc, char **argv)
  
    /* Line buffer stdout to ensure lines are written atomically and immediately
       so that processes running in parallel do not intersperse their output.  */
@@ -326,10 +376,10 @@ index 5490f96a4..859958e26 100644
  #if HASH_ALGO_SUM
    char const *short_opts = "rs";
 diff --git a/src/du.c b/src/du.c
-index 3d098bb32..67945a3ae 100644
+index bcbe86b90..b6cd726d0 100644
 --- a/src/du.c
 +++ b/src/du.c
-@@ -425,6 +425,7 @@ print_size (const struct duinfo *pdui, char const *string)
+@@ -412,6 +412,7 @@ print_size (const struct duinfo *pdui, char const *string)
  static void
  fill_mount_table (void)
  {
@@ -337,7 +387,7 @@ index 3d098bb32..67945a3ae 100644
    struct mount_entry *mnt_ent = read_file_system_list (false);
    while (mnt_ent)
      {
-@@ -445,6 +446,7 @@ fill_mount_table (void)
+@@ -432,6 +433,7 @@ fill_mount_table (void)
        mnt_ent = mnt_ent->me_next;
        free_mount_entry (mnt_free);
      }
@@ -346,10 +396,10 @@ index 3d098bb32..67945a3ae 100644
  
  /* This function checks whether any of the directories in the cycle that
 diff --git a/src/env.c b/src/env.c
-index 58879737b..63836234a 100644
+index 48c6b3909..efd04e8b2 100644
 --- a/src/env.c
 +++ b/src/env.c
-@@ -54,7 +54,9 @@ enum SIGNAL_MODE {
+@@ -53,7 +53,9 @@ enum SIGNAL_MODE {
    UNCHANGED = 0,
    DEFAULT,       /* Set to default handler (SIG_DFL).  */
    DEFAULT_NOERR, /* Ditto, but ignore sigaction(2) errors.  */
@@ -359,22 +409,24 @@ index 58879737b..63836234a 100644
    IGNORE_NOERR   /* Ditto, but ignore sigaction(2) errors.  */
  };
  static enum SIGNAL_MODE *signals;
-@@ -549,8 +551,13 @@ parse_signal_action_params (char const *optarg, bool set_default)
+@@ -551,7 +553,15 @@ parse_signal_action_params (char const *arg, bool set_default)
           Some signals cannot be set to ignore or default (e.g., SIGKILL,
           SIGSTOP on most OSes, and SIGCONT on AIX.) - so ignore errors.  */
        for (int i = 1 ; i <= SIGNUM_BOUND; i++)
-+#ifndef _WIN32      
-         if (sig2str (i, signame) == 0)
-           signals[i] = set_default ? DEFAULT_NOERR : IGNORE_NOERR;
++#ifndef _WIN32
+         signals[i] = set_default ? DEFAULT_NOERR : IGNORE_NOERR;
 +#else
-+if (sig2str (i, signame) == 0 && set_default)
++      {
++        char signame[SIG2STR_MAX];
++        if (sig2str (i, signame) == 0 && set_default)
 +          signals[i] = DEFAULT_NOERR;
-+#endif          
++      }
++#endif 
        return;
      }
  
 diff --git a/src/expr.c b/src/expr.c
-index 8a76cbf7c..8a21a8b5a 100644
+index 3ecec0735..503f5a911 100644
 --- a/src/expr.c
 +++ b/src/expr.c
 @@ -42,7 +42,7 @@
@@ -387,7 +439,7 @@ index 8a76cbf7c..8a21a8b5a 100644
  /* The official name of this program (e.g., no 'g' prefix).  */
  #define PROGRAM_NAME "expr"
 diff --git a/src/find-mount-point.c b/src/find-mount-point.c
-index 30906de03..c89a4bcd2 100644
+index 1d30a56af..e50ef7d46 100644
 --- a/src/find-mount-point.c
 +++ b/src/find-mount-point.c
 @@ -32,6 +32,11 @@ find_mount_point (char const *file, struct stat const *file_stat)
@@ -403,7 +455,7 @@ index 30906de03..c89a4bcd2 100644
    if (save_cwd (&cwd) != 0)
      {
 diff --git a/src/install.c b/src/install.c
-index 31a48f114..28e62a905 100644
+index 85f2d9e11..727c2fa89 100644
 --- a/src/install.c
 +++ b/src/install.c
 @@ -21,8 +21,12 @@
@@ -488,23 +540,23 @@ index 31a48f114..28e62a905 100644
  
  void
 diff --git a/src/ln.c b/src/ln.c
-index 5ff6e5807..ed3e402d7 100644
+index 52191ba45..95b8722ce 100644
 --- a/src/ln.c
 +++ b/src/ln.c
 @@ -259,7 +259,7 @@ do_link (char const *source, int destdir_fd, char const *dest_base,
                    if (source_status != 0)
                      source_status = stat (source, &source_stats);
                    if (source_status == 0
--                      && SAME_INODE (source_stats, dest_stats)
-+                      && source_stats.st_ino && SAME_INODE (source_stats, dest_stats)
+-                      && psame_inode (&source_stats, &dest_stats)
++                      && source_stats.st_ino && psame_inode (&source_stats, &dest_stats)
                        && (source_stats.st_nlink == 1
                            || same_nameat (AT_FDCWD, source,
                                            destdir_fd, dest_base)))
 diff --git a/src/ls.c b/src/ls.c
-index 6299f817f..a2aa3205d 100644
+index 4732fc861..869659612 100644
 --- a/src/ls.c
 +++ b/src/ls.c
-@@ -51,7 +51,9 @@
+@@ -52,7 +52,9 @@
  
  #include <stdio.h>
  #include <setjmp.h>
@@ -513,8 +565,8 @@ index 6299f817f..a2aa3205d 100644
 +#endif
  #include <getopt.h>
  #include <signal.h>
- #include <selinux/selinux.h>
-@@ -1525,12 +1527,14 @@ process_signals (void)
+ #include <uchar.h>
+@@ -1571,12 +1573,14 @@ process_signals (void)
        /* SIGTSTP is special, since the application can receive that signal
           more than once.  In this case, don't set the signal handler to the
           default.  Instead, just raise the uncatchable SIGSTOP.  */
@@ -529,7 +581,7 @@ index 6299f817f..a2aa3205d 100644
          signal (sig, SIG_DFL);
  
        /* Exit or suspend the program.  */
-@@ -1551,11 +1555,15 @@ signal_setup (bool init)
+@@ -1597,11 +1601,15 @@ signal_setup (bool init)
    /* The signals that are trapped, and the number of such signals.  */
    static int const sig[] =
      {
@@ -545,7 +597,7 @@ index 6299f817f..a2aa3205d 100644
  #ifdef SIGPOLL
        SIGPOLL,
  #endif
-@@ -1608,7 +1616,11 @@ signal_setup (bool init)
+@@ -1654,7 +1662,11 @@ signal_setup (bool init)
            caught_sig[j] = (signal (sig[j], SIG_IGN) != SIG_IGN);
            if (caught_sig[j])
              {
@@ -557,7 +609,7 @@ index 6299f817f..a2aa3205d 100644
                siginterrupt (sig[j], 0);
              }
          }
-@@ -1835,8 +1847,10 @@ main (int argc, char **argv)
+@@ -1880,8 +1892,10 @@ main (int argc, char **argv)
           This can process signals out of order, but there doesn't seem to
           be an easy way to do them in order, and the order isn't that
           important anyway.  */
@@ -568,7 +620,7 @@ index 6299f817f..a2aa3205d 100644
        j = interrupt_signal;
        if (j)
          raise (j);
-@@ -2221,7 +2235,9 @@ decode_switches (int argc, char **argv)
+@@ -2264,7 +2278,9 @@ decode_switches (int argc, char **argv)
            break;
  
          case 'Z':
@@ -578,9 +630,9 @@ index 6299f817f..a2aa3205d 100644
            break;
  
          case ZERO_OPTION:
-@@ -2288,6 +2304,13 @@ decode_switches (int argc, char **argv)
- #  pragma GCC diagnostic pop
- # endif
+@@ -2323,6 +2339,13 @@ decode_switches (int argc, char **argv)
+               && 0 < ws.ws_col)
+             linelen = ws.ws_col <= MIN (PTRDIFF_MAX, SIZE_MAX) ? ws.ws_col : 0;
          }
 +#elif defined(_WIN32)
 +	  CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -592,36 +644,7 @@ index 6299f817f..a2aa3205d 100644
  #endif
        if (linelen < 0)
          {
-@@ -3293,6 +3316,7 @@ getfilecon_cache (char const *file, struct fileinfo *f, bool deref)
-       return -1;
-     }
-   int r = 0;
-+#ifndef _WIN32
- #ifdef HAVE_SMACK
-   if (is_smack_enabled ())
-     r = smack_new_label_from_path (file, "security.SMACK64", deref,
-@@ -3304,6 +3328,7 @@ getfilecon_cache (char const *file, struct fileinfo *f, bool deref)
-          : lgetfilecon (file, &f->scontext));
-   if (r < 0 && errno_unsupported (errno))
-     unsupported_device = f->stat.st_dev;
-+#endif
-   return r;
- }
- 
-@@ -3522,7 +3547,11 @@ gobble_file (char const *name, enum filetype type, ino_t inode,
-           && print_with_color && is_colored (C_CAP))
-         f->has_capability = has_capability_cache (full_name, f);
- 
--      if (format == long_format || print_scontext)
-+      if (print_scontext
-+#ifndef _WIN32
-+		  || format == long_format
-+#endif
-+		  )
-         {
-           bool have_scontext = false;
-           bool have_acl = false;
-@@ -4911,12 +4940,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
+@@ -4883,12 +4906,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
      }
    else
      {
@@ -637,7 +660,7 @@ index 6299f817f..a2aa3205d 100644
        else if (stat_ok ? S_ISFIFO (mode) : type == fifo)
          c = '|';
        else if (stat_ok ? S_ISSOCK (mode) : type == sock)
-@@ -5006,6 +5035,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+@@ -4984,6 +5007,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
            else if ((1 < f->stat.st_nlink) && is_colored (C_MULTIHARDLINK))
              type = C_MULTIHARDLINK;
          }
@@ -646,7 +669,7 @@ index 6299f817f..a2aa3205d 100644
        else if (S_ISDIR (mode))
          {
            type = C_DIR;
-@@ -5018,8 +5049,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+@@ -4996,8 +5021,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
            else if ((mode & S_ISVTX) != 0 && is_colored (C_STICKY))
              type = C_STICKY;
          }
@@ -656,7 +679,7 @@ index 6299f817f..a2aa3205d 100644
          type = C_FIFO;
        else if (S_ISSOCK (mode))
 diff --git a/src/make-prime-list.c b/src/make-prime-list.c
-index d66ee3d5e..54a657e15 100644
+index f4aa8d9aa..00e82eac7 100644
 --- a/src/make-prime-list.c
 +++ b/src/make-prime-list.c
 @@ -24,7 +24,11 @@ this program.  If not, see https://www.gnu.org/licenses/.  */
@@ -673,7 +696,7 @@ index d66ee3d5e..54a657e15 100644
  #include <stdlib.h>
  #include <errno.h>
 diff --git a/src/mkdir.c b/src/mkdir.c
-index 7e6a911c8..9f5b17fa1 100644
+index 9b52b0efc..cb7fcca41 100644
 --- a/src/mkdir.c
 +++ b/src/mkdir.c
 @@ -60,19 +60,23 @@ Create the DIRECTORY(ies), if they do not already exist.\n\
@@ -688,7 +711,7 @@ index 7e6a911c8..9f5b17fa1 100644
        fputs (_("\
 -  -m, --mode=MODE   set file mode (as in chmod), not a=rwx - umask\n\
    -p, --parents     no error if existing, make parent directories as needed,\n\
-                     with their file modes unaffected by any -m option.\n\
+                     with their file modes unaffected by any -m option\n\
    -v, --verbose     print a message for each created directory\n\
  "), stdout);
 +#ifndef _WIN32
@@ -811,7 +834,7 @@ index 7e6a911c8..9f5b17fa1 100644
                                 process_dir, &options);
  }
 diff --git a/src/mktemp.c b/src/mktemp.c
-index 3ce3cf3a8..b5e1c3414 100644
+index e314ff6e3..6fd693c05 100644
 --- a/src/mktemp.c
 +++ b/src/mktemp.c
 @@ -83,7 +83,7 @@ Files are created u+rw, and directories u+rwx, minus umask restrictions.\n\
@@ -832,7 +855,7 @@ index 3ce3cf3a8..b5e1c3414 100644
  "), stdout);
        fputs (HELP_OPTION_DESCRIPTION, stdout);
        fputs (VERSION_OPTION_DESCRIPTION, stdout);
-@@ -263,12 +263,20 @@ main (int argc, char **argv)
+@@ -268,12 +268,20 @@ main (int argc, char **argv)
        if (deprecated_t_option)
          {
            char *env = getenv ("TMPDIR");
@@ -853,7 +876,7 @@ index 3ce3cf3a8..b5e1c3414 100644
  
            if (last_component (template) != template)
              error (EXIT_FAILURE, 0,
-@@ -282,7 +290,13 @@ main (int argc, char **argv)
+@@ -287,7 +295,13 @@ main (int argc, char **argv)
            else
              {
                char *env = getenv ("TMPDIR");
@@ -869,7 +892,7 @@ index 3ce3cf3a8..b5e1c3414 100644
            if (IS_ABSOLUTE_FILE_NAME (template))
              error (EXIT_FAILURE, 0,
 diff --git a/src/realpath.c b/src/realpath.c
-index c4ca5f068..4e319eaa4 100644
+index e721728d6..2d3e9e371 100644
 --- a/src/realpath.c
 +++ b/src/realpath.c
 @@ -119,21 +119,21 @@ path_prefix (char const *prefix, char const *path)
@@ -900,7 +923,7 @@ index c4ca5f068..4e319eaa4 100644
  
  static bool
 diff --git a/src/relpath.c b/src/relpath.c
-index 2edbb4be8..93c0095ce 100644
+index 04bfe24a9..774230167 100644
 --- a/src/relpath.c
 +++ b/src/relpath.c
 @@ -20,6 +20,7 @@
@@ -970,10 +993,10 @@ index 2edbb4be8..93c0095ce 100644
          }
      }
 diff --git a/src/shred.c b/src/shred.c
-index a5da4e038..32cf3290c 100644
+index b7cd289b1..b0217adf9 100644
 --- a/src/shred.c
 +++ b/src/shred.c
-@@ -333,6 +333,7 @@ direct_mode (int fd, bool enable)
+@@ -331,6 +331,7 @@ direct_mode (int fd, bool enable)
  {
    if (O_DIRECT)
      {
@@ -981,7 +1004,7 @@ index a5da4e038..32cf3290c 100644
        int fd_flags = fcntl (fd, F_GETFL);
        if (0 < fd_flags)
          {
-@@ -342,6 +343,7 @@ direct_mode (int fd, bool enable)
+@@ -340,6 +341,7 @@ direct_mode (int fd, bool enable)
            if (new_flags != fd_flags)
              fcntl (fd, F_SETFL, new_flags);
          }
@@ -989,7 +1012,7 @@ index a5da4e038..32cf3290c 100644
      }
  
  #if HAVE_DIRECTIO && defined DIRECTIO_ON && defined DIRECTIO_OFF
-@@ -958,6 +960,7 @@ static bool
+@@ -956,6 +958,7 @@ static bool
  wipefd (int fd, char const *qname, struct randint_source *s,
          struct Options const *flags)
  {
@@ -997,7 +1020,7 @@ index a5da4e038..32cf3290c 100644
    int fd_flags = fcntl (fd, F_GETFL);
  
    if (fd_flags < 0)
-@@ -970,6 +973,7 @@ wipefd (int fd, char const *qname, struct randint_source *s,
+@@ -968,6 +971,7 @@ wipefd (int fd, char const *qname, struct randint_source *s,
        error (0, 0, _("%s: cannot shred append-only file descriptor"), qname);
        return false;
      }
@@ -1006,10 +1029,10 @@ index a5da4e038..32cf3290c 100644
  }
  
 diff --git a/src/sort.c b/src/sort.c
-index 06884dff3..e7f2b22b1 100644
+index 720500774..db2e53a44 100644
 --- a/src/sort.c
 +++ b/src/sort.c
-@@ -711,7 +711,11 @@ static pid_t
+@@ -714,7 +714,11 @@ static pid_t
  reap (pid_t pid)
  {
    int status;
@@ -1021,7 +1044,7 @@ index 06884dff3..e7f2b22b1 100644
  
    if (cpid < 0)
      error (SORT_FAILURE, errno, _("waiting for %s [-d]"),
-@@ -4330,7 +4334,11 @@ main (int argc, char **argv)
+@@ -4390,7 +4394,11 @@ main (int argc, char **argv)
      static int const sig[] =
        {
          /* The usual suspects.  */
@@ -1033,7 +1056,7 @@ index 06884dff3..e7f2b22b1 100644
  #ifdef SIGPOLL
          SIGPOLL,
  #endif
-@@ -4376,8 +4384,9 @@ main (int argc, char **argv)
+@@ -4436,8 +4444,9 @@ main (int argc, char **argv)
          }
  #endif
    }
@@ -1045,7 +1068,7 @@ index 06884dff3..e7f2b22b1 100644
    atexit (exit_cleanup);
  
 diff --git a/src/stat.c b/src/stat.c
-index d8678e503..ed755b1f9 100644
+index 264efc296..d4635a0f5 100644
 --- a/src/stat.c
 +++ b/src/stat.c
 @@ -20,23 +20,13 @@
@@ -1082,9 +1105,9 @@ index d8678e503..ed755b1f9 100644
 +#include "fsusage.h"
 +
  #include <selinux/selinux.h>
+ #include <getopt.h>
  
- #include "system.h"
-@@ -71,76 +64,6 @@
+@@ -73,76 +66,6 @@
  #include "xvasprintf.h"
  #include "statx.h"
  
@@ -1161,7 +1184,7 @@ index d8678e503..ed755b1f9 100644
  
  #ifdef SB_F_NAMEMAX
  # define OUT_NAMEMAX out_uint
-@@ -151,15 +74,6 @@ statfs (char const *filename, struct fs_info *buf)
+@@ -153,15 +76,6 @@ statfs (char const *filename, struct fs_info *buf)
  # define OUT_NAMEMAX out_string
  #endif
  
@@ -1177,7 +1200,7 @@ index d8678e503..ed755b1f9 100644
  
  #if HAVE_GETATTRAT
  # include <attr.h>
-@@ -255,12 +169,16 @@ print_stat (char *pformat, size_t prefix_len, char mod, char m,
+@@ -251,12 +165,16 @@ print_stat (char *pformat, size_t prefix_len, char mod, char m,
     But f_type may only exist in statfs (Cygwin).  */
  NODISCARD
  static char const *
@@ -1340,7 +1363,7 @@ index d8678e503..ed755b1f9 100644
      case 'm':
        fail |= out_mount_point (filename, pformat, prefix_len, statbuf);
 diff --git a/src/sync.c b/src/sync.c
-index 22337bcdc..5d4096164 100644
+index 398c192c9..30db6d373 100644
 --- a/src/sync.c
 +++ b/src/sync.c
 @@ -116,6 +116,7 @@ sync_arg (enum sync_mode mode, char const *file)
@@ -1361,10 +1384,10 @@ index 22337bcdc..5d4096164 100644
      {
        int sync_status = -1;
 diff --git a/src/system.h b/src/system.h
-index c8c8d52f2..d138925a1 100644
+index ea30fb4b6..dae868d4e 100644
 --- a/src/system.h
 +++ b/src/system.h
-@@ -680,7 +680,12 @@ emit_ancillary_info (char const *program)
+@@ -664,7 +664,12 @@ emit_ancillary_info (char const *program)
  
    /* Don't output this redundant message for English locales.
       Note we still output for 'C' so that it gets included in the man page.  */
@@ -1379,10 +1402,20 @@ index c8c8d52f2..d138925a1 100644
      {
        /* TRANSLATORS: Replace LANG_CODE in this URL with your language code
 diff --git a/src/tail.c b/src/tail.c
-index db0913652..38360b09b 100644
+index 33acf9ab3..00b9944b9 100644
 --- a/src/tail.c
 +++ b/src/tail.c
-@@ -950,7 +950,7 @@ recheck (struct File_spec *f, bool blocking)
+@@ -48,6 +48,9 @@
+ #include "xstrtol.h"
+ #include "xstrtod.h"
+ 
++#ifdef _WIN32
++typedef   signed long     blksize_t;
++#endif
+ #if HAVE_INOTIFY
+ # include "hash.h"
+ # include <poll.h>
+@@ -978,7 +981,7 @@ recheck (struct File_spec *f, bool blocking)
    bool new_file;
    int fd = (is_stdin
              ? STDIN_FILENO
@@ -1391,7 +1424,7 @@ index db0913652..38360b09b 100644
  
    affirm (valid_file_spec (f));
  
-@@ -1154,6 +1154,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
+@@ -1201,6 +1204,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
  
            if (f[i].blocking != blocking)
              {
@@ -1399,7 +1432,7 @@ index db0913652..38360b09b 100644
                int old_flags = fcntl (fd, F_GETFL);
                int new_flags = old_flags | (blocking ? 0 : O_NONBLOCK);
                if (old_flags < 0
-@@ -1172,6 +1173,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
+@@ -1219,6 +1223,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
                             quotef (name));
                  }
                else
@@ -1407,35 +1440,29 @@ index db0913652..38360b09b 100644
                  f[i].blocking = blocking;
              }
  
-@@ -1275,13 +1277,14 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
+@@ -1322,7 +1327,9 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
  
            /* Once the writer is dead, read the files once more to
               avoid a race condition.  */
 +#ifndef _WIN32
-           writer_is_dead = (pid != 0
-                             && kill (pid, 0) != 0
-                             /* Handle the case in which you cannot send a
-                                signal to the writer, so kill fails and sets
-                                errno to EPERM.  */
-                             && errno != EPERM);
--
+           writers_dead = writers_are_dead ();
 +#endif
-           if (!writer_is_dead && xnanosleep (sleep_interval))
-             error (EXIT_FAILURE, errno, _("cannot read realtime clock"));
  
-@@ -1612,9 +1615,10 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
+           if (!writers_dead && xnanosleep (sleep_interval))
+             error (EXIT_FAILURE, errno, _("cannot read realtime clock"));
+@@ -1654,9 +1661,10 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
                  {
-                   if (writer_is_dead)
+                   if (writers_dead)
                      exit (EXIT_SUCCESS);
 +#ifndef _WIN32  //not sure if we end up looping forever here...
  
-                   writer_is_dead = (kill (pid, 0) != 0 && errno != EPERM);
+                   writers_dead = writers_are_dead ();
 -
 +#endif
-                   if (writer_is_dead || sleep_interval <= 0)
+                   if (writers_dead || sleep_interval <= 0)
                      delay = 0;
                    else if (sleep_interval < INT_MAX / 1000 - 1)
-@@ -1935,6 +1939,21 @@ tail (char const *filename, int fd, uintmax_t n_units,
+@@ -1997,6 +2005,21 @@ tail (char const *filename, int fd, uintmax_t n_units,
      return tail_bytes (filename, fd, n_units, read_pos);
  }
  
@@ -1457,7 +1484,7 @@ index db0913652..38360b09b 100644
  /* Display the last N_UNITS units of the file described by F.
     Return true if successful.  */
  
-@@ -1953,7 +1972,8 @@ tail_file (struct File_spec *f, uintmax_t n_units)
+@@ -2015,7 +2038,8 @@ tail_file (struct File_spec *f, uintmax_t n_units)
        xset_binary_mode (STDIN_FILENO, O_BINARY);
      }
    else
@@ -1467,23 +1494,23 @@ index db0913652..38360b09b 100644
  
    f->tailable = !(reopen_inaccessible_files && fd == -1);
  
-@@ -2246,7 +2266,11 @@ parse_options (int argc, char **argv,
-   if (pid && !forever)
+@@ -2315,7 +2339,11 @@ parse_options (int argc, char **argv,
+   if (nbpids && !forever)
      error (0, 0,
             _("warning: PID ignored; --pid=PID is useful only when following"));
 +#ifndef _WIN32  //not sure if we end up looping forever here...
-   else if (pid && kill (pid, 0) != 0 && errno == ENOSYS)
+   else if (nbpids && kill (pids[0], 0) != 0 && errno == ENOSYS)
 +#else
-+  else if (pid)
++  else if (nbpids)
 +#endif
      {
        error (0, 0, _("warning: --pid=PID is not supported on this system"));
-       pid = 0;
+       nbpids = 0;
 diff --git a/src/wc.c b/src/wc.c
-index b1d82074d..74cc84161 100644
+index 21ffa74d9..b178bb54a 100644
 --- a/src/wc.c
 +++ b/src/wc.c
-@@ -796,7 +796,11 @@ main (int argc, char **argv)
+@@ -739,7 +739,11 @@ main (int argc, char **argv)
    page_size = getpagesize ();
    /* Line buffer stdout to ensure lines are written atomically and immediately
       so that processes running in parallel do not intersperse their output.  */
@@ -1497,7 +1524,7 @@ index b1d82074d..74cc84161 100644
    posixly_correct = (getenv ("POSIXLY_CORRECT") != nullptr);
  
 diff --git a/src/whoami.c b/src/whoami.c
-index e7a578a58..b73f09a01 100644
+index 834ca9ffc..ac01fd18a 100644
 --- a/src/whoami.c
 +++ b/src/whoami.c
 @@ -21,8 +21,13 @@
@@ -1523,8 +1550,8 @@ index e7a578a58..b73f09a01 100644
 +#ifndef _WIN32
 +  pw = (uid == NO_UID && errno ? nullptr : getpwuid (uid));
    if (!pw)
-     error (EXIT_FAILURE, errno, _("cannot find name for user ID %lu"),
-            (unsigned long int) uid);
+     error (EXIT_FAILURE, errno, _("cannot find name for user ID %ju"),
+            (uintmax_t) uid);
    puts (pw->pw_name);
 +#else
 +  const char * login = getlogin();
