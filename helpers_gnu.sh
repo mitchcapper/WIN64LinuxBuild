@@ -12,13 +12,9 @@ function gnulib_dump_patches(){
 
 function gnulib_switch_to_master_and_patch(){
 	cd $BLD_CONFIG_SRC_FOLDER
-	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
-		#sed -i -E "s#(gnulib_tool=.+gnulib-tool)\$#\1.py#" bootstrap
-		export GNULIB_TOOL_IMPL="py"
-	else
-		#sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
-		export GNULIB_TOOL_IMPL="sh"
-	fi
+
+	#sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
+
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
 
 	#we do this process to make it easier to tell what changes we have actually made vs what changes were from our patches

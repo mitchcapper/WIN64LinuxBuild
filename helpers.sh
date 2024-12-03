@@ -15,8 +15,8 @@ function usage(){
 	declare -A cmds=(
 		[export_config]="Export project config to file for DebugProjGen.csx"
 		[log_raw_build|log]="Normal full run except create a .bat file for the commands run for the build process"
-		[log_make|log_make_full]="Similar to raw build above but runs make's dry run and generates that log, _full"
 		[log_raw_build_full|log_full]="Same as above, but can pass an additional step arg after to start at a certain step"
+		[log_make|log_make_full]="Similar to raw build above but runs make's dry run and generates that log, _full like on log_raw can start at a certain step"		
 		[our_patch]="Apply our patch for this repo"
 		[checkout]="Checkout the original repo"
 		[gnulib]="checkout gnulib and apply our patches to it"
@@ -492,6 +492,12 @@ function startcommon(){
 	if [[ -n "$BLD_CONFIG_CMAKE_STYLE" ]]; then
 		cmake_init;
 	fi
+	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
+		export GNULIB_TOOL_IMPL="py"
+	else
+		export GNULIB_TOOL_IMPL="sh"
+	fi
+
 }
 function exit_ok(){
 	trace_final
