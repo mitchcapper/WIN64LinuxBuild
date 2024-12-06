@@ -104,7 +104,7 @@ index 1521987496..fa651e18a5 100644
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index 49b3d05fde..a88792bed9 100644
+index c3e8760e96..c7e79e33fb 100644
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,5 +1,10 @@
@@ -116,7 +116,7 @@ index 49b3d05fde..a88792bed9 100644
 +	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
 +fi
  
- scriptversion=2024-06-19.01; # UTC
+ scriptversion=2024-12-03.03; # UTC
  
 @@ -49,6 +54,10 @@ func_file_conv ()
      / | /[!/]*) # absolute file, and not a UNC file
