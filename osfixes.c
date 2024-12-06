@@ -1,4 +1,5 @@
 #include "osfixes.h"
+#define _CRTIMP
 #define WIN32_LEAN_AND_MEAN
 #define _GL_CTYPE_H
 #define _GL_CONFIG_H_INCLUDED 1
@@ -6,16 +7,42 @@
 #ifdef WLB_INCL_WLB_DEBUG_H
 #include "wlb_debug.h"
 #endif
+#ifndef MAX_LONG_PATH
+#define MAX_LONG_PATH 32768
+#endif // !MAX_LONG_PATH
+
 
 // #include "term.h"
 // #include "general.h"
-
+#include <../ucrt/stdlib.h>
 #include <../ucrt/stdio.h>
 #ifndef TRUE
 #define FALSE 0
 #define TRUE 1
 #endif // !FALSE
 
+int clearenv(void)
+{
+	char* envp, * s;
+	char name[MAX_LONG_PATH];
+
+
+	while (environ && (envp = *environ)) {
+		if ((s = strchr(envp, '=')) != NULL) {
+			strncpy(name, envp, s - envp + 1);
+			strncpy_s(name, sizeof(name), envp, s - envp+1);
+			name[s - envp + 1+1] = 0;
+
+			if (_putenv(name) == -1) {
+				return -1;
+			}
+		}
+		else {
+			return -1;
+		}
+	}
+	return 0;
+}
 #if defined (WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_EXIT) || defined(WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH)
 #if !defined(DisableDebugAssertPopup)
 
