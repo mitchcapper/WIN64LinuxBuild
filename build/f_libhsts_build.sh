@@ -32,6 +32,7 @@ fi
 		gnulib_ensure_buildaux_scripts_copied
 		autoreconf --symlink --verbose --install
 		libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
+		autoreconf --verbose #update for libtool fixes
 		SKIP_STEP=""
 	fi
 	

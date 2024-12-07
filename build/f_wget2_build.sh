@@ -41,6 +41,7 @@ fi
 		SKIP_STEP=""
 	fi
 	OLDPATH="$PATH"
+	# build-aux\ltmain.sh 
 
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "vcpkg" ]]; then
 		TAR_BASE=$(get_install_prefix_for_pkg "tar")
@@ -76,12 +77,15 @@ fi
 		if [[ -z $SKIP_STEP || $SKIP_STEP == "bootstrap" ]]; then
 			gnulib_ensure_buildaux_scripts_copied;
 			setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
+			libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
 			./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
 			SKIP_STEP=""
 		fi
 	fi
 	if [[ $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
 		autoreconf --symlink --verbose --install
+		libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
+		autoreconf --verbose #update for libtool fixes
 		gnulib_ensure_buildaux_scripts_copied;
 		SKIP_STEP="" #to do all the other steps
 	fi
@@ -110,7 +114,7 @@ fi
 	if [[ $CALL_CMD == "log_undefines" ]]; then
 		FL="undefined.txt"
 		echo "Logging undefined symbols to ${FL}"
-		make | rg --no-line-number -oP "unresolved external symbol.+referenced" | sed -E 's#unresolved external symbol(.+)referenced#\1#g' | sort -u > $FL
+		make | rg --no-line-number -oP "unresolved external symbol.+referenced" | sed -E 's#unresolved external symbol(.+)referenced#\\1#g' | sort -u > $FL
 		exit 1
 	fi
 	make -j 8 || make

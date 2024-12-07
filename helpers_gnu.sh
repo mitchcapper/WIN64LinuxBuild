@@ -130,6 +130,8 @@ function libtool_fixes(){
 	# first the newer libtools have more windows support but that makes things actually a bit harder as it has some issues
 	# first it puts the export symbol commands in a .exp file but that is used by the compiler too so .expsym is better and used elsewhere
 	# Secondly it does -Fe [arg] but it needs to be next to the -Fe[arg]
+	# ie libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
+	# note you must run autoreconf after this if it wont automatically happen.  Sometimes these will not be present until after the first bootstrap though so likely want to run autoreconf ourselves.
 #	local POS_FILES=("build-aux/ltmain.sh" "m4/libtool.m4")
 #	for fl in "${POS_FILES[@]}"; do
 #		if [[ -e "$fl" ]]; then

@@ -52,8 +52,9 @@ fi
 			gnulib_add_addl_modules_to_bootstrap;		
 			gnulib_ensure_buildaux_scripts_copied;
 			setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
-			libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
 			./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
+			libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"			
+			autoreconf --verbose #update for libtool fixes
 			SKIP_STEP=""
 		fi
 	fi

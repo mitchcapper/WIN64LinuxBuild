@@ -29,7 +29,7 @@ jobs:
       with:
         path: |
           d:/artifacts
-        key: ${{ inputs.BuildPkg }}
+        key: ${{ inputs.BuildPkg }}-${{ inputs.RequiredDeps }}
         lookup-only: true
     
     - uses: actions/checkout@v3.1.0
@@ -129,7 +129,7 @@ jobs:
       with:
         path: |
           d:/artifacts
-        key: ${{ inputs.BuildPkg }}
+        key: ${{ inputs.BuildPkg }}-${{ inputs.RequiredDeps }}
     # - name: Debug Session
     #   if: ${{ failure() }}
     #   run: D:/a/docs/docs/.github/debug_ssh_start.ps1
