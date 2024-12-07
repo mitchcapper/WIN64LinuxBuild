@@ -1,0 +1,5 @@
+set VCPKG_TRIPLET=x64-windows-static-release
+dotnet-script "%WLB_SCRIPT_FOLDER%\vs_debug_help\DebugProjGen.csx" --exe wget --define PCRE2_STATIC LIBWGET_STATIC PSL_STATIC --libraries Crypt32.lib %WLB_BASE_FOLDER%/libpsl/final/lib/psl.lib %WLB_BASE_FOLDER%/pcre2/final/lib/pcre2-8.lib %WLB_BASE_FOLDER%/openssl/final/lib/libssl.lib %WLB_BASE_FOLDER%/openssl/final/lib/libcrypto.lib %WLB_BASE_FOLDER%/zlib/final/lib/zlibstatic.lib lib/libgnu.a %WLB_BASE_FOLDER%\vc_pkgs\brotli\%VCPKG_TRIPLET%\lib\brotlicommon.lib %WLB_BASE_FOLDER%\vc_pkgs\brotli\%VCPKG_TRIPLET%\lib\brotlidec.lib %WLB_BASE_FOLDER%\vc_pkgs\brotli\%VCPKG_TRIPLET%\lib\brotlienc.lib %WLB_BASE_FOLDER%/vc_pkgs/zstd/%VCPKG_TRIPLET%/lib/zstd.lib --include_paths . lib lib/sys src %WLB_BASE_FOLDER%/libpsl/final/include %WLB_BASE_FOLDER%/openssl/final/include %WLB_BASE_FOLDER%/pcre2/final/include %WLB_BASE_FOLDER%/zlib/final/include vms --exclude iri.c vms.c css_.c decc_ver.c gnutls.c --compile src/*.c
+
+rem %WLB_BASE_FOLDER%/vc_pkgs/openssl/%VCPKG_TRIPLET%/include
+rem %WLB_BASE_FOLDER%/vc_pkgs/openssl/%VCPKG_TRIPLET%/lib/libssl.lib

@@ -2,7 +2,7 @@
 set -e
 . "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
-
+BLD_CONFIG_CONFIG_ADDL_LIBS="-lcrypt32"
 BLD_CONFIG_BUILD_NAME="wget";
 BLD_CONFIG_CONFIG_CMD_ADDL=("--with-ssl=openssl") #--disable-nls
 BLD_CONFIG_ADD_WIN_ARGV_LIB=1
@@ -14,16 +14,17 @@ BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 
 function ourmain() {
 	startcommon;
-	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
-		BLD_CONFIG_CONFIG_CMD_ADDL+=("--enable-static")
-	fi
+	# if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+	# 	BLD_CONFIG_CONFIG_CMD_ADDL+=("--enable-static")
+	# fi
 	
 	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then #if switching back they should just regen configure
 		BLD_CONFIG_CONFIG_CMD_ADDL+=("--enable-assert")
 		export CFLAGS="-DENABLE_DEBUG $CFLAGS"
 	fi	
-	add_lib_pkg_config  "libpsl" "pcre2" "zlib"
-	add_vcpkg_pkg_config  "openssl"
+	add_lib_pkg_config  "libpsl" "pcre2" "zlib" "openssl"
+	#add_vcpkg_pkg_config  "openssl"
+	add_vcpkg_pkg_config "brotli" "zstd"
 
 if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
@@ -61,7 +62,7 @@ fi
 	fi
 	
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "vcpkg" ]]; then
-		vcpkg_install_package "openssl"
+		vcpkg_install_package "brotli" "zstd"
 		SKIP_STEP=""
 	fi
 	#gnulib_tool_py_remove_nmd_makefiles
