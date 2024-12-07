@@ -86,8 +86,8 @@ fi
 	if [[ -n "${LOG_MAKE_RUN}" ]]; then
 		run_logged_make nmake /S
 	fi
-
-	nmake install
+	sed -i -E 's#=\$\(DESTDIR\)#=#g;s#OPENSSLDIR=\$#OPENSSLDIR=\$(DESTDIR)\$#g' makefile
+	nmake install "DESTDIR=${BLD_CONFIG_INSTALL_FOLDER}"
 	PKGCFG_DIR="${BLD_CONFIG_INSTALL_FOLDER}/lib/pkgconfig"
 	mkdir -p "${PKGCFG_DIR}"
 	for filename in exporters/*.pc; do
