@@ -88,6 +88,8 @@ void ArrExpandWithDefs(string root, List<string> arr, IEnumerable<string> addl, 
 	var l2 = arr.Distinct().ToList();
 	arr.Clear();
 	arr.AddRange(l2);
+	//Console.WriteLine(string.Join(", ",arr));
+	//throw new Exception("ERR");
 }
 void ArrExpandWildcards(string root, List<string> arr){
 		for (var x = 0; x < arr.Count; x++){
@@ -133,7 +135,7 @@ Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
 	ArrPathFixForFiles(incl_paths, compile);
 	ArrPathFixForFiles(incl_paths, include);
 	 if (! opts.GetValBool("no_autoheader")){
-		var posHeaders = compile.Select(file => new FileInfo(file)).Select(fInfo => Path.Combine( fInfo.DirectoryName,fInfo.Name.Substring(0,fInfo.Name.Length-fInfo.Extension.Length+1) + "h").Replace("\\","/")).ToList();
+		var posHeaders = compile.Select(file => new FileInfo(file)).Select(fInfo => Path.Combine( fInfo.DirectoryName,fInfo.Name.Substring(0,fInfo.Name.Length-(fInfo.Extension.Length > 0 ? fInfo.Extension.Length+1 : 0)) + "h").Replace("\\","/")).ToList();
 		ArrPathFixForFiles(incl_paths,posHeaders);
 		var exists = posHeaders.Where(a=>File.Exists(a)).ToArray();
 		include.AddRange(exists);
@@ -240,7 +242,7 @@ class ConfigRead {
 	public void ReadConfig() {
 		var PROJ_file = "proj_config.ini";
 		if (!File.Exists(PROJ_file))
-			throw new Exception($"Unable to find {PROJ_file} run /script/f_SCRIPTNAME_build.sh export_config to generate");
+			throw new Exception($"Unable to find {PROJ_file} in current directory run /script/f_SCRIPTNAME_build.sh export_config to generate");
 		var lines = File.ReadAllLines(PROJ_file);
 		foreach (var line in lines) {
 			if (!line.Contains("="))
