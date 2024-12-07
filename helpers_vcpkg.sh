@@ -1,6 +1,7 @@
 
 
 vcpkg_ensure_installed(){
+	unset VCPKG_ROOT #can be set by visual studio so we want to unset it to be safe
 	echo CHECKING FOR $BLD_CONFIG_VCPKG_BIN
 	if [[ -f "${BLD_CONFIG_VCPKG_BIN}" ]]; then
     	return

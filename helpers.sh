@@ -74,8 +74,16 @@ pkg_config_manual_add(){
 	echo $PKG_CONFIG_PATH
 	for VAR in "$@"; do
 		pkg-config --print-errors "${VAR}"
-		local ADD_LIBS=`pkg-config --libs "${VAR}"`
+		staticAdd=""
+		if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+			staticAdd="--static"
+		fi
+		local ADD_LIBS=`pkg-config $staticAdd --libs "${VAR}"`
 		local ADD_FLAGS=`pkg-config --cflags "${VAR}"`
+		if [[ -z "${ADD_LIBS}" && -z "${ADD_LIBS}" ]]; then
+			echo "Error Asked to not able to find pkg-config for $VAR but it returned no libs or flags, something probably wrong" 1>&2;
+			exit 1
+		fi
 		CFLAGS="${CFLAGS} ${ADD_FLAGS}"
 		#not everrything pays attention to LIBS=
 		LDFLAGS="${LDFLAGS} ${ADD_LIBS}"
