@@ -14,9 +14,6 @@ BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 
 function ourmain() {
 	startcommon;
-	# if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
-	# 	BLD_CONFIG_CONFIG_CMD_ADDL+=("--enable-static")
-	# fi
 	
 	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then #if switching back they should just regen configure
 		BLD_CONFIG_CONFIG_CMD_ADDL+=("--enable-assert")
@@ -24,7 +21,6 @@ function ourmain() {
 	fi	
 	add_lib_pkg_config  "libpsl" "pcre2" "zlib" "openssl"
 	#add_vcpkg_pkg_config  "openssl"
-	add_vcpkg_pkg_config "brotli" "zstd"
 
 if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
@@ -37,6 +33,10 @@ fi
 
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		apply_our_repo_patch; #looks in the patches folder for  repo_BUILD_NAME.patch and if found applies it.  Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
+		if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+			sed -i -E "s#PKG_CHECK_MODULES_STATIC#PKG_CHECK_MODULES#g;s#PKG_CHECK_MODULES#PKG_CHECK_MODULES_STATIC#g" configure.ac
+		fi
+
 		SKIP_STEP=""
 	fi
 	
