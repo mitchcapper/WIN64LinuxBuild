@@ -14,6 +14,11 @@ on:
         type: string
         description: 'multi-line scalar for any required artifacts or empty string for none'
         default: ""
+      NoDebugBuild:
+        required: false
+        type: boolean
+        description: 'Only do release build'
+        default: false
     outputs:
       ScriptRes:
         description: "Result of script execution (optional)"
@@ -45,14 +50,17 @@ jobs:
         #BuildPkg: [grep]
 #        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,grep]
         BaseImage: [windows-latest]
-        Configuration: [Debug, Release] #right now the deps downloader always downloads release versions, we could use our debug libs for debug builds
+        Configuration: [Debug, Release]  #right now the deps downloader always downloads release versions, we could use our debug libs for debug builds
+        SkipDebugBuild:
+            - ${{ inputs.NoDebugBuild }}
         Arch: [x64]
         #BaseImage: [windows-latest, ubuntu-latest]
-        #Configuration: [Debug, Release]
         #Arch: [x86, x64]
         exclude:
           - Arch: x86
             BaseImage: ubuntu-latest
+          - Configuration: Debug
+            SkipDebugBuild: true
         include:
           - BaseImage: windows-latest
             platform: windows

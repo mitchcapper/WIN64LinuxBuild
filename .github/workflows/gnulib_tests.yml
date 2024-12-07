@@ -22,11 +22,13 @@ jobs:
     with:
       BuildPkg: script
       Script: ./build/f_TEMPLATE_build.sh gnulib_dump_patches
+      NoDebugBuild: true
   gnulib_test_all_patches:
     name: Test All Patches Together
     uses: ./.github/workflows/do_build.yml
     with:
       BuildPkg: script
+      NoDebugBuild: true
       Script: .github/gnu_patchtest.sh all_patch
 
   gnulib_test_patch:
@@ -39,5 +41,6 @@ jobs:
         Mode: [branch, patch]
     uses: ./.github/workflows/do_build.yml
     with:
+      NoDebugBuild: true
       BuildPkg: script
       Script: .github/gnu_patchtest.sh ${{ matrix.Mode }} '${{ matrix.PatchName }}'
