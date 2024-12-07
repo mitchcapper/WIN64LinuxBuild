@@ -23,27 +23,26 @@ jobs:
       run:
         shell: pwsh
     steps:
+  
+    - uses: actions/checkout@v3.1.0
+      with:
+        submodules: true
+
+    - name: Set DepCache Variables
+      shell: powershell
+      id: vars
+      env:
+        DEPS: "${{ inputs.RequiredDeps }}"
+      run: ${{ github.workspace }}\.github\set_dep_vars.ps1
+  
     - name: Check Existing Cache
       id: cachecheck
       uses: actions/cache/restore@v3
       with:
         path: |
           d:/artifacts
-        key: ${{ inputs.BuildPkg }}-${{ inputs.RequiredDeps }}
+        key: ${{ steps.vars.outputs.DepsCacheKey }}
         lookup-only: true
-    
-    - uses: actions/checkout@v3.1.0
-      if: steps.cachecheck.outputs.cache-hit != 'true'
-      with:
-        submodules: true
-
-    - name: Set Variables
-      shell: powershell
-      id: vars
-      if: steps.cachecheck.outputs.cache-hit != 'true'
-      env:
-        DEPS: "${{ inputs.RequiredDeps }}"
-      run: ${{ github.workspace }}\.github\set_dep_vars.ps1
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep1Name }}
       uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
@@ -129,7 +128,7 @@ jobs:
       with:
         path: |
           d:/artifacts
-        key: ${{ inputs.BuildPkg }}-${{ inputs.RequiredDeps }}
+        key: ${{ steps.vars.outputs.DepsCacheKey }}
     # - name: Debug Session
     #   if: ${{ failure() }}
     #   run: D:/a/docs/docs/.github/debug_ssh_start.ps1
