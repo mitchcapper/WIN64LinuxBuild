@@ -7,11 +7,14 @@ BLD_CONFIG_BUILD_NAME="openssl";
 #BLD_CONFIG_BUILD_DEBUG=1
 BLD_CONFIG_GNU_LIBS_USED=0
 BLD_CONFIG_BUILD_WINDOWS_COMPILE_WRAPPERS=1
-
+#will look for certs etc in /basedir/ssl/X
+SSL_BASE_DIR="/ProgramData/ssl"
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 function ourmain() {
 	startcommon;
 	add_vcpkg_pkg_config  "brotli" "zstd"
+	#shoudn't need these due to confi line but cant hurt
+	export CommonProgramW6432="$SSL_BASE_DIR" CommonProgramFiles="$SSL_BASE_DIR"
 
 if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
@@ -33,6 +36,8 @@ fi
 		mkdir -p perl && cd perl #it wants windows native perl with 'proper' path support
 		curl https://strawberryperl.com/download/5.32.1.1/strawberry-perl-5.32.1.1-64bit-portable.zip -o perl.zip
 		unzip -q perl.zip
+		# this probably isn't strictly necessary but makes the paths more universal as they do end up in the build a few spots
+		# sed -i -E 's#return (\$path ne [^;]+;)#my $ret = \1\n\t$ret =~ s/\\/\//g;\n\treturn $ret;#' perl/lib/File/Spec/Win32.pm
 	fi
 	
 	PERL="./perl/perl/bin/perl.exe"
@@ -60,12 +65,12 @@ fi
 		if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
 			CONFIG_ADD="-static no-shared"
 		fi
-		echo "HI THERE RUNNING: " Configure no-dynamic-engine enable-trace no-dso no-fips $CONFIG_ADD enable-quic no-pic enable-weak-ssl-ciphers no-threads no-makedepend enable-comp enable-zstd enable-brotli no-acvp-tests no-buildtest-c++ no-external-tests no-tests no-unit-test -DOPENSSL_SMALL_FOOTPRINT "--with-brotli-include=${BRO_BASE}/include" HASHBANGPERL="$PERL" "--with-brotli-lib=${BRO_BASE}/lib" "--with-zstd-include=${ZST_BASE}/include" "LD=${LD}" "AR=${AR}" "CC=${CC}" "CXX=${CXX}" "--with-zstd-lib=${ZST_BASE}/lib/zstd.lib"  VC-WIN64A
+#		echo "HI THERE RUNNING: " Configure no-dynamic-engine enable-trace no-dso no-fips $CONFIG_ADD enable-quic no-pic no-docs enable-weak-ssl-ciphers no-threads no-makedepend enable-comp enable-zstd enable-brotli no-acvp-tests no-buildtest-c++ no-external-tests no-tests no-unit-test -DOPENSSL_SMALL_FOOTPRINT "--with-brotli-include=${BRO_BASE}/include" HASHBANGPERL="$PERL" "--with-brotli-lib=${BRO_BASE}/lib" "--with-zstd-include=${ZST_BASE}/include" "LD=${LD}" "AR=${AR}" "CC=${CC}" "CXX=${CXX}" "--with-zstd-lib=${ZST_BASE}/lib/zstd.lib"  VC-WIN64A
 		env > c:/temp/env.log
 		echo "LD IS: $LD"
 # 
 # "AR=${AR}" "CC=${CC}" "CXX=${CXX}"
-		$PERL Configure no-dynamic-engine enable-trace no-dso no-fips $CONFIG_ADD enable-quic no-pic enable-weak-ssl-ciphers no-threads no-makedepend enable-comp enable-zstd enable-brotli no-acvp-tests no-buildtest-c++ no-external-tests no-tests no-unit-test -DOPENSSL_SMALL_FOOTPRINT "--with-brotli-include=${BRO_BASE}/include" HASHBANGPERL="$PERL" "--with-brotli-lib=${BRO_BASE}/lib" "--with-zstd-include=${ZST_BASE}/include" "LD=${LD}"  "--with-zstd-lib=${ZST_BASE}/lib/zstd.lib"  VC-WIN64A
+		$PERL Configure no-dynamic-engine enable-trace no-dso no-fips $CONFIG_ADD enable-quic no-pic enable-weak-ssl-ciphers no-threads no-makedepend enable-comp enable-zstd enable-brotli no-docs no-acvp-tests no-buildtest-c++ no-external-tests no-tests no-unit-test -DOPENSSL_SMALL_FOOTPRINT "--with-brotli-include=${BRO_BASE}/include" HASHBANGPERL="$PERL" "--with-brotli-lib=${BRO_BASE}/lib" "--with-zstd-include=${ZST_BASE}/include" "LD=${LD}"  "--with-zstd-lib=${ZST_BASE}/lib/zstd.lib"  VC-WIN64A "--openssldir=$SSL_BASE_DIR" "--prefix=$BLD_CONFIG_INSTALL_FOLDER"
 		$PERL configdata.pm --dump
 		#sed -i -E "s#lib.(brotli[^ ]+).lib#lib/\1-static.lib#g" makefile #hack no longer needed they properly renamed the lib now
 		sed -i -z -E "s#[^\n]+INSTALL_PROGRAMS[^\n]+[\n][^\n]+INSTALL_PROGRAMPDBS[^\n]+[\n][^\n]+##" makefile
@@ -82,13 +87,13 @@ fi
 		run_logged_make nmake /S
 	fi
 
-	nmake install "DESTDIR=${BLD_CONFIG_INSTALL_FOLDER}"
-	PROGFL_DIR="${BLD_CONFIG_INSTALL_FOLDER}/Program Files"
-
-	mv "${PROGFL_DIR}"/* "${BLD_CONFIG_INSTALL_FOLDER}"
-	rmdir "${PROGFL_DIR}"
-
-	BLD_CONFIG_INSTALL_FOLDER="$BLD_CONFIG_INSTALL_FOLDER/openssl" #so the final message is correct
+	nmake install
+	PKGCFG_DIR="${BLD_CONFIG_INSTALL_FOLDER}/lib/pkgconfig"
+	mkdir -p "${PKGCFG_DIR}"
+	for filename in exporters/*.pc; do
+		sed -i -E "s#\\\#/#g;s#/Program Files/OpenSSL##g" "${filename}"
+	done
+	cp exporters/*.pc "${PKGCFG_DIR}"
 
 	finalcommon;
 }
