@@ -1,5 +1,5 @@
 diff --git a/src/gnutls.c b/src/gnutls.c
-index 689c9e41..c069c114 100644
+index cfcdf671..4d648639 100644
 --- a/src/gnutls.c
 +++ b/src/gnutls.c
 @@ -802,7 +802,7 @@ set_prio_default (gnutls_session_t session)
@@ -46,7 +46,7 @@ index 689c9e41..c069c114 100644
  #else
        logprintf (LOG_NOTQUIET, _("Your GnuTLS version is too old to support TLS 1.3\n"));
 diff --git a/src/init.c b/src/init.c
-index 69f91ad5..da74089b 100644
+index 1c452836..a0d283db 100644
 --- a/src/init.c
 +++ b/src/init.c
 @@ -40,7 +40,11 @@ as that of the covered work.  */
@@ -62,7 +62,7 @@ index 69f91ad5..da74089b 100644
  #  define PATH_MAX MAXPATHLEN
  # endif
 diff --git a/src/utils.c b/src/utils.c
-index 794d3a57..59d7de7b 100644
+index 2511a25f..e5ea9064 100644
 --- a/src/utils.c
 +++ b/src/utils.c
 @@ -36,6 +36,13 @@ as that of the covered work.  */
@@ -79,3 +79,16 @@ index 794d3a57..59d7de7b 100644
  #ifdef HAVE_PROCESS_H
  # include <process.h>  /* getpid() */
  #endif
+diff --git a/src/wget.h b/src/wget.h
+index 47fcb6db..cc66e081 100644
+--- a/src/wget.h
++++ b/src/wget.h
+@@ -224,7 +224,7 @@ static inline unsigned char _unhex(unsigned char c)
+     void *basevar_new = xrealloc (basevar, DR_newsize * sizeof (type)); \
+     assert(basevar_new);                                        \
+     if (basevar_new != basevar) {                               \
+-      memset (basevar_new + sizevar_old * sizeof (type), 0, (DR_newsize - sizevar_old) * sizeof (type)); \
++      memset (((char*)basevar_new) + sizevar_old * sizeof (type), 0, (DR_newsize - sizevar_old) * sizeof (type)); \
+       basevar = basevar_new;                                    \
+     }                                                           \
+   }                                                             \
