@@ -5,7 +5,7 @@ $VerbosePreference="Continue";
 
 $files = (Get-ChildItem -Path d:/artifacts/*.zip -Force -ErrorAction SilentlyContinue)
 foreach ($file in $files){
-	$folder = $file.BaseName.replace("WLB-","")
+	$folder = $file.BaseName.replace("WLB-","").replace("-Debug","")
 	$srcPath = "d:/artifacts/$($folder)"
 	if ( -not (Test-Path -Path $srcPath)  ){
 		Expand-Archive -Path $file.FullName -DestinationPath $srcPath
