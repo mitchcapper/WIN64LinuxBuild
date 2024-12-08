@@ -2,7 +2,7 @@ Set-StrictMode -version latest;
 $ErrorActionPreference = "Stop";
 $VerbosePreference="Continue";
 
-$cacheKey=(date +'%m%d')
+$cacheKey= $env:Configuration + (date +'%m%d')
 $arr=($env:DEPS).split()
 $cnt=1
 foreach ($dep in $arr) {
@@ -12,4 +12,12 @@ foreach ($dep in $arr) {
 		$cnt++		
 	}
 }
+$failAction="fail"
+$postfix=""
+if ($env:Configuration -eq "Debug") {
+	$failAction="ignore"
+	$postfix="-Debug"
+}
 echo "DepsCacheKey=$cacheKey" >> $env:GITHUB_OUTPUT
+echo "DepsFailAction=$failAction" >> $env:GITHUB_OUTPUT
+echo "DepsPostfix=$postfix" >> $env:GITHUB_OUTPUT

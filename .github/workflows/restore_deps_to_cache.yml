@@ -16,6 +16,11 @@ on:
 
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        Configuration: [Debug, Release]
+
     name:  DEP Download
     runs-on: windows-2022
     environment: main
@@ -33,6 +38,7 @@ jobs:
       id: vars
       env:
         DEPS: "${{ inputs.RequiredDeps }}"
+        Configuration: "${{ matrix.Configuration }}"
       run: ${{ github.workspace }}\.github\set_dep_vars.ps1
   
     - name: Check Existing Cache
@@ -45,78 +51,92 @@ jobs:
         lookup-only: true
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep1Name }}
-      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      uses: mitchcapper/action-download-artifact@e8fcde2d08c6684586e66d4fe22786fd61a6e1a8
       if: ${{ steps.vars.outputs.Dep1Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep1Name }}
         path: d:/artifacts
         name_prefix: WLB-
+        name_postfix: ${{ steps.vars.outputs.DepsPostfix }}
+        if_no_artifact_found: ${{ steps.vars.outputs.DepsFailAction }}
         workflow_conclusion: "success"
         skip_unpack: true
         workflow: tool_${{ steps.vars.outputs.Dep1Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep2Name }}
-      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      uses: mitchcapper/action-download-artifact@e8fcde2d08c6684586e66d4fe22786fd61a6e1a8
       if: ${{ steps.vars.outputs.Dep2Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep2Name }}
         path: d:/artifacts
         name_prefix: WLB-
         workflow_conclusion: "success"
+        name_postfix: ${{ steps.vars.outputs.DepsPostfix }}
+        if_no_artifact_found: ${{ steps.vars.outputs.DepsFailAction }}
         skip_unpack: true
         workflow: tool_${{ steps.vars.outputs.Dep2Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep3Name }}
-      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      uses: mitchcapper/action-download-artifact@e8fcde2d08c6684586e66d4fe22786fd61a6e1a8
       if: ${{ steps.vars.outputs.Dep3Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep3Name }}
         path: d:/artifacts
         name_prefix: WLB-
+        name_postfix: ${{ steps.vars.outputs.DepsPostfix }}
+        if_no_artifact_found: ${{ steps.vars.outputs.DepsFailAction }}
         workflow_conclusion: "success"
         skip_unpack: true
         workflow: tool_${{ steps.vars.outputs.Dep3Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep4Name }}
-      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      uses: mitchcapper/action-download-artifact@e8fcde2d08c6684586e66d4fe22786fd61a6e1a8
       if: ${{ steps.vars.outputs.Dep4Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep4Name }}
         path: d:/artifacts
         name_prefix: WLB-
+        name_postfix: ${{ steps.vars.outputs.DepsPostfix }}
+        if_no_artifact_found: ${{ steps.vars.outputs.DepsFailAction }}
         workflow_conclusion: "success"
         skip_unpack: true
         workflow: tool_${{ steps.vars.outputs.Dep4Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep5Name }}
-      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      uses: mitchcapper/action-download-artifact@e8fcde2d08c6684586e66d4fe22786fd61a6e1a8
       if: ${{ steps.vars.outputs.Dep5Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep5Name }}
         path: d:/artifacts
         name_prefix: WLB-
+        name_postfix: ${{ steps.vars.outputs.DepsPostfix }}
+        if_no_artifact_found: ${{ steps.vars.outputs.DepsFailAction }}
         workflow_conclusion: "success"
         skip_unpack: true
         workflow: tool_${{ steps.vars.outputs.Dep5Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep6Name }}
-      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      uses: mitchcapper/action-download-artifact@e8fcde2d08c6684586e66d4fe22786fd61a6e1a8
       if: ${{ steps.vars.outputs.Dep6Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep6Name }}
         path: d:/artifacts
         name_prefix: WLB-
+        name_postfix: ${{ steps.vars.outputs.DepsPostfix }}
+        if_no_artifact_found: ${{ steps.vars.outputs.DepsFailAction }}
         workflow_conclusion: "success"
         skip_unpack: true
         workflow: tool_${{ steps.vars.outputs.Dep6Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep7Name }}
-      uses: mitchcapper/action-download-artifact@ce1b9a1572bf43f4e5e89568e74cb1f2299e6362
+      uses: mitchcapper/action-download-artifact@e8fcde2d08c6684586e66d4fe22786fd61a6e1a8
       if: ${{ steps.vars.outputs.Dep7Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep7Name }}
         path: d:/artifacts
         name_prefix: WLB-
+        name_postfix: ${{ steps.vars.outputs.DepsPostfix }}
+        if_no_artifact_found: ${{ steps.vars.outputs.DepsFailAction }}
         workflow_conclusion: "success"
         skip_unpack: true
         workflow: tool_${{ steps.vars.outputs.Dep7Name }}_build.yml

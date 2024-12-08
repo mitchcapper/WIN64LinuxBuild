@@ -46,9 +46,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        #BuildPkg: [patch]
-        #BuildPkg: [grep]
-#        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,grep]
         BaseImage: [windows-latest]
         Configuration: [Debug, Release]  #right now the deps downloader always downloads release versions, we could use our debug libs for debug builds
         SkipDebugBuild:
@@ -93,24 +90,6 @@ jobs:
             echo "BLD_CONFIG_BUILD_DEBUG=1" >> $env:GITHUB_ENV
           }
 
-#      - uses: actions/setup-dotnet@v3.0.3
-#        with:
-#          dotnet-version: ${{env.CI_REQ_DOTNET_SDK_VER}}
-
-
-
-#previously we built all in one workflow now with them as individual workflows we download differently
-
-      # - name: Download Required Artifacts
-      #   uses: mitchcapper/action-download-artifact@c026c9be4097d153332e6cd0974d140ba22cd6cc
-      #   if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
-      #   with:
-      #     name: ${{ inputs.RequiredDeps }}
-      #     path: d:/artifacts
-      #     name_prefix: WLB-
-      #     run_id: ${{ github.run_id }}
-      #     workflow_conclusion: "success"
-          
       - name: Restore Existing Dep Cache
         if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
         uses: actions/cache/restore@v3
