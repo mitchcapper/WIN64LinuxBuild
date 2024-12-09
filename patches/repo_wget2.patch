@@ -1,8 +1,8 @@
 diff --git a/configure.ac b/configure.ac
-index b8643aae..79dec3a5 100644
+index 7429f614..191d4b6a 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -1036,6 +1036,12 @@ AC_FUNC_MMAP
+@@ -1074,6 +1074,12 @@ AC_FUNC_MMAP
  AC_CHECK_FUNCS([\
   strlcpy getuid fmemopen])
  
@@ -43,7 +43,7 @@ index 838f28b5..760539fb 100644
 + $(LIB_SELECT) $(LIB_SETLOCALE) $(LIB_SETLOCALE_NULL) $(LTLIBICONV) $(LTLIBINTL) $(SERVENT_LIB) @INTL_MACOSX_LIBS@ $(LD_ADD_ADDL) \
   $(LIBS)
 diff --git a/libwget/io.c b/libwget/io.c
-index 8973b428..8fbda567 100644
+index 4d178c09..7a56672f 100644
 --- a/libwget/io.c
 +++ b/libwget/io.c
 @@ -233,6 +233,10 @@ int wget_ready_2_transfer(int fd, int timeout, int mode)
@@ -58,7 +58,7 @@ index 8973b428..8fbda567 100644
  	pollfd.fd = fd;
  
 diff --git a/libwget/ssl_wolfssl.c b/libwget/ssl_wolfssl.c
-index cd7743be..87874480 100644
+index a057295b..d7c03f0c 100644
 --- a/libwget/ssl_wolfssl.c
 +++ b/libwget/ssl_wolfssl.c
 @@ -135,6 +135,12 @@ struct session_context {
@@ -74,7 +74,31 @@ index cd7743be..87874480 100644
  #define error_printf_check(...) if (config.report_invalid_cert) wget_error_printf(__VA_ARGS__)
  
  /**
-@@ -870,7 +876,7 @@ static void ShowX509Chain(WOLFSSL_X509_CHAIN *chain, int count, const char *hdr)
+@@ -594,10 +600,9 @@ void wget_ssl_init(void)
+ 
+ 		debug_printf("WolfSSL init\n");
+ 		wolfSSL_Init();
++#ifndef  NO_OLD_TLS
+ 
+-		if (!wget_strcasecmp_ascii(config.secure_protocol, "SSLv2")) {
+-			method = SSLv2_client_method();
+-		} else if (!wget_strcasecmp_ascii(config.secure_protocol, "SSLv3")) {
++		if (!wget_strcasecmp_ascii(config.secure_protocol, "SSLv3") || !wget_strcasecmp_ascii(config.secure_protocol, "SSL")) {
+ 			method = wolfSSLv23_client_method();
+ 			min_version = WOLFSSL_SSLV3;
+ 		} else if (!wget_strcasecmp_ascii(config.secure_protocol, "TLSv1")) {
+@@ -606,7 +611,9 @@ void wget_ssl_init(void)
+ 		} else if (!wget_strcasecmp_ascii(config.secure_protocol, "TLSv1_1")) {
+ 			method = wolfSSLv23_client_method();
+ 			min_version = WOLFSSL_TLSV1_1;
+-		} else if (!wget_strcasecmp_ascii(config.secure_protocol, "TLSv1_2")) {
++		} else 
++#endif // ! NO_OLD_TLS
++			if (!wget_strcasecmp_ascii(config.secure_protocol, "TLSv1_2")) {
+ 			method = wolfSSLv23_client_method();
+ 			min_version = WOLFSSL_TLSV1_2;
+ 		} else if (!wget_strcasecmp_ascii(config.secure_protocol, "TLSv1_3")) {
+@@ -899,7 +906,7 @@ static void ShowX509Chain(WOLFSSL_X509_CHAIN *chain, int count, const char *hdr)
   */
  int wget_ssl_open(wget_tcp *tcp)
  {
@@ -83,7 +107,7 @@ index cd7743be..87874480 100644
  	wget_tls_stats_data stats = {
  			.alpn_protocol = NULL,
  			.version = -1,
-@@ -896,14 +902,14 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -925,14 +932,14 @@ int wget_ssl_open(wget_tcp *tcp)
  	sockfd= tcp->sockfd;
  	connect_timeout = tcp->connect_timeout;
  
@@ -100,7 +124,7 @@ index cd7743be..87874480 100644
  
  //	if (tcp->tls_false_start)
  //		info_printf(_("WolfSSL doesn't support TLS False Start\n"));
-@@ -915,7 +921,7 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -944,7 +951,7 @@ int wget_ssl_open(wget_tcp *tcp)
  		// wolfSSL_UseALPN() destroys the ALPN string (bad design pattern !)
  		alpn = wget_strmemcpy_a(alpnbuf, sizeof(alpnbuf), config.alpn, strlen(config.alpn));
  
@@ -109,7 +133,7 @@ index cd7743be..87874480 100644
  			debug_printf("ALPN offering %s\n", config.alpn);
  		} else
  			debug_printf("WolfSSL: Failed to set ALPN: %s\n", config.alpn);
-@@ -927,17 +933,20 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -956,17 +963,20 @@ int wget_ssl_open(wget_tcp *tcp)
  	// struct session_context *ctx = wget_calloc(1, sizeof(struct session_context));
  	// ctx->hostname = wget_strdup(hostname);
  
@@ -134,7 +158,7 @@ index cd7743be..87874480 100644
  
  	if (tls_stats_callback) {
  		long long after_millisecs = wget_get_timemillis();
-@@ -949,29 +958,29 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -978,29 +988,29 @@ int wget_ssl_open(wget_tcp *tcp)
  	const char *name;
  	int bits;
  	WOLFSSL_CIPHER *cipher;
@@ -173,7 +197,7 @@ index cd7743be..87874480 100644
  			debug_printf("WolfSSL: Failed to connect ALPN\n");
  		else {
  			debug_printf("WolfSSL: Server accepted ALPN protocol '%.*s'\n", (int) protocol_length, protocol);
-@@ -986,16 +995,16 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -1015,16 +1025,16 @@ int wget_ssl_open(wget_tcp *tcp)
  	}
  
  	if (ret == WGET_E_SUCCESS) {
@@ -193,7 +217,7 @@ index cd7743be..87874480 100644
  			if (!strcmp(tlsver, "TLSv1.2"))
  				stats.version = 4;
  			else if (!strcmp(tlsver, "TLSv1.3"))
-@@ -1029,11 +1038,11 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -1058,11 +1068,11 @@ int wget_ssl_open(wget_tcp *tcp)
  */		}
  	}
  
@@ -208,7 +232,7 @@ index cd7743be..87874480 100644
  		if (res >= 13 && res <= 29)
  			return WGET_E_CERTIFICATE;
  		else
-@@ -1053,7 +1062,9 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -1082,7 +1092,9 @@ int wget_ssl_open(wget_tcp *tcp)
  			debug_printf("Handshake timed out\n");
  		// xfree(ctx->hostname);
  		// xfree(ctx);
@@ -219,7 +243,7 @@ index cd7743be..87874480 100644
  		tcp->ssl_session = NULL;
  	}
  
-@@ -1071,18 +1082,20 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -1100,18 +1112,20 @@ int wget_ssl_open(wget_tcp *tcp)
  void wget_ssl_close(void **session)
  {
  	if (session && *session) {
@@ -244,7 +268,7 @@ index cd7743be..87874480 100644
  		*session = NULL;
  	}
  }
-@@ -1110,14 +1123,16 @@ void wget_ssl_close(void **session)
+@@ -1139,14 +1153,16 @@ void wget_ssl_close(void **session)
   */
  ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeout)
  {
@@ -267,7 +291,7 @@ index cd7743be..87874480 100644
  				break;
  		} else
  			break;
-@@ -1183,14 +1198,15 @@ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeou
+@@ -1212,14 +1228,15 @@ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeou
   */
  ssize_t wget_ssl_write_timeout(void *session, const char *buf, size_t count, int timeout)
  {
