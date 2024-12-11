@@ -1,0 +1,1 @@
+dotnet-script "%WLB_SCRIPT_FOLDER%\vs_debug_help\DebugProjGen.csx" --exe gnutls --libraries lib/libgnutls_alg.la --include_paths . lib lib/includes lib/minitasn1 gl --compile "lib/*.c" "lib/*/*.c" "src/*.c"
