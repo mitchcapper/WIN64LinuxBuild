@@ -42,13 +42,14 @@
 |  [pdcurses](repo_notes/pdcurses.md)  |  [![pdcurses Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pdcurses_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pdcurses_build.yml)  |
 |  [sed](repo_notes/sed_README.md)  |  [![sed Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_sed_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_sed_build.yml)  |
 |  [symlinks](repo_notes/symlinks_README.md)  |  [![symlinks Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_symlinks_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_symlinks_build.yml)  |
-|  [tar](repo_notes/tar_README.md)  |  [![tar Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_tar_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_tar_build.yml)  |
+|  [tar](repo_notes/tar_README.md) [paxutils](repo_notes/paxutils_README.md)  |  [![tar Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_tar_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_tar_build.yml)  |
 |  [wget2](repo_notes/wget2_README.md)  |  [![wget2 Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget2_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget2_build.yml)  |
 |  [wget](repo_notes/wget_README.md)  |  [![wget Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget_build.yml)  |
 |  [which](repo_notes/which_README.md)  |  [![which Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_which_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_which_build.yml)  |
 |  [wolfCrypt](repo_notes/wolfcrypt_README.md)  |  [![wolfCrypt Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wolfcrypt_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wolfcrypt_build.yml)  |
 |  [zlib](repo_notes/zlib_README.md)  |  [![zlib Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zlib_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zlib_build.yml)  |
 |  [zstd](repo_notes/zstd_README.md)  |  [![zstd Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zstd_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zstd_build.yml)  |
+|  [gnutls](repo_notes/gnutls_README.md)  |  [![gnutls Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gnutls_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gnutls_build.yml)  |
 |  WIP: [bash](repo_notes/bash_README.md)  |  [![bash Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_bash_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_bash_build.yml)  |
 
 # What is it?
@@ -58,7 +59,7 @@ It is a few primary components:
 - This is a set of patches, mostly for [gnulib](repo_notes/gnulib_README.md), to increase compatibility with windows systems.
 - A common bash script helper (helpers*.sh) and short template file for easily compiling gnulib and non-gnulib linux apps.  The focus is on moving as much duplicate code to the helper includes rather than in each build script. This includes several debug/trace tools and make/cmake/nmake wrappers.
 - A bash script that uses the above helper lib to compile a variety of common *nix tools for details on changes for each use the link in the list above.
-- A tool to generate a basic Visual Studio debug project to debug the target, if you can't run the binary in the debugger you can add `launchdebugger()` to the code run from the CLI and will get the normal JIT prompt.  Note due to how the debugger launch works it may better to do a bit earlier than needed (or in the main launch).  If the code you want to debug into is part of a library then you need to remove that code from the library (and add to your MSVC project) or build that library in MSVC.  The VS project comes with `debug.h` and `debug.c` that includes a basic console/file logger.
+- A tool to generate a basic Visual Studio debug project to debug the target, if you can't run the binary in the debugger you can add `launchdebugger()` to the code run from the CLI and will get the normal JIT prompt.  Note due to how the debugger launch works it may better to do a bit earlier than needed (or in the main launch).  If the code you want to debug into is part of a library then you need to remove that code from the library (and add to your MSVC project) or build that library in MSVC.  The VS project comes with `wlb_debug.h` and `wlb_debug.c` that includes a basic console/file logger.
 - Easy build flags to compile debug versions of all the libraries and the project itself with MSVC edit and continue support (without needing them all in a VS project)
 - Minimal changes to each target to make it work, to reduce maintenance requirements as the code changes.  For some of these projects we throw additional gnulib modules at it that seem to fix the problems, there may be easier ways but this does result in minimal changes to the native code base.
 - Build entire projects in Windows native debug mode for full VS debugging and symbols
@@ -74,13 +75,17 @@ This code and the scripts were quickly written without much testing, and often i
 Like many of us, I use multiple operating systems and have always used windows versions of *nix tools. Sadly these are not always perfect for my needs due to:
 
 - They are exceptionally dated (aka https://gnuwin32.sourceforge.net/ )
-- They use mingw requiring several additional dlls and have odd mingw behaviors
+- They use mingw requiring several additional dlls and have odd mingw behaviors.  This includes things like Cygwin which require the full cygwin emulation layer.   Cygwin does a good job of emulating linux api on windows (beyond that of mingw) but emulation involves many compatibility oddities or bugs, not to mention additional dll requirements.  You can get near any tool under cygwin but using them outside of the cygwin environment is often not a first class experience.
 - They are missing compile / library options like PCRE or other useful features
 - People go to great lengths to patch original sources to make them work for windows, but the depth of those patches requires frequent maintenance that can be hard to keep up
 
-There is the linux subsystem for Windows now, which while great you don't always choose the machines you must work on, and it requires using a separate shell from your current.
 
-By focusing on the core gnulib library we can have fewer changes to maintain and have more instant compatibility across projects.  We still use MSYS2 for the shell environment as it is light weight (no virtualization requirement) and has great compatibility with standard nix shell/systems.
+There is the linux subsystem for Windows (WSL2) now which while great has three issues:
+1) you don't always choose the machines you must work on
+2) it requires using a separate shell from your current
+3) You need to use a hypervisor layer and the overhead that entails
+
+By focusing on the core gnulib library we can have fewer changes to maintain and have more instant compatibility across projects.  We still use MSYS2 but only for building.  It provides the shell environment as it is light weight (no virtualization requirement) and has great compatibility with standard nix shell/systems. We also avoid using GCC and use MSVC's native compiler meaning binaries are fully debuggable with full symbol and stepping support.
 
 # Requirements
 
@@ -88,7 +93,10 @@ A great way to figure out all the requirements is to look at the github actions 
 
 ## MSYS2
 
-https://www.msys2.org/ MSYS2 is a linux sub-system for windows but unlike cygwin largely works not to simulate all things linux but to provide the infrastructure to do native windows compiling.  Note msys does use some cygwin packages for its env.  We don't need any packages installed from the UI just launch a shell once installed or unzipped and then run: `pacman -S make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex`.  Note for actually compiling we use a special way to enter the shell to make sure things we need are available (See Shell Launch below).  Note if you have an existing msys instance and already have various developer tools installed it may screw builds up. Configure scripts look for certain things and either fallback or try alternates when not found.  If you have something like GCC or msys/cygwin developer headers for certain packages installed these may take preference and either prevent builds from working, or require additional dlls to work.  The best solution is just create a second msys2 install just for this extract the msys2 archive to an alternate path and use the proper launcher to enter that msys and all will be well.   Similarly it is possible that if you have certain tools in your default path for windows say gcc or some other app configure looks for you may find again strange behavior.  This can be harder to fix as you will need to edit your shell launch script to remove those paths from your path before starting.
+https://www.msys2.org/ MSYS2 is a linux sub-system for windows but unlike cygwin largely works not to simulate all things linux but to provide the infrastructure to do native windows compiling.  Note msys does use some cygwin packages for its env.  We don't need any packages installed from the UI just launch a shell once installed or unzipped and then run: `pacman -S pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex`.  Note for actually compiling we use a special way to enter the shell to make sure things we need are available (See Shell Launch below).  Note if you have an existing msys instance and already have various developer tools installed it may screw builds up. Configure scripts look for certain things and either fallback or try alternates when not found.  If you have something like GCC or msys/cygwin developer headers for certain packages installed these may take preference and either prevent builds from working, or require additional dlls to work.  The best solution is just create a second msys2 install just for this extract the msys2 archive to an alternate path and use the proper launcher to enter that msys and all will be well. Similarly it is possible that if you have certain tools in your default path for windows say gcc or some other app configure looks for you may find again strange behavior.  This can be harder to fix as you will need to edit your shell launch script to remove those paths from your path before starting.  I would highly recommend adding the environmental variable `MSYS2_ARG_CONV_EXCL="*")
+
+###
+Msys should generally not have a few tools NOT installed or not in the path including: cmake
 
 ## Visual Studio 2022
 
@@ -121,7 +129,7 @@ Note the shell launch tools assume msys in c:\msys64 if the ENV var MSYS_PATH is
 
 ## Credits
 
-Most of the work here as not done by me and there are some great resources out there.  There are links in places to original code. There are many other great compile projects out there including:
+Most of the work here was not done by me and there are some great resources out there.  There are links in places to original code. There are many other great compile projects out there including:
 
 - https://gnuwin32.sourceforge.net/ - one of the most well known, many packages with detailed patch adjustments to make them work with Windows. Sadly stopped in 2010.
 - https://github.com/mbuilov - Great builds for some common tools like grep, awk, sed in native MSVC form using an interesting process of cygwin to generate the commands and then the normal windows env to do the compiling.
@@ -143,12 +151,11 @@ Normally I do start with PR for changesets I think are likely to be integrated. 
 
 ## Why does it take so long to build?
 
-Almost everything uses straight from the master branch sources rather than actual release archives.  For those tools that rely on gnulib that means there is nearly always a bootstrap process, and it can be very slow. This is largely due to msys fork performance and the cost of process startup on windows vs *nix systems.
+Almost everything uses straight from the master branch sources rather than actual release archives.  ~~~For those tools that rely on gnulib that means there is nearly always a bootstrap process, and it can be very slow. This is largely due to msys fork performance and the cost of process startup on windows vs *nix systems.~~~ Happy to say now that gnulib-tool.py is near parity for gnulib-tool bootstrapping is 100x faster.
 
 ### Things we try to do to fix this
 
-- There is gnulib-tool.py development to produce a not so shell heavy implementation we try to use this by default but often its blocker of missing `--automake-subdir` means it may not work for a project.  When we can use it though its probably 1000x faster than the standard gnulib-tool.
-- Build config caching  less helpful if you are only compiling one tool once, but if re-configuring (ie after changing the gnu modules) this can save a boatload of time, as the configure scripts on windows are also quite slow.
+- Build config caching less helpful if you are only compiling one tool once, but if re-configuring (ie after changing the gnu modules) this can save a boatload of time, as the configure scripts on windows are also quite slow.
 
 ## Why bash?
 
@@ -171,3 +178,6 @@ Generally the tools on this list are not considered as there are official native
 - [ripgrep](https://github.com/mitchcapper/ripgrep/actions)
 
 - [mediainfo](https://mediaarea.net/en/MediaInfo)
+
+# Developers / Custom Builds
+See the [DEVELOPERS.md](DEVELOPERS.md) file for creating your own custom builds or more details on the internals of the tool.
