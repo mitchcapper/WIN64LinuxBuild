@@ -1,3 +1,15 @@
+diff --git a/bootstrap.conf b/bootstrap.conf
+index c4d1fe06b..697cfcf85 100644
+--- a/bootstrap.conf
++++ b/bootstrap.conf
+@@ -50,7 +50,6 @@ git        1.4.4
+ perl       5.5
+ gperf      -
+ autopoint  -
+-gtkdocize  -
+ "
+ 
+ # update git submodules
 diff --git a/lib/x509/verify-high2.c b/lib/x509/verify-high2.c
 index dc975baeb..208b89d47 100644
 --- a/lib/x509/verify-high2.c
