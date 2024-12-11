@@ -99,7 +99,12 @@ function gnulib_ensure_buildaux_scripts_copied(){
 }
 function gnulib_add_addl_modules_to_bootstrap(){
 	cd $BLD_CONFIG_SRC_FOLDER
-	declare -a LIB_ADD=("${BLD_CONFIG_GNU_LIBS_DEFAULT[@]}" "${BLD_CONFIG_GNU_LIBS_ADDL[@]}")
+	declare -a LIB_ADD=("${BLD_CONFIG_GNU_LIBS_DEFAULT[@]}")
+	for i in "${BLD_CONFIG_GNU_LIBS_EXCLUDE[@]}"; do
+         LIB_ADD=(${LIB_ADD[@]//*$i*})
+	done
+	LIB_ADD=("${LIB_ADD[@]} ${BLD_CONFIG_GNU_LIBS_ADDL[@]}")
+
 	CUR_MODULES=""
 	BOOT_FILE=""
 	INDENT=""
