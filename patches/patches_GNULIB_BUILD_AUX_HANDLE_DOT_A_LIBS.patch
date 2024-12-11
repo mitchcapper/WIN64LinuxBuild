@@ -104,7 +104,7 @@ index 1521987496..fa651e18a5 100644
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index c3e8760e96..c7e79e33fb 100644
+index c3e8760e96..55eb76649e 100644
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,5 +1,10 @@
@@ -232,15 +232,17 @@ index c3e8760e96..c7e79e33fb 100644
    fi
  }
  
-@@ -132,6 +175,7 @@ func_cl_wrapper ()
+@@ -132,6 +175,9 @@ func_cl_wrapper ()
    # Assume a capable shell
    lib_path=
    shared=:
 +  STD_DECLARE=""
++  IS_GAS_CALL=0
++  GAS_OUTPUT_FILE=""
    linker_opts=
    for arg
    do
-@@ -145,16 +189,32 @@ func_cl_wrapper ()
+@@ -145,16 +191,32 @@ func_cl_wrapper ()
  	  case $2 in
  	    *.o | *.lo | *.[oO][bB][jJ])
  	      func_file_conv "$2"
@@ -275,7 +277,7 @@ index c3e8760e96..c7e79e33fb 100644
  	-I)
  	  eat=1
  	  func_file_conv "$2" mingw
-@@ -187,6 +247,21 @@ func_cl_wrapper ()
+@@ -187,6 +249,21 @@ func_cl_wrapper ()
  	-static)
  	  shared=false
  	  ;;
@@ -297,7 +299,7 @@ index c3e8760e96..c7e79e33fb 100644
  	-Wl,*)
  	  arg=${1#-Wl,}
  	  save_ifs="$IFS"; IFS=','
-@@ -200,18 +275,25 @@ func_cl_wrapper ()
+@@ -200,18 +277,32 @@ func_cl_wrapper ()
  	  eat=1
  	  linker_opts="$linker_opts $2"
  	  ;;
@@ -316,6 +318,13 @@ index c3e8760e96..c7e79e33fb 100644
 +	  set x "$@" -Tp "$file"
  	  shift
  	  ;;
++	*.s)
++	  IS_GAS_CALL=1
++	  GAS_OUTPUT_FILE="$1"
++	  set x "$@" "$1"
++	  GAS_OUTPUT_FILE=`echo "$GAS_OUTPUT_FILE" | sed 's|^.*[\\/]||; s|^[a-zA-Z]:||; s/\.s$/.obj/'`
++      shift
++	  ;;
 +	*.a)
 +	  linker_opts="$linker_opts $1"
 +	  ;;
@@ -326,12 +335,29 @@ index c3e8760e96..c7e79e33fb 100644
  	  shift
  	  ;;
  	*)
-@@ -225,8 +307,12 @@ func_cl_wrapper ()
+@@ -225,8 +316,29 @@ func_cl_wrapper ()
    if test -n "$linker_opts"; then
      linker_opts="-link$linker_opts"
    fi
 -  exec "$@" $linker_opts
 -  exit 1
++  if [[ $IS_GAS_CALL -eq 1 && "$AS" ]]; then
++	shift
++	local FINAL_ARR=("$AS")
++	for VAL in "$@"; do
++		case $VAL in
++				"-nologo")
++				;;
++				\/*) #strip slash commands
++				;;
++				*)
++					FINAL_ARR+=($VAL)
++				;;
++			esac
++	done
++	FINAL_ARR+=("-o" $GAS_OUTPUT_FILE)
++	set -- "${FINAL_ARR[@]}"
++  fi
 +  if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
 +  	wrapper_exec "$@" $STD_DECLARE $linker_opts
 +  else
