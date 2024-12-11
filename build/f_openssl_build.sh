@@ -33,14 +33,10 @@ fi
 		curl -L https://github.com/microsoft/vcpkg/files/12073957/nasm-2.16.01-win64.zip -o nasm.zip
 		unzip -j nasm.zip
 		cd $BLD_CONFIG_SRC_FOLDER
-		mkdir -p perl && cd perl #it wants windows native perl with 'proper' path support
-		curl https://strawberryperl.com/download/5.32.1.1/strawberry-perl-5.32.1.1-64bit-portable.zip -o perl.zip
-		unzip -q perl.zip
 		# this probably isn't strictly necessary but makes the paths more universal as they do end up in the build a few spots
 		# sed -i -E 's#return (\$path ne [^;]+;)#my $ret = \1\n\t$ret =~ s/\\/\//g;\n\treturn $ret;#' perl/lib/File/Spec/Win32.pm
 	fi
-	
-	PERL="./perl/perl/bin/perl.exe"
+	ensure_perl_installed_set_exports
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		#apply_our_repo_patch; #looks in the patches folder for  repo_BUILD_NAME.patch and if found applies it.  Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
 		SKIP_STEP=""

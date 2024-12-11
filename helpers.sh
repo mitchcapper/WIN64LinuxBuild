@@ -71,7 +71,7 @@ esac
 
 pkg_config_manual_add(){
 	#pkg-config --list-package-names to get package names
-	echo $PKG_CONFIG_PATH
+	#echo $PKG_CONFIG_PATH
 	for VAR in "$@"; do
 		pkg-config --print-errors "${VAR}"
 		staticAdd=""
@@ -405,7 +405,7 @@ function setup_build_env(){
 		LINK_PATH="${WIN_SCRIPT_FOLDER}/wraps/link.bat"
 		#echo "LINK PATH IS: $LINK_PATH"
 		AR="${WIN_SCRIPT_FOLDER}/wraps/lib.bat"
-		STATIC_ADD="-showIncludes ${STATIC_ADD}"
+		STATIC_ADD="${STATIC_ADD}"
 	fi
 	export CXX="${CL}" AR="$AR" CC="${CL}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADDL_LIBS}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
@@ -456,6 +456,18 @@ function configure_fixes(){
 	
 
 
+}
+function ensure_perl_installed_set_exports(){
+	export PERL="${BLD_CONFIG_PERL_DIR}/perl/bin/perl.exe"
+	if [[ $1 == "AS" ]]; then	
+		export AS="${BLD_CONFIG_PERL_DIR}/c/bin/as.exe"
+	fi
+	if [[ ! -f "${PERL}" ]]; then
+		mkdir -p "${BLD_CONFIG_PERL_DIR}" && pushd "${BLD_CONFIG_PERL_DIR}"
+		curl https://strawberryperl.com/download/5.32.1.1/strawberry-perl-5.32.1.1-64bit-portable.zip -o perl.zip
+		unzip -q perl.zip
+		popd
+	fi
 }
 
 function load_colors(){
