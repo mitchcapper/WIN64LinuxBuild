@@ -1,9 +1,12 @@
 using System;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 
-void Main(){
+void Main() {
+
 	var opts = new Opts();
 	var usage = @"
 	csi DebugProjGen.csx --exe ln --include_paths './'
@@ -45,21 +48,21 @@ void Main(){
 	foreach (var fl in copy) {
 		var useSymlink = false;
 		var dstName = fl;
-		if (fl == "wlb_debug.c" || fl =="osfixes.c" || fl=="osfixes.h"){
-			useSymlink=true;
-			 if(opts.GetValBool("debug_cpp") && fl.EndsWith(".c"))
-				dstName = fl+"pp";
+		if (fl == "wlb_debug.c" || fl == "osfixes.c" || fl == "osfixes.h") {
+			useSymlink = true;
+			if (opts.GetValBool("debug_cpp") && fl.EndsWith(".c"))
+				dstName = fl + "pp";
 		}
 		var dir = ROOT_DIR;
 		if ((fl == "wlb_debug.h" || fl == "osfixes.h") && String.IsNullOrWhiteSpace(ALT_DEBUG_HEADER_DIR) == false)
-			dir = Path.Combine(dir,ALT_DEBUG_HEADER_DIR);		
+			dir = Path.Combine(dir, ALT_DEBUG_HEADER_DIR);
 		var target = Path.Combine(dir, dstName);
-		if (! File.Exists(target)){
-			var src_path = Path.Combine(config.GetVal("SCRIPT_FOLDER"),fl);
-			if (! File.Exists(src_path))
-				src_path=Path.Combine(VS_DEBUG_FOLDER, fl);
+		if (!File.Exists(target)) {
+			var src_path = Path.Combine(config.GetVal("SCRIPT_FOLDER"), fl);
+			if (!File.Exists(src_path))
+				src_path = Path.Combine(VS_DEBUG_FOLDER, fl);
 			if (useSymlink)
-				File.CreateSymbolicLink(target,src_path);
+				File.CreateSymbolicLink(target, src_path);
 			else
 				File.Copy(src_path, target, true);
 		}
@@ -91,41 +94,68 @@ void ArrExpandWithDefs(string root, List<string> arr, IEnumerable<string> addl, 
 	//Console.WriteLine(string.Join(", ",arr));
 	//throw new Exception("ERR");
 }
-void ArrExpandWildcards(string root, List<string> arr){
-		for (var x = 0; x < arr.Count; x++){
-		if (arr[x].Contains("*")){ //try to expand wildcards
-			var dir = Path.GetDirectoryName(arr[x]);
-			var file = Path.GetFileName(arr[x]);
-			var all = Directory.GetFiles(Path.Combine(root,dir),file);
+void ArrExpandWildcards(string root, List<string> arr) {
+	for (var x = 0; x < arr.Count; x++) {
+		var orig_path = arr[x].AsSpan();
+		Console.WriteLine($"Working on: {orig_path}");
+		var nextWildcard = orig_path.IndexOf("*");
+		if (nextWildcard != -1) {
+			var folderAfter = orig_path.Slice(nextWildcard);
+			var folderStart = folderAfter.IndexOfAny('/', '\\');
+			if (folderStart != -1) { //if we are wildcard directory match we need to handle that otherwise standard pattern matching below will work
+				folderAfter = folderAfter.Slice(folderStart + 1);
+				var parsePath = orig_path.Slice(0, nextWildcard + folderStart);
+				var baseDir = Path.GetDirectoryName(parsePath);
+				var wildPattern = Path.GetFileName(parsePath);
+				var all = Directory.GetDirectories(Path.Combine(root, baseDir.ToString()), wildPattern.ToString());
+				arr.RemoveAt(x);
+				var insertAt = x;
+				foreach (var f in all){
+					if (Path.GetFileName(f).StartsWith(".") && wildPattern.StartsWith(".") == false)
+						continue;
+					arr.Insert(insertAt++, Path.Combine(f, folderAfter.ToString()));
+				}
+				
+				x--;
+				continue;
+			}
+		}
+		if (orig_path.Contains('*')) {
+			var dir = Path.GetDirectoryName(orig_path);
+			var file = Path.GetFileName(orig_path);
+			var all = Directory.GetFiles(Path.Combine(root, dir.ToString()), file.ToString());
 			arr.RemoveAt(x);
-			foreach (var f in all){
-				arr.Insert(x,f);
+			foreach (var f in all) {
+				if (Path.GetFileName(f).StartsWith(".") && file.StartsWith(".") == false)
+						continue;
+				arr.Insert(x, f);
 				x++;
 			}
 			x--;
 		}
+
 	}
 }
 void RelativePaths(string root, List<string> arr) {
 	for (var x = 0; x < arr.Count; x++)
-		arr[x] = Path.GetRelativePath(root.Replace("/","\\"),arr[x].Replace("/","\\")).Replace("\\","/");
+		arr[x] = Path.GetRelativePath(root.Replace("/", "\\"), arr[x].Replace("/", "\\")).Replace("\\", "/");
 }
-Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
-	var dict = new Dictionary<string,string>();
+Dictionary<string, string> BuildTemplateDict(ConfigRead config, Opts opts) {
+	var dict = new Dictionary<string, string>();
 	void SetTemplateVal(String name, String val) => dict[name] = val;
-	var ROOT_DIR = config.GetVal("SRC_FOLDER").Replace("\\","/");
+	var ROOT_DIR = config.GetVal("SRC_FOLDER").Replace("\\", "/");
 	var lib_paths = opts.GetArrVal("library_paths");
 	var incl_paths = opts.GetArrVal("include_paths");
 	var libs = opts.GetArrVal("libraries");
 	var compile = opts.GetArrVal("compile");
 	var define = opts.GetArrVal("define");
-	define = define.Select(a=>a.StartsWith("-D") ? a.Substring(2) : a).ToList();
+	define = define.Select(a => a.StartsWith("-D") ? a.Substring(2) : a).ToList();
 	var include = opts.GetArrVal("include");
 	var exclude = opts.GetArrVal("exclude");
-	ArrExpandWildcards(ROOT_DIR,compile);
-	ArrExpandWildcards(ROOT_DIR,include);
-	compile = compile.Where(a=>exclude.Any(ex=> a.EndsWith(ex,StringComparison.CurrentCultureIgnoreCase)) == false).ToList();
-	include = include.Where(a=>exclude.Any(ex=> a.EndsWith(ex,StringComparison.CurrentCultureIgnoreCase)) == false).ToList();
+	ArrExpandWildcards(ROOT_DIR, compile);
+	ArrExpandWildcards(ROOT_DIR, include);
+	compile = compile.Where(a => exclude.Any(ex => a.EndsWith(ex, StringComparison.CurrentCultureIgnoreCase)) == false).ToList();
+	include = include.Where(a => exclude.Any(ex => a.EndsWith(ex, StringComparison.CurrentCultureIgnoreCase)) == false).ToList();
 	ArrExpandWithDefs(ROOT_DIR, lib_paths, new[] { "", "lib", "gl/lib", "src", "gnu" });
 	ArrExpandWithDefs(ROOT_DIR, incl_paths, new[] { "", "lib", "gl/lib", "gnu" });
 	var replaceExt = opts.GetVal("replace_ext");
@@ -134,18 +164,18 @@ Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
 	compile = compile.Select(a => a.EndsWith(".obj") ? a.Substring(0, a.Length - 3) + replaceExt : a).Distinct().ToList();
 	ArrPathFixForFiles(incl_paths, compile);
 	ArrPathFixForFiles(incl_paths, include);
-	 if (! opts.GetValBool("no_autoheader")){
-		var posHeaders = compile.Select(file => new FileInfo(file)).Select(fInfo => Path.Combine( fInfo.DirectoryName,fInfo.Name.Substring(0,fInfo.Name.Length-(fInfo.Extension.Length > 0 ? fInfo.Extension.Length+1 : 0)) + "h").Replace("\\","/")).ToList();
-		ArrPathFixForFiles(incl_paths,posHeaders);
-		var exists = posHeaders.Where(a=>File.Exists(a)).ToArray();
+	if (!opts.GetValBool("no_autoheader")) {
+		var posHeaders = compile.Select(file => new FileInfo(file)).Select(fInfo => Path.Combine(fInfo.DirectoryName, fInfo.Name.Substring(0, fInfo.Name.Length - (fInfo.Extension.Length > 0 ? fInfo.Extension.Length + 1 : 0)) + "h").Replace("\\", "/")).ToList();
+		ArrPathFixForFiles(incl_paths, posHeaders);
+		var exists = posHeaders.Where(a => File.Exists(a)).ToArray();
 		include.AddRange(exists);
 		foreach (var itm in exists)
 			posHeaders.Remove(itm);
-		posHeaders = posHeaders.Select(a=>new FileInfo(a).Name).ToList();
-		ArrPathFixForFiles(incl_paths,posHeaders);
-		exists = posHeaders.Where(a=>File.Exists(a)).ToArray();
+		posHeaders = posHeaders.Select(a => new FileInfo(a).Name).ToList();
+		ArrPathFixForFiles(incl_paths, posHeaders);
+		exists = posHeaders.Where(a => File.Exists(a)).ToArray();
 		include.AddRange(exists);
-    	    
+
 	}
 
 	ArrExpandWithDefs(ROOT_DIR, include, new[] { "config.h", "lib/config.h", $"{opts.GetVal("exe")}/defs.h", "lib/fcntl.h" });
@@ -165,46 +195,46 @@ Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
 	compile.Add(opts.GetValBool("debug_cpp") ? "osfixes.cpp" : "osfixes.c");
 	include.Add("wlb_debug.h");
 	include.Add("osfixes.h");
-	
+
 	RelativePaths(ROOT_DIR, compile);
 	RelativePaths(ROOT_DIR, include);
 	include = include.Distinct().ToList();
 	compile = compile.Distinct().ToList();
 	var all_files = new List<ProjFile>();
-	all_files.AddRange(compile.Select(a=>new ProjFile(true,a)));
-	all_files.AddRange(include.Select(a=>new ProjFile(false,a)));	
-	
+	all_files.AddRange(compile.Select(a => new ProjFile(true, a)));
+	all_files.AddRange(include.Select(a => new ProjFile(false, a)));
+
 	SetTemplateVal("BIN_NAME", opts.GetVal("exe"));
 	SetTemplateVal("PROJ_NAME", config.GetVal("BUILD_NAME"));
 	SetTemplateVal("ADDL_LIBS", String.Join(";", libs));
 	SetTemplateVal("INCLUDE_PATHS", String.Join(";", incl_paths));
 	SetTemplateVal("LIB_PATHS", String.Join(";", lib_paths));
-	SetTemplateVal("INCLUDE_FILES", String.Join("\n", all_files.Where(a=>a.compile==false).Select(a => a.ItemAsProj)));
-	SetTemplateVal("COMPILE_FILES", String.Join("\n", all_files.Where(a=>a.compile).Select(a => a.ItemAsProj)));
-	
-	SetTemplateVal("INCLUDE_FILES_FILT", String.Join("\n", all_files.Where(a=>a.compile==false).Select(a => a.ItemAsProjFilter)));
-	SetTemplateVal("COMPILE_FILES_FILT", String.Join("\n", all_files.Where(a=>a.compile).Select(a => a.ItemAsProjFilter)));
+	SetTemplateVal("INCLUDE_FILES", String.Join("\n", all_files.Where(a => a.compile == false).Select(a => a.ItemAsProj)));
+	SetTemplateVal("COMPILE_FILES", String.Join("\n", all_files.Where(a => a.compile).Select(a => a.ItemAsProj)));
+
+	SetTemplateVal("INCLUDE_FILES_FILT", String.Join("\n", all_files.Where(a => a.compile == false).Select(a => a.ItemAsProjFilter)));
+	SetTemplateVal("COMPILE_FILES_FILT", String.Join("\n", all_files.Where(a => a.compile).Select(a => a.ItemAsProjFilter)));
 
 	//here we are building all distinct paths including parents to generate our folder structure
 	var all_paths = new List<string>();
-	all_paths.AddRange(all_files.Select(a=>a.ItemProjFilterFolderPath).Distinct());
+	all_paths.AddRange(all_files.Select(a => a.ItemProjFilterFolderPath).Distinct());
 	var tmp = all_paths;
-	all_paths = all_paths.Select(a=>System.IO.Path.GetDirectoryName(a)).ToList();
+	all_paths = all_paths.Select(a => System.IO.Path.GetDirectoryName(a)).ToList();
 	all_paths.AddRange(tmp);
 
-	all_paths = all_paths.Select(a=>System.IO.Path.GetDirectoryName(a)).ToList();
+	all_paths = all_paths.Select(a => System.IO.Path.GetDirectoryName(a)).ToList();
 	all_paths.AddRange(tmp);
-	all_paths = all_paths.Where(a=>String.IsNullOrWhiteSpace(a) ==false).Distinct().ToList();
-	
-	SetTemplateVal("PROJ_FOLDERS_FILT", String.Join("\n",  all_paths.OrderBy(a=>a.Length).Select(a=>$@"<Filter Include=""{a}"">
+	all_paths = all_paths.Where(a => String.IsNullOrWhiteSpace(a) == false).Distinct().ToList();
+
+	SetTemplateVal("PROJ_FOLDERS_FILT", String.Join("\n", all_paths.OrderBy(a => a.Length).Select(a => $@"<Filter Include=""{a}"">
 	  <UniqueIdentifier>{Guid.NewGuid().ToString().ToLower()}</UniqueIdentifier>
-</Filter>")  ));
+</Filter>")));
 	SetTemplateVal("DEFINES", String.Join(";", define.Distinct()));
 	return dict;
 }
-void DoFileReplace(String filename, ConfigRead config, Dictionary<string,string> TEMPLATE_DICT, String save_filename) {
+void DoFileReplace(String filename, ConfigRead config, Dictionary<string, string> TEMPLATE_DICT, String save_filename) {
 	var TEMPLATE_FOLDER = Path.Combine(config.GetVal("SCRIPT_FOLDER"), "vs_debug_help");
-	var ROOT_DIR = config.GetVal("SRC_FOLDER").Replace("\\","/");
+	var ROOT_DIR = config.GetVal("SRC_FOLDER").Replace("\\", "/");
 	filename = Path.Combine(TEMPLATE_FOLDER, filename);
 	var text = File.ReadAllText(filename);
 	TemplateReplace(ref save_filename, "PROJ_NAME", config.GetVal("BUILD_NAME"));
@@ -212,7 +242,7 @@ void DoFileReplace(String filename, ConfigRead config, Dictionary<string,string>
 	Console.WriteLine($"ROOT: {ROOT_DIR} save file: {save_filename}");
 	save_filename = Path.Combine(ROOT_DIR, save_filename);
 
-	foreach (var kvp in TEMPLATE_DICT.OrderByDescending(a=>a.Key.Length)){
+	foreach (var kvp in TEMPLATE_DICT.OrderByDescending(a => a.Key.Length)) {
 		TemplateReplace(ref text, kvp.Key, kvp.Value);
 	}
 
@@ -221,17 +251,17 @@ void DoFileReplace(String filename, ConfigRead config, Dictionary<string,string>
 }
 
 
-class ProjFile{
+class ProjFile {
 	public bool compile;
 	public string relative_folder;
 	public string ItemProjFilterFolderPath => $"{(compile ? "Source" : "Header")} Files{(String.IsNullOrWhiteSpace(relative_folder) ? "" : $"\\{relative_folder}")}";
-	public string ItemAsProj => @$"<Cl{(compile ? "Compile":"Include")} Include=""{relative_full_path}"" />";
-	public string ItemAsProjFilter => @$"<Cl{(compile ? "Compile":"Include")} Include=""{relative_full_path}"">
+	public string ItemAsProj => @$"<Cl{(compile ? "Compile" : "Include")} Include=""{relative_full_path}"" />";
+	public string ItemAsProjFilter => @$"<Cl{(compile ? "Compile" : "Include")} Include=""{relative_full_path}"">
 	<Filter>{ItemProjFilterFolderPath}</Filter>
-</Cl{(compile ? "Compile":"Include")}>";
-	public string relative_full_path => Path.Combine(relative_folder,filename).Replace("/","\\");
+</Cl{(compile ? "Compile" : "Include")}>";
+	public string relative_full_path => Path.Combine(relative_folder, filename).Replace("/", "\\");
 	public string filename;
-	public ProjFile(bool compile, String path){
+	public ProjFile(bool compile, String path) {
 		this.compile = compile;
 		relative_folder = System.IO.Path.GetDirectoryName(path);
 		filename = System.IO.Path.GetFileName(path);
