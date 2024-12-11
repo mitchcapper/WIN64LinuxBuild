@@ -48,6 +48,8 @@ fi
 			gnulib_ensure_buildaux_scripts_copied;
 			setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
 			./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po
+			libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
+			autoreconf --symlink --verbose
 			SKIP_STEP=""
 		fi
 	fi
