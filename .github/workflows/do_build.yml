@@ -153,7 +153,7 @@ jobs:
         run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}"
 
       - name: Debug Session
-        if: ${{ failure() && (vars.DEBUG_FAIL == '1') }}
+        if: ${{ failure() && (vars.DEBUG_FAIL == '1') && (vars.ACTIONS_RUNNER_DEBUG == true) }}
         run: ${{env.WLB_SCRIPT_FOLDER}}/.github/debug_ssh_start.ps1
 
       - uses: actions/upload-artifact@v3.1.1
