@@ -94,11 +94,6 @@ The template system uses [Scriban](https://github.com/scriban/scriban) which use
 ## What We Template
 While there are many things we could template for the most part we want to only keep it to things a user is unlikely to change while creating the script.  Build scripts often contain custom code so having to regenerate the template is an annoyance to re-add. This means we don't  Things we template include: Does a library use gnulib?, does it use cmake or configure? does it want us to install any vcpkgs for it? We don't template things like what gnulib modules do we need to add, or what vcpkg's to install.  These are items that the developer may need to vary while trying to get the build to work properly. Now we do offer the convenience of specifying the default variables from default_config.ini but the user can always set these themselves in the script easily enough.
 
-need to do:
-make
-gnutls
-
-
 # Template Calls for Each Lib/App
 Below are the template calls and modifications to the produced build script for each build we offer.  I try to make sure any changes made to the build scripts gets ported back here.
 
@@ -502,7 +497,7 @@ make ships with a bunch of gnulib baked in but doesn't use gnulib proper we chan
 
 ## gnutls
 ### Template Script Args
-`--BUILD_NAME gnutls --GitRepo https://github.com/gnutls/gnutls.git --GNU_LIBS_ADDL "dirent" "getopt-gnu" --CONFIG_CMD_ADDL "--with-included-unistring" --VC_PKGDEPS "gmp" "nettle" "brotli" "zstd"  --PKG_CONFIG_MANUAL_ADD "gmp" --BUILD_ADDL_CFLAGS "-I../gl/"`
+`--BUILD_NAME gnutls --GitRepo https://github.com/gnutls/gnutls.git --GNU_LIBS_ADDL "dirent" "getopt-gnu" --CONFIG_CMD_ADDL "--with-included-unistring" "--with-included-libtasn1" --VC_PKGDEPS "gmp" "nettle" "brotli" "zstd"  --PKG_CONFIG_MANUAL_ADD "gmp" --BUILD_ADDL_CFLAGS "-I../gl/"`
 
 ### Modifications
 At top after startcommon add: `BLD_CONFIG_GNU_LIBS_EXCLUDE=("${BLD_CONFIG_GNU_LIBS_DEFAULT[@]}")` have to wait until then as otherwise full template sub not done

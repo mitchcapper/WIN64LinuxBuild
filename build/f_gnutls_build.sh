@@ -4,7 +4,7 @@ set -e
 
 BLD_CONFIG_BUILD_NAME="gnutls"
 BLD_CONFIG_GNU_LIBS_ADDL=( "dirent" "getopt-gnu" )
-BLD_CONFIG_CONFIG_CMD_ADDL=( "--with-included-unistring" )
+BLD_CONFIG_CONFIG_CMD_ADDL=( "--with-included-unistring" "--with-included-libtasn1" )
 BLD_CONFIG_VCPKG_DEPS=( "gmp" "nettle" "brotli" "zstd" )
 BLD_CONFIG_PKG_CONFIG_MANUAL_ADD=( "gmp" )
 BLD_CONFIG_BUILD_ADDL_CFLAGS=( "-I../gl/" )
