@@ -77,7 +77,7 @@ void Main() {
 	var blankRegex = new Regex(@"[ \t]*\n([ \t]*\n){2,}", RegexOptions.Singleline);
 	full = blankRegex.Replace(full,"\n\n");
 
-	var fname=@$"build-new/f_{BUILD_NAME}_build.sh";
+	var fname=@$"build/f_{BUILD_NAME}_build.sh";
 	File.WriteAllText(fname,full);
 	Console.WriteLine(full);
 	Console.WriteLine($"DONE wrote: {fname}");

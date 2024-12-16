@@ -289,7 +289,7 @@ function run_make(){
 declare -g ADDL_OUTPUT_MESSAGE=""
 function run_logged_make(){
 	echo "Starting logged build run sure you have a clean build as any pre-built items are not logged"
-	CMD="$BLD_CONFIG_BUILD_MAKE_BIN"
+	CMD="$BLD_CONFIG_BUILD_MAKE_CMD_DEFAULT"
 	if [[ $# != 0 ]]; then
 		CMD="$1"
 		shift 1;
@@ -297,7 +297,7 @@ function run_logged_make(){
 		set - "-j1" "$@"
 	fi
 	OUTPUT_FILE=""
-	if [[ $LOG_MAKE_RUN == "make" || $LOG_MAKE_RUN == "$BLD_CONFIG_BUILD_MAKE_BIN" ]]; then
+	if [[ $LOG_MAKE_RUN == "make" || $LOG_MAKE_RUN == "$BLD_CONFIG_BUILD_MAKE_CMD_DEFAULT" ]]; then
 		OUTPUT_FILE="${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
 		"$CMD" --just-print "$@" | tee "${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
 	elif [[ $LOG_MAKE_RUN == "raw" ]]; then
@@ -335,7 +335,7 @@ function configure_run(){
 	ex ./configure "${FULL_CONFIG_CMD_ARR[@]}"  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
 function use_custom_make_and_gsh(){
-	BLD_CONFIG_BUILD_MAKE_BIN="gnumake.exe"
+	BLD_CONFIG_BUILD_MAKE_CMD_DEFAULT="gnumake.exe"
 	MAKESHELL="gsh.exe"
 	DEFAULTMAKESHELL="$MAKESHELL"
 	NOMAKESHELLS="/bin/sh"
@@ -376,6 +376,10 @@ function make_array_if_str(){
 function setup_build_env(){
 	ADL_LIB_FLAGS=""
 	ADL_C_FLAGS=""
+	if [[ $BLD_CONFIG_GNU_LIBS_AUTORECONF_WRAPPER -eq 1 && $BLD_CONFIG_GNU_LIBS_AUTORECONF_WRAPPER -eq 1 && $BLD_CONFIG_GNU_LIBS_USED -ne 1 ]]; then
+		setup_gnulibtool_py_autoconfwrapper; # if we didnt use gnu libs we didnt set this up before as we do it normally after the switch to master step
+	fi
+
 	pkg_config_manual_add "${BLD_CONFIG_PKG_CONFIG_MANUAL_ADD[@]}";
 	if [[ $SETUP_BUILD_ENV_RUN -eq 1 ]]; then
 		echo "setup_build_env() called twice, this would cause some vars to stack to do including the prev value and also break caches" 1>&2
