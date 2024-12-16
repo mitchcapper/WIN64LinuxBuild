@@ -185,13 +185,14 @@ function git_clone(){
 		FINAL_ARR+=($GIT_DIR)
 	fi	
 	ex git clone "${FINAL_ARR[@]}"
+	declare -a REF_ARGS=() #global incase we are just doing a gnulib add
 	if [[ "$BLD_CONFIG_GIT_NO_RECURSE" -eq 1 ]]; then
 		for sub in "${BLD_CONFIG_GIT_SUBMODULE_INITS[@]}"; do
 			ex git submodule init "${sub}"
 			ex git submodule update "${sub}"
 		done
 	elif [[ "$USE_REF_SRC_DIR" -eq 1 ]]; then
-		declare -a REF_ARGS=( "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" )
+		REF_ARGS=( "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" )
 		if [[ -d "gnulib" ]]; then
 			if [[ "$BLD_CONFIG_GNU_LIB_REFERENCE_MASTER_SHORTCUT" -eq 1 && "$BLD_CONFIG_GNU_LIBS_BRANCH" != "" ]]; then
 				ex git rm gnulib
@@ -200,10 +201,11 @@ function git_clone(){
 			else
 				ex git submodule update --init "${REF_ARGS[@]}" gnulib
 			fi
-		elif [[ "$BLD_CONFIG_GNU_LIBS_ADD_TO_REPO" -eq 1 ]]; then
-			ex git submodule add "${REF_ARGS[@]}" -b "$BLD_CONFIG_GNU_LIBS_BRANCH" git://git.savannah.gnu.org/gnulib.git gnulib
 		fi
 		ex git submodule update --init --recursive #make sure any other sub modules are inited
+	fi
+	if [[ "$BLD_CONFIG_GNU_LIBS_ADD_TO_REPO" -eq 1 ]]; then
+		ex git submodule add "${REF_ARGS[@]}" -b "$BLD_CONFIG_GNU_LIBS_BRANCH" git://git.savannah.gnu.org/gnulib.git gnulib
 	fi
 	SKIP_STEP="";CUR_STEP="";
 }
