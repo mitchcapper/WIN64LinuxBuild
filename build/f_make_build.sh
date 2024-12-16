@@ -27,7 +27,6 @@ fi
 		rm src/w32/include/dirent.h src/w32/compat/dirent.c
 		rm gl/lib/*
 		rm gl/modules/*
-		rm build-aux/{compile,ar-lib}
 		sed -i -E "s#(make-glob|make-macros)##g" bootstrap.conf
 		git clone --recurse-submodules https://github.com/coreutils/gnulib.git
 		SKIP_STEP=""
