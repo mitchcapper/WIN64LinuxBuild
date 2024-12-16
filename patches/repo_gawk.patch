@@ -99,10 +99,10 @@ index 4891313f..8cc7aa77 100644
  # This is for my development & testing.
  efence: gawk
 diff --git a/awk.h b/awk.h
-index 6d0993ea..906d5d81 100644
+index 2c2af80d..e3539735 100644
 --- a/awk.h
 +++ b/awk.h
-@@ -66,7 +66,7 @@
+@@ -54,7 +54,7 @@
  
  #if !defined(__SUNPRO_C)
  #if !defined(__STDC__) || __STDC__ < 1
@@ -111,7 +111,7 @@ index 6d0993ea..906d5d81 100644
  #endif
  #endif
  
-@@ -1555,9 +1555,11 @@ extern void set_CONVFMT(void);
+@@ -1543,9 +1543,11 @@ extern void set_CONVFMT(void);
  extern void set_BINMODE(void);
  extern void set_LINT(void);
  extern void set_TEXTDOMAIN(void);
@@ -123,7 +123,7 @@ index 6d0993ea..906d5d81 100644
  extern void update_NR(void);
  extern void update_NF(void);
  extern void update_FNR(void);
-@@ -1651,9 +1653,11 @@ extern int isdirpunct(int c);
+@@ -1639,9 +1641,11 @@ extern int isdirpunct(int c);
  extern void init_sockets(void);
  extern void init_io(void);
  extern void init_csv_records(void);
@@ -166,9 +166,8 @@ index cfe250c3..050ed4fe 100644
 +#endif
      return 0;
  }
- 
 diff --git a/builtin.c b/builtin.c
-index c887b3ce..fe9e9c66 100644
+index 382922db..6d243c2f 100644
 --- a/builtin.c
 +++ b/builtin.c
 @@ -23,13 +23,24 @@
@@ -443,7 +442,7 @@ index 0506e9d8..5ac1c7e4 100644
  @}
  @c endfile
 diff --git a/ext.c b/ext.c
-index 89b53ab5..e9840813 100644
+index 26894bf1..cc0cd420 100644
 --- a/ext.c
 +++ b/ext.c
 @@ -27,7 +27,8 @@
@@ -852,7 +851,7 @@ index 447210cb..da94b02e 100644
  #include "awk.h"
  
 diff --git a/io.c b/io.c
-index b0af38b5..47586799 100644
+index 1235c711..de60d379 100644
 --- a/io.c
 +++ b/io.c
 @@ -23,6 +23,12 @@
@@ -992,7 +991,7 @@ index b0af38b5..47586799 100644
  	for (max_path = 0, p = (char *) path; *p; p++)
 @@ -3053,7 +3073,11 @@ do_find_source(const char *src, struct stat *stb, int *errcode, path_info *pi)
  
- 	emalloc(path, char *, pi->max_pathlen + strlen(src) + 1, "do_find_source");
+ 	emalloc(path, char *, pi->max_pathlen + strlen(src) + 1);
  	for (i = 0; pi->awkpath[i] != NULL; i++) {
 -		if (strcmp(pi->awkpath[i], "./") == 0 || strcmp(pi->awkpath[i], ".") == 0)
 +		if (strcmp(pi->awkpath[i], "./") == 0
@@ -1003,15 +1002,7 @@ index b0af38b5..47586799 100644
  			*path = '\0';
  		else
  			strcpy(path, pi->awkpath[i]);
-@@ -4666,7 +4690,6 @@ gawk_popen_write(const char *cmd)
- 	return fp;
- #endif
- }
--
- /* gawk_popen_write_close --- close a FILE * that we created */
- 
- static int
-@@ -4698,3 +4721,33 @@ gawk_popen_write_close(FILE *fp)
+@@ -4696,3 +4720,33 @@ gawk_popen_write_close(FILE *fp)
  	return -1;
  #endif
  }
@@ -1046,7 +1037,7 @@ index b0af38b5..47586799 100644
 +
 +#endif //  _WIN32
 diff --git a/main.c b/main.c
-index adb3be59..d77139c3 100644
+index 884650dc..2f07afa7 100644
 --- a/main.c
 +++ b/main.c
 @@ -33,6 +33,7 @@
@@ -1057,7 +1048,7 @@ index adb3be59..d77139c3 100644
  
  #define DEFAULT_PROFILE		"awkprof.out"	/* where to put profile */
  #define DEFAULT_VARFILE		"awkvars.out"	/* where to put vars */
-@@ -897,7 +898,26 @@ init_vars()
+@@ -895,7 +896,26 @@ init_vars()
  		load_procinfo();
  	load_environ();
  }
@@ -1085,7 +1076,7 @@ index adb3be59..d77139c3 100644
  /* path_environ --- put path variable into environment if not already there */
  
  static void
-@@ -920,6 +940,9 @@ path_environ(const char *pname, const char *dflt)
+@@ -918,6 +938,9 @@ path_environ(const char *pname, const char *dflt)
  	 * If original value was the empty string, set it to
  	 * the default value.
  	 */
@@ -1095,7 +1086,7 @@ index adb3be59..d77139c3 100644
  	if ((*aptr)->stlen == 0) {
  		unref(*aptr);
  		*aptr = make_string(val, strlen(val));
-@@ -1060,10 +1083,10 @@ load_procinfo()
+@@ -1058,10 +1081,10 @@ load_procinfo()
  #else
  #define getpgrp_arg() getpid()
  #endif
@@ -1108,7 +1099,7 @@ index adb3be59..d77139c3 100644
  	/*
  	 * Could put a lot of this into a table, but then there's
  	 * portability problems declaring all the functions. So just
-@@ -1072,7 +1095,7 @@ load_procinfo()
+@@ -1070,7 +1093,7 @@ load_procinfo()
  
  	value = getpid();
  	update_PROCINFO_num("pid", value);
@@ -1117,7 +1108,7 @@ index adb3be59..d77139c3 100644
  	value = getppid();
  	update_PROCINFO_num("ppid", value);
  
-@@ -1087,7 +1110,7 @@ load_procinfo()
+@@ -1085,7 +1108,7 @@ load_procinfo()
  
  	value = getegid();
  	update_PROCINFO_num("egid", value);
