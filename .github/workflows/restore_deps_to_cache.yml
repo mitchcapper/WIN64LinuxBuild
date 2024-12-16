@@ -22,7 +22,7 @@ jobs:
         Configuration: [Debug, Release]
 
     name:  DEP Download
-    runs-on: windows-2022
+    runs-on: windows-latest
     environment: main
     defaults:
       run:

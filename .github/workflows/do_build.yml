@@ -36,7 +36,7 @@ env:
 jobs:
   build:
     name:  ${{ inputs.BuildPkg == 'script' && 'Run Script' || 'Build Package' }} - ${{matrix.Configuration}}
-    runs-on: windows-2022
+    runs-on: windows-latest
     environment: main
     outputs:
       ScriptRes: ${{ steps.script_step.outputs.ScriptRes }}
@@ -101,8 +101,9 @@ jobs:
       - name: Restore GNULIB cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{env.WLB_BASE_FOLDER}}
+          path: ${{env.WLB_BASE_FOLDER}}/gnulib.git
           key: gnulib-bare
+          enableCrossOsArchive: true
 
       - name: MSBuild Setup
         uses: microsoft/setup-msbuild@v1.1.3

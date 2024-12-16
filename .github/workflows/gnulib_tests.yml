@@ -24,18 +24,19 @@ jobs:
       Script: .github/gnu_patchtest.sh gnulib_dump_patches
       NoDebugBuild: true
   gnulib_source_cache:
-    runs-on: windows-2022
+    runs-on: windows-latest
     defaults:
         run:
           shell: pwsh
     steps:
-      - name: clone srcs
+      - name: clone src
         run: git clone --bare git://git.sv.gnu.org/gnulib.git d:/WLB/gnulib.git
       - name: Cache gnulib bare repo
         uses: actions/cache/save@v4
         with:
           path: d:/WLB/gnulib.git
           key: gnulib-bare
+          enableCrossOsArchive: true
 
   gnulib_test_all_patches:
     name: Test All Patches Together
