@@ -30,7 +30,7 @@ jobs:
           shell: pwsh
     steps:
       - name: clone srcs
-        run: git clone git://git.sv.gnu.org/gnulib.git d:/WLB/gnulib.git
+        run: git clone --bare git://git.sv.gnu.org/gnulib.git d:/WLB/gnulib.git
       - name: Cache gnulib bare repo
         uses: actions/cache@v4
         with:

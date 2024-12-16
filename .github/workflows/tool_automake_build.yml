@@ -11,4 +11,5 @@ jobs:
     uses: ./.github/workflows/tool_build.yml
     with:
       ToolName: automake
+      NoDebugBuild: true
       

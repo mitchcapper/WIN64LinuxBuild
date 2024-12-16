@@ -11,6 +11,11 @@ on:
         type: string
         description: 'multi-line scalar for any required artifacts or empty string for none'
         default: ""
+      NoDebugBuild:
+        required: false
+        type: boolean
+        description: 'Only do release build'
+        default: false
 
 env:
   CI_REQ_DOTNET_SDK_VER: 6.0.401
@@ -35,3 +40,4 @@ jobs:
     with:
       BuildPkg: ${{ inputs.ToolName }}
       RequiredDeps: ${{ inputs.RequiredDeps }}
+      NoDebugBuild: ${{ inputs.NoDebugBuild }}
