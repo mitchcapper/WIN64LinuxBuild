@@ -135,7 +135,7 @@ index 57c0e74..1d838c4 100644
  int safe_lstat (char *pathname, struct stat *buf);
  int safe_open (char *pathname, int flags, mode_t mode);
 diff --git a/src/util.c b/src/util.c
-index 2a90ca0..2ff8e7a 100644
+index 2a90ca0..0260bc2 100644
 --- a/src/util.c
 +++ b/src/util.c
 @@ -316,6 +316,7 @@ set_file_attributes (char *to, int tofd, enum file_attributes attr,
@@ -150,11 +150,41 @@ index 2a90ca0..2ff8e7a 100644
  		S_ISLNK (mode) ? "symbolic link" : "file",
  		quotearg (to));
      }
-+#endif //  _WIN32
++
    if (attr & FA_XATTRS)
      if (copy_attr (from, fromfd, to, tofd) < 0
  	&& errno != ENOSYS && errno != ENOTSUP
-@@ -1870,12 +1872,21 @@ cwd_is_root (char const *name)
+@@ -367,6 +369,7 @@ set_file_attributes (char *to, int tofd, enum file_attributes attr,
+ 		S_ISLNK (mode) ? "symbolic link" : "file",
+ 		quotearg (to));
+     }
++  #endif //  _WIN32
+ }
+ 
+ static void
+@@ -1227,7 +1230,9 @@ init_signals (void)
+ {
+   static int const sigs[] =
+     {
++#ifdef SIGHUP
+       SIGHUP,
++#endif      
+       SIGINT,
+ #ifdef SIGPIPE
+       SIGPIPE,
+@@ -1243,9 +1248,10 @@ init_signals (void)
+ #endif
+     };
+   enum { NUM_SIGS = sizeof sigs / sizeof *sigs };
+-
++#ifndef _WIN32
+   /* System V fork+wait does not work if SIGCHLD is ignored.  */
+   signal (SIGCHLD, SIG_DFL);
++#endif  
+ 
+ #if HAVE_SIGACTION && HAVE_SIGFILLSET
+   struct sigaction fatal_act = { .sa_handler = handle_signal };
+@@ -1870,12 +1876,21 @@ cwd_is_root (char const *name)
      }
    else
      {
