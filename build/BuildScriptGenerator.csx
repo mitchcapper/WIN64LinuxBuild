@@ -79,7 +79,7 @@ void Main() {
 
 	var fname=@$"build/f_{BUILD_NAME}_build.sh";
 	File.WriteAllText(fname,full);
-	Console.WriteLine(full);
+	//Console.WriteLine(full);
 	Console.WriteLine($"DONE wrote: {fname}");
 
 }

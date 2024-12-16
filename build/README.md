@@ -3,6 +3,83 @@ This directory contains the build scripts for all the libraries/apps we currentl
 
 While we have extracted as much common code out to the helper scripts there is still a similar pattern for the build script for each specific app/library.  We now use a template generator [BuildScriptGenerator.csx](BuildScriptGenerator.csx) to generate the initial build script from our template [f_TEMPLATE_build.sbn-sh](f_TEMPLATE_build.sbn-sh).  As there may be times we want to re-run the script (say to bulk update the build scripts) below are the commands used to generate the initial template and any custom modifications required.  This also makes it very concise what items we change from the defaults.  Between this and the patch we have for that repo it should be easy to see what if any modifications were made. Note: if defaults are changed in default_config.ini then things make break / additional options passed for some builds.
 
+<!-- MarkdownTOC -->
+
+- [Calling BuildScriptGenerator.csx](#calling-buildscriptgeneratorcsx)
+- [Template System](#template-system)
+	- [What We Template](#what-we-template)
+- [Template Calls for Each Lib/App](#template-calls-for-each-libapp)
+	- [grep](#grep)
+		- [Template Script Args](#template-script-args)
+	- [pcre2](#pcre2)
+		- [Template Script Args](#template-script-args-1)
+	- [automake](#automake)
+		- [Template Script Args](#template-script-args-2)
+		- [Modifications](#modifications)
+	- [libpsl](#libpsl)
+		- [Template Script Args](#template-script-args-3)
+		- [Modifications](#modifications-1)
+	- [zlib](#zlib)
+		- [Template Script Args](#template-script-args-4)
+		- [Modifications](#modifications-2)
+	- [libhsts](#libhsts)
+		- [Template Script Args](#template-script-args-5)
+		- [Modifications](#modifications-3)
+	- [wolfcrypt](#wolfcrypt)
+		- [Template Script Args](#template-script-args-6)
+		- [Modifications](#modifications-4)
+	- [wget2](#wget2)
+		- [Template Script Args](#template-script-args-7)
+		- [Modifications](#modifications-5)
+	- [Gawk](#gawk)
+		- [Template Script Args](#template-script-args-8)
+		- [Modifications](#modifications-6)
+	- [awk](#awk)
+		- [Template Script Args](#template-script-args-9)
+		- [Modifications](#modifications-7)
+	- [diffutils](#diffutils)
+		- [Template Script Args](#template-script-args-10)
+	- [which](#which)
+		- [Template Script Args](#template-script-args-11)
+		- [Modifications](#modifications-8)
+	- [sed](#sed)
+		- [Template Script Args](#template-script-args-12)
+	- [zstd](#zstd)
+		- [Template Script Args](#template-script-args-13)
+	- [symlinks](#symlinks)
+		- [Template Script Args](#template-script-args-14)
+	- [tar](#tar)
+		- [Template Script Args](#template-script-args-15)
+		- [Modifications](#modifications-9)
+	- [wget](#wget)
+		- [Template Script Args](#template-script-args-16)
+	- [openssl](#openssl)
+		- [Template Script Args](#template-script-args-17)
+		- [Modifications](#modifications-10)
+	- [pdcurses](#pdcurses)
+		- [Template Script Args](#template-script-args-18)
+		- [Modifications](#modifications-11)
+	- [highlight](#highlight)
+		- [Template Script Args](#template-script-args-19)
+		- [Modifications](#modifications-12)
+	- [findutils](#findutils)
+		- [Template Script Args](#template-script-args-20)
+		- [Modifications](#modifications-13)
+	- [coreutils](#coreutils)
+		- [Template Script Args](#template-script-args-21)
+		- [Modifications](#modifications-14)
+	- [make](#make)
+		- [Template Script Args](#template-script-args-22)
+		- [Modifications](#modifications-15)
+	- [patch](#patch)
+		- [Template Script Args](#template-script-args-23)
+	- [gnutls](#gnutls)
+		- [Template Script Args](#template-script-args-24)
+		- [Modifications](#modifications-16)
+
+<!-- /MarkdownTOC -->
+
+
 # Calling BuildScriptGenerator.csx
 It is meant to be called from powershell.  It is likely most of the calls below would work in a bash shell as well but any powershell escapes (backticks) below would need to be updated.  You can pass `--help` to it to get a brief overview.  It has a few CLI options itself, these are essentially options that don't make sense for us to have in default_config.ini. notably:
 
@@ -35,21 +112,22 @@ Below are the template calls and modifications to the produced build script for 
 
 ## automake
 ### Template Script Args
-`--GitRepo https://github.com/autotools-mirror/automake --BUILD_NAME automake --GNU_LIBS_USED=0 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS 1`
+We force no debug build as it has no advantage and causes build failures as there are files left after clean
+`--GitRepo https://github.com/autotools-mirror/automake  --HaveOurPatch=0 --BUILD_NAME automake --GNU_LIBS_USED=0 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS 1 --BLD_CONFIG_BUILD_DEBUG=0`
 
 ### Modifications
-near the top add:
+After clone step add:
 ```bash
-		PERL_P=$(convert_to_msys_path "${BLD_CONFIG_SRC_FOLDER}/automake-1.16")
-		export PERL5LIB="${PERL_P}"
-```
-
-for bootstrap step:
-```bash
+	PERL_P=$(convert_to_msys_path "${BLD_CONFIG_SRC_FOLDER}/automake-1.16")
+	export PERL5LIB="${PERL_P}"
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "bootstrap_fix" ]]; then
 		attrib -r /s "bin/*"
 		attrib -r /s "t/*"
 		mv bootstrap bootstrap.in
 		head bootstrap.in -n -3 > bootstrap #remove lines that remove the temp dir we need for the perl module
+		./bootstrap
+		SKIP_STEP=""
+	fi
 ```
 
 ## libpsl
@@ -132,7 +210,48 @@ before gnulib block:
 Right before configure:
 	`touch ABOUT-NLS`
 
+## Gawk
+### Template Script Args
+`--BUILD_NAME gawk --GitRepo https://git.savannah.gnu.org/git/gawk.git --GNU_LIBS_ADD_TO_REPO 1 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --GNU_LIBS_ADDL "mkstemp" "fts" "sys_socket" "strcasestr" "regex" "random" "flexmember" "setlocale" "locale" "dfa" "sleep" "strsignal" "sys_ioctl" "connect" "listen" "accept" "fnmatch-h" "fnmatch-gnu" "recvfrom" "bind" "setsockopt" "getsockopt" "getopt-gnu" "shutdown" "sys_random" "popen" "pclose" "socket" "strcase" "timegm" "setenv" "unsetenv" "usleep" "fprintf-gnu" --BUILD_MSVC_IGNORE_WARNINGS 4068 --CONFIG_CMD_ADDL "ac_cv_search_dlopen=`"none required`"" "--enable-extensions" "--enable-threads=windows" "acl_shlibext=dll" "ac_cv_header_dlfcn_h=yes"  --BUILD_MAKE_CMD_ADDL 'DEFPATH="\"./;%%PROGRAMDATA%%/gawk/share\""' 'DEFLIBPATH="\"./;%%PROGRAMDATA%%/gawk/lib\""'`
 
+### Modifications
+In the clone step add
+```bash
+cp gnulib/build-aux/bootstrap .
+		cp gnulib/build-aux/bootstrap.conf .
+		echo "gnulib_tool_option_extras=\" --without-tests --symlink --m4-base=m4 --lib=libgawk --source-base=lib --cache-modules\"" >> bootstrap.conf
+		git mv m4 m4_orig
+		git rm build-aux/*
+		mkdir -p m4
+		mkdir -p pc/old
+		mv pc/* pc/old/ || true
+		pushd m4
+		cp -s -t . ../m4_orig/socket.m4 ../m4_orig/arch.m4 ../m4_orig/noreturn.m4 ../m4_orig/pma.m4 ../m4_orig/triplet-transformation.m4
+		popd
+		echo "EXTRA_DIST = " > m4/Makefile.am
+		add_items_to_gitignore;
+		git_staging_add bootstrap bootstrap.conf
+		git_staging_commit #need to commit it up so that the bootstrap files are avail for our gnulib patching by default all local changes are stashed		
+```
+
+Before our patch block add
+```bash
+if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+		touch .developing
+	else
+		rm .developing &>/dev/null || true
+	fi
+```
+After configure add:
+`echo "#include <osfixes.h>" > "lib/dlfcn.h"`
+After install add:
+```bash
+mkdir -p $BLD_CONFIG_INSTALL_FOLDER/ProgramData/lib $BLD_CONFIG_INSTALL_FOLDER/ProgramData/share $BLD_CONFIG_INSTALL_FOLDER/ProgramData/libexec
+	mv $BLD_CONFIG_INSTALL_FOLDER/lib/gawk/* $BLD_CONFIG_INSTALL_FOLDER/ProgramData/lib/
+	mv $BLD_CONFIG_INSTALL_FOLDER/libexec/awk/* $BLD_CONFIG_INSTALL_FOLDER/ProgramData/libexec/
+	mv $BLD_CONFIG_INSTALL_FOLDER/share/awk/* $BLD_CONFIG_INSTALL_FOLDER/ProgramData/share/
+	rmdir $BLD_CONFIG_INSTALL_FOLDER/lib/gawk/ $BLD_CONFIG_INSTALL_FOLDER/libexec/awk/ $BLD_CONFIG_INSTALL_FOLDER/share/awk/ $BLD_CONFIG_INSTALL_FOLDER/lib/ $BLD_CONFIG_INSTALL_FOLDER/libexec/
+```
 ## awk
 ### Template Script Args
 `--BUILD_NAME awk --GitRepo https://github.com/onetrueawk/awk --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --GNU_LIBS_USED=0`

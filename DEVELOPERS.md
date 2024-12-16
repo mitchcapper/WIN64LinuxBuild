@@ -1,6 +1,7 @@
-# Key Features
+# Key Goals
 - We try to avoid modifying the users system or msys install.  We try to make sure everything we download/use is stored under the WLB_BASE_FOLDER for easy cleanup (or alternate bases).  Sometimes we will use a users tools (ie cmake binary) but shouldn't require them.
 - Builds follow a standardized format even if the app itself doesn't.  Sometimes this results in us having to manually move files around to match the final folder structure.
+- For new builds use the build script generator [BuildScriptGenerator.csx](build/BuildScriptGenerator.csx) to generate the initial build template.  See the build [README](build/README.md) for details on its use.
 
 # Helpers in Detail
 The helpers are where the bulk of code is consolidated down that we would use for repeatedly.  They are broken down into the following
