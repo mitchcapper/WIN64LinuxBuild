@@ -130,8 +130,13 @@ function git_clone(){
 	ADD_BUNDLE=""
 	local ARGS_ARR=("$@")
 	local LEN=${#ARGS_ARR[@]}
+	local USE_REF_SRC_DIR=0
 	if [[ "$BLD_CONFIG_GIT_NO_RECURSE" -eq 1 ]]; then
 		ADD_RECURSE=""
+	fi
+	if [[ -d "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}/refs" || -d "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}/.git" ]]; then
+		ADD_RECURSE=""
+		USE_REF_SRC_DIR=1
 	fi
 
 # bundle support removed didnt work properly with recursive clones
@@ -147,6 +152,7 @@ function git_clone(){
 		case $VAL in
 			"--no-recurse-submodules")
 				ADD_RECURSE=""
+				BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR="" #prevent us trying to still do so
 			;;
 			"--no-bundle-uri")
 				ADD_BUNDLE=""
@@ -179,9 +185,21 @@ function git_clone(){
 	ex git clone "${FINAL_ARR[@]}"
 	if [[ "$BLD_CONFIG_GIT_NO_RECURSE" -eq 1 ]]; then
 		for sub in "${BLD_CONFIG_GIT_SUBMODULE_INITS[@]}"; do
-			git submodule init "${sub}"
-			git submodule update "${sub}"
+			ex git submodule init "${sub}"
+			ex git submodule update "${sub}"
 		done
+	elif [[ "$USE_REF_SRC_DIR" -eq 1 ]]; then
+		declare -a REF_ARGS=( "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" )
+		if [[ -d "gnulib" ]]; then
+			if [[ "$BLD_CONFIG_GNU_LIB_REFERENCE_MASTER_SHORTCUT" -eq 1 && "$BLD_CONFIG_GNU_LIBS_BRANCH" != "" ]]; then
+				ex git rm gnulib
+				ex git submodule add "${REF_ARGS[@]}" -b "$BLD_CONFIG_GNU_LIBS_BRANCH" gnulib
+				ex git restore --staged gnulib
+			else
+				ex git submodule update --init "${REF_ARGS[@]}" gnulib
+			fi
+		fi
+		ex git submodule update --init --recursive #make sure any other sub modules are inited
 	fi
 	SKIP_STEP="";CUR_STEP="";
 }

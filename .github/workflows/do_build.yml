@@ -97,7 +97,12 @@ jobs:
           path: |
             d:/artifacts
           key: ${{ steps.vars.outputs.DepsCacheKey }}
-
+          
+      - name: Restore GNULIB cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{env.WLB_BASE_FOLDER}}
+          key: gnulib-bare
 
       - name: MSBuild Setup
         uses: microsoft/setup-msbuild@v1.1.3

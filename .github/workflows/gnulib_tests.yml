@@ -21,8 +21,22 @@ jobs:
     uses: ./.github/workflows/do_build.yml
     with:
       BuildPkg: script
-      Script: ./build/f_TEMPLATE_build.sh gnulib_dump_patches
+      Script: .github/gnu_patchtest.sh gnulib_dump_patches
       NoDebugBuild: true
+  gnulib_source_cache:
+    runs-on: windows-2022
+    defaults:
+        run:
+          shell: pwsh
+    steps:
+      - name: clone srcs
+        run: git clone git://git.sv.gnu.org/gnulib.git d:/WLB/gnulib.git
+      - name: Cache gnulib bare repo
+        uses: actions/cache@v4
+        with:
+          path: d:/WLB/gnulib.git
+          key: gnulib-bare
+
   gnulib_test_all_patches:
     name: Test All Patches Together
     uses: ./.github/workflows/do_build.yml
