@@ -9,6 +9,7 @@ BLD_CONFIG_GNU_LIBS_ADDL=( "mkstemp" "fts" "sys_socket" "strcasestr" "regex" "ra
 BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS=( "4068" )
 BLD_CONFIG_CONFIG_CMD_ADDL=( "ac_cv_search_dlopen=\"none required\"" "--enable-extensions" "--enable-threads=windows" "acl_shlibext=dll" "ac_cv_header_dlfcn_h=yes" )
 BLD_CONFIG_BUILD_MAKE_CMD_ADDL=( "DEFPATH=\"\\\"./;%%PROGRAMDATA%%/gawk/share\\\"\"" "DEFLIBPATH=\"\\\"./;%%PROGRAMDATA%%/gawk/lib\\\"\"" )
+BLD_CONFIG_PREFER_STATIC_LINKING=0
 
 # BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
 # BLD_CONFIG_BUILD_DEBUG=1
@@ -71,6 +72,7 @@ fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
 		configure_apply_fixes_and_run;
 		echo "#include <osfixes.h>" > "lib/dlfcn.h"
+		sed -i -E 's#"none required"##' Makefile awklib/Makefile
 	else
 		setup_build_env;
 	fi

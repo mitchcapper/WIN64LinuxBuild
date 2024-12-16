@@ -207,9 +207,11 @@ Right before configure:
 
 ## Gawk
 ### Template Script Args
-`--BUILD_NAME gawk --GitRepo https://git.savannah.gnu.org/git/gawk.git --GNU_LIBS_ADD_TO_REPO 1 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --GNU_LIBS_ADDL "mkstemp" "fts" "sys_socket" "strcasestr" "regex" "random" "flexmember" "setlocale" "locale" "dfa" "sleep" "strsignal" "sys_ioctl" "connect" "listen" "accept" "fnmatch-h" "fnmatch-gnu" "recvfrom" "bind" "setsockopt" "getsockopt" "getopt-gnu" "shutdown" "sys_random" "popen" "pclose" "socket" "strcase" "timegm" "setenv" "unsetenv" "usleep" "fprintf-gnu" --BUILD_MSVC_IGNORE_WARNINGS 4068 --CONFIG_CMD_ADDL "ac_cv_search_dlopen=`"none required`"" "--enable-extensions" "--enable-threads=windows" "acl_shlibext=dll" "ac_cv_header_dlfcn_h=yes"  --BUILD_MAKE_CMD_ADDL 'DEFPATH="\"./;%%PROGRAMDATA%%/gawk/share\""' 'DEFLIBPATH="\"./;%%PROGRAMDATA%%/gawk/lib\""'`
+`--BUILD_NAME gawk --GitRepo https://git.savannah.gnu.org/git/gawk.git --GNU_LIBS_ADD_TO_REPO 1 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --PREFER_STATIC_LINKING=0 --GNU_LIBS_ADDL "mkstemp" "fts" "sys_socket" "strcasestr" "regex" "random" "flexmember" "setlocale" "locale" "dfa" "sleep" "strsignal" "sys_ioctl" "connect" "listen" "accept" "fnmatch-h" "fnmatch-gnu" "recvfrom" "bind" "setsockopt" "getsockopt" "getopt-gnu" "shutdown" "sys_random" "popen" "pclose" "socket" "strcase" "timegm" "setenv" "unsetenv" "usleep" "fprintf-gnu" --BUILD_MSVC_IGNORE_WARNINGS 4068 --CONFIG_CMD_ADDL "ac_cv_search_dlopen=`"none required`"" "--enable-extensions" "--enable-threads=windows" "acl_shlibext=dll" "ac_cv_header_dlfcn_h=yes"  --BUILD_MAKE_CMD_ADDL 'DEFPATH="\"./;%%PROGRAMDATA%%/gawk/share\""' 'DEFLIBPATH="\"./;%%PROGRAMDATA%%/gawk/lib\""'`
 
 ### Modifications
+We specifically set it to not statically link.  It will compile with static linking fine, but extensions are also compiled statically into libs which obviously gawk can't use at runtime then.  The only dependency gawk has when dynamically compiled is the vc runtime.
+
 In the clone step add
 ```bash
 cp gnulib/build-aux/bootstrap .
@@ -497,7 +499,7 @@ make ships with a bunch of gnulib baked in but doesn't use gnulib proper we chan
 
 ## gnutls
 ### Template Script Args
-`--BUILD_NAME gnutls --GitRepo https://github.com/gnutls/gnutls.git --GNU_LIBS_ADDL "dirent" "getopt-gnu" --CONFIG_CMD_ADDL "--with-included-unistring" "--with-included-libtasn1" --VC_PKGDEPS "gmp" "nettle" "brotli" "zstd"  --PKG_CONFIG_MANUAL_ADD "gmp" --BUILD_ADDL_CFLAGS "-I../gl/"`
+`--BUILD_NAME gnutls --GitRepo https://github.com/gnutls/gnutls.git --GNU_LIBS_ADDL "dirent" "getopt-gnu" --CONFIG_CMD_ADDL "--with-included-unistring" "--with-included-libtasn1" "--without-p11-kit" --VC_PKGDEPS "gmp" "nettle" "brotli" "zstd"  --PKG_CONFIG_MANUAL_ADD "gmp" --BUILD_ADDL_CFLAGS "-I../gl/"`
 
 ### Modifications
 At top after startcommon add: `BLD_CONFIG_GNU_LIBS_EXCLUDE=("${BLD_CONFIG_GNU_LIBS_DEFAULT[@]}")` have to wait until then as otherwise full template sub not done
