@@ -10,8 +10,8 @@ function ourmain() {
 	set -e
 	git config --global user.email "you@example.com"
   	git config --global user.name "Your Name"
-	git clone --quiet https://github.com/mitchcapper/gnulib .
-	git remote add upstream "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" https://github.com/coreutils/gnulib.git
+	git clone --quiet "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" https://github.com/mitchcapper/gnulib .
+	git remote add upstream https://github.com/coreutils/gnulib.git
 	git fetch upstream --quiet
 	git checkout master --quiet
 	git branch master -u upstream/master
