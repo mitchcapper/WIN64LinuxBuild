@@ -78,7 +78,7 @@ esac
 
 pkg_config_automake_static_fix(){
 	#for configure.ac there is PKG_CHECK_MODULES_STATIC but not everything is updated for that for static builds
-	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 && -e "configure.ac" ]]; then
 		sed -i -E "s#PKG_CHECK_MODULES_STATIC#PKG_CHECK_MODULES#g;s#PKG_CHECK_MODULES#PKG_CHECK_MODULES_STATIC#g" configure.ac
 	fi
 
