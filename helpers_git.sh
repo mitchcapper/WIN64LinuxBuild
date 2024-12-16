@@ -134,9 +134,11 @@ function git_clone(){
 	if [[ "$BLD_CONFIG_GIT_NO_RECURSE" -eq 1 ]]; then
 		ADD_RECURSE=""
 	fi
-	if [[ -d "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}/refs" || -d "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}/.git" ]]; then
-		ADD_RECURSE=""
-		USE_REF_SRC_DIR=1
+	if [[ "$BLD_CONFIG_GNU_LIBS_USED" -eq 1 ]]; then
+		if [[ -d "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}/refs" || -d "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}/.git" ]]; then
+			ADD_RECURSE=""
+			USE_REF_SRC_DIR=1
+		fi
 	fi
 
 # bundle support removed didnt work properly with recursive clones
@@ -193,11 +195,13 @@ function git_clone(){
 		if [[ -d "gnulib" ]]; then
 			if [[ "$BLD_CONFIG_GNU_LIB_REFERENCE_MASTER_SHORTCUT" -eq 1 && "$BLD_CONFIG_GNU_LIBS_BRANCH" != "" ]]; then
 				ex git rm gnulib
-				ex git submodule add "${REF_ARGS[@]}" -b "$BLD_CONFIG_GNU_LIBS_BRANCH" gnulib
+				ex git submodule add "${REF_ARGS[@]}" -b "$BLD_CONFIG_GNU_LIBS_BRANCH" git://git.savannah.gnu.org/gnulib.git gnulib
 				ex git restore --staged gnulib
 			else
 				ex git submodule update --init "${REF_ARGS[@]}" gnulib
 			fi
+		elif [[ "$BLD_CONFIG_GNU_LIBS_ADD_TO_REPO" -eq 1 ]]; then
+			ex git submodule add "${REF_ARGS[@]}" -b "$BLD_CONFIG_GNU_LIBS_BRANCH" git://git.savannah.gnu.org/gnulib.git gnulib
 		fi
 		ex git submodule update --init --recursive #make sure any other sub modules are inited
 	fi
