@@ -1,0 +1,64 @@
+#!/bin/bash
+set -e
+. "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
+
+{{GENERAL_BLD_CONFIG_VARS}}
+
+# BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
+# BLD_CONFIG_BUILD_DEBUG=1
+
+function ourmain() {
+	startcommon;
+
+if test 5 -gt 100; then
+		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
+fi
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
+		git_clone_and_add_ignore {{GitRepo}} .
+	fi
+{{if ours.enabled HaveOurPatch}}
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
+		apply_our_repo_patch; # Applies from patches folder repo_BUILD_NAME.patch to the sources
+	fi
+{{- end }}
+{{if ours.enabled GNU_LIBS_USED}}
+	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then
+		if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib" ]]; then
+			gnulib_switch_to_master_and_patch;
+		fi
+		cd $BLD_CONFIG_SRC_FOLDER
+		if [[ -z $SKIP_STEP || $SKIP_STEP == "bootstrap" ]]; then
+			gnulib_add_addl_modules_and_bootstrap;
+		fi
+	fi
+
+	if [[ $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
+		autoreconf --symlink --verbose --install
+		SKIP_STEP=""
+	fi
+{{- end }}
+{{if ours.enabled VCPKG_DEPS}}
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "vcpkg" ]]; then
+		vcpkg_install_package
+	fi
+{{ end }}
+	cd $BLD_CONFIG_SRC_FOLDER
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
+{{-if ! ours.enabled CMAKE_STYLE }}
+		configure_apply_fixes_and_run;
+{{- else }}
+		cmake_config_run;
+{{- end }}
+	else
+		setup_build_env;
+	fi
+{{if ! ours.enabled CMAKE_STYLE }}
+	run_make
+	make_install
+{{else}}
+	cmake_make
+	cmake_install
+{{end}}
+	finalcommon;
+}
+ourmain;

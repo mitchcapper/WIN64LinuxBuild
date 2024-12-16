@@ -125,14 +125,19 @@ function git_apply_patch () {
 }
 
 function git_clone(){
+	CUR_STEP="checkout"
 	ADD_RECURSE="--recurse-submodules"
 	ADD_BUNDLE=""
 	local ARGS_ARR=("$@")
 	local LEN=${#ARGS_ARR[@]}
-
-	if [[ "$BLD_CONFIG_BUNDLE_PATH" != "" && -e "$BLD_CONFIG_BUNDLE_PATH" ]]; then
-		ADD_BUNDLE="--bundle-uri=${BLD_CONFIG_BUNDLE_PATH}"
+	if [[ "$BLD_CONFIG_GIT_NO_RECURSE" -eq 1 ]]; then
+		ADD_RECURSE=""
 	fi
+
+# bundle support removed didnt work properly with recursive clones
+#	if [[ "$BLD_CONFIG_BUNDLE_PATH" != "" && -e "$BLD_CONFIG_BUNDLE_PATH" ]]; then
+#		ADD_BUNDLE="--bundle-uri=${BLD_CONFIG_BUNDLE_PATH}"
+#	fi
 	local GIT_URL=""
 	local GIT_DIR=""
 	local FINAL_ARR=()
@@ -172,15 +177,35 @@ function git_clone(){
 		FINAL_ARR+=($GIT_DIR)
 	fi	
 	ex git clone "${FINAL_ARR[@]}"
+	if [[ "$BLD_CONFIG_GIT_NO_RECURSE" -eq 1 ]]; then
+		for sub in "${BLD_CONFIG_GIT_SUBMODULE_INITS[@]}"; do
+			git submodule init "${sub}"
+			git submodule update "${sub}"
+		done
+	fi
+	SKIP_STEP="";CUR_STEP="";
 }
 # will stage the following files if staging around patches is enabled
 function git_staging_add(){
-if [[ "$BLD_CONFIG_GIT_STASH_STAGE_AROUND_PATCHES" -eq 1 ]]; then
+	if [[ "$BLD_CONFIG_GIT_STASH_STAGE_AROUND_PATCHES" -eq 1 ]]; then
 		ex git add "$@"
 	fi
 }
+function git_clone_and_add_ignore(){
+	git_clone "$@"
+	add_items_to_gitignore
+}
+function add_items_to_gitignore(){
+	cd $BLD_CONFIG_SRC_FOLDER
+	if ! grep -Fq "${BLD_CONFIG_GIT_IGNORE_DONE_TEST_STR}" ".gitignore"; then
+		declare -a TO_ADD=("${BLD_CONFIG_GIT_IGNORE_DEFAULT[@]}" "${BLD_CONFIG_GIT_IGNORE_ADDL[@]}")
+		printf '%s\n' "${TO_ADD[@]}" >> .gitignore
+		awk -i inplace ' !x[$0]++' .gitignore #remove spaces
+		git_staging_add .gitignore
+	fi
 
-# will commit up staged items if  stage around patches enabled
+}
+# will commit up staged items if  stage around patches enabled, only used by gawk right now
 function git_staging_commit(){
 	if [[ "$BLD_CONFIG_GIT_STASH_STAGE_AROUND_PATCHES" -eq 1 ]]; then
 		ex git commit -m "FIXME faux required commit of pre-repo build prep"

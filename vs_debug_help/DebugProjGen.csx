@@ -1,3 +1,7 @@
+#if !NOT_CSX
+#load "../ConfigParser.csx"
+#endif
+
 using System;
 using System.Text.RegularExpressions;
 using System.IO;
@@ -267,29 +271,7 @@ class ProjFile {
 		filename = System.IO.Path.GetFileName(path);
 	}
 }
-class ConfigRead {
-	Dictionary<string, string> items = new();
-	public void ReadConfig() {
-		var PROJ_file = "proj_config.ini";
-		if (!File.Exists(PROJ_file))
-			throw new Exception($"Unable to find {PROJ_file} in current directory run /script/f_SCRIPTNAME_build.sh export_config to generate");
-		var lines = File.ReadAllLines(PROJ_file);
-		foreach (var line in lines) {
-			if (!line.Contains("="))
-				continue;
-			var arr = line.Split(new[] { "=" }, 2, StringSplitOptions.None);
-			var val = arr[1].Trim();
-			if (val.StartsWith("\"") && val.EndsWith("\""))
-				val = val.Substring(1, val.Length - 2);
-			items[arr[0].Trim()] = val;
-		}
-	}
-	public bool GetTrue(String name) {
-		var val = GetVal(name);
-		return (!String.IsNullOrWhiteSpace(val) && (val == "true" || val == "1"));
-	}
-	public string GetVal(String name) => items.TryGetValue(name, out var ret) ? ret : null;
-}
+
 
 class Opts {
 	public string GetVal(String name) {

@@ -139,7 +139,7 @@ function _DoTemplateSub(){
 DoTemplateSubs(){
 	INI_OUT=""
 	local VAR_ARRAY_START_REGEX="^[ ]*\("	
-	TEMPLATE_SUB_ORDER+=("STATIC_RELEASE_TRIPLET_AUTO" "CMAKE_BUILD_TARGET_AUTO")	
+	TEMPLATE_SUB_ORDER+=("STATIC_RELEASE_TRIPLET_AUTO" "CMAKE_BUILD_TARGET_AUTO" "CMAKE_BUILD_TYPE_AUTO")	
 	BLD_CONFIG_STATIC_RELEASE_TRIPLET_AUTO=""
 	BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO="Release"
 	BLD_CONFIG_CMAKE_BUILD_TYPE_AUTO="MinSizeRel"
@@ -184,7 +184,7 @@ DoTemplateSubs(){
 				if [[ "$var_name" == "BLD_CONFIG_CONFIG_CMD_DEFAULT" || "$var_name" == "BLD_CONFIG_CONFIG_CMD_ADDL" ]]; then
 					make_array_if_str "$var_name"
 				else
-					echo "Likely an error the variable: $var_name is supposed to be an array but it seeems to be a strin its value is: $cur_val"
+					echo "helpers_ini.sh: Likely an error the variable: $var_name is supposed to be an array but it seeems to be a string, its value is: $cur_val"
 					exit 1
 				fi
 			fi

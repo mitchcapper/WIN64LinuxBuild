@@ -173,6 +173,9 @@ _failure() {
 				fi
 				DBG_OUT_STR_FINAL+="${NL}${COLOR_MINOR2}Fatal Command${COLOR_NONE}: ${COLOR_ERROR}${STACK_CMD}${EXPANDED_COMMAND}${COLOR_NONE} on line ${COLOR_MINOR}${STACK_LINES[$STACK_END]}${COLOR_NONE} of ${COLOR_MINOR}$(basename ${STACK_FILES[$STACK_END]})${COLOR_NONE}$NL"
 				DBG_OUT_STR_FINAL+="Script ${COLOR_MINOR2}EXITED${COLOR_NONE}, Command Exit Code: ${COLOR_ERROR}${ERR_CODE}${COLOR_NONE} Our CWD: ${CWD}$NL"
+				if [[ ! -z "${CUR_STEP}" ]]; then
+					DBG_OUT_STR_FINAL+="${COLOR_MINOR}You may be able to resume the build passing the arg: ${COLOR_MAJOR}${CUR_STEP}${COLOR_NONE}${COLOR_MINOR} to the build script$NL${COLOR_NONE}"
+				fi
 			fi
 		done
 		DBG_OUT_STR_FINAL+="$NL======= END CATASTROPHIC COMMAND FAIL =======$NL$NL"

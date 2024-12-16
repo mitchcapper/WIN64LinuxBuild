@@ -26,3 +26,7 @@ in the base working dir we generate several useful files including:
 The build scripts support resuming.  Most support several default steps (run the buildscript with --help to see the list of those).  IE `./f_buildname_build.sh bootstrap` will start at the bootstrapping step.  Some build scripts make have custom steps in them you can see by opening them.
 It is not recommended to run most commands manually but rather try to use the resuming of the build script.  There can often be environmental variables set in the script that if not set when the command is run manually will change the outcome. 
 
+# patch generation
+Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
+
+You will want to preserve whitespace when generating the patch but we will ignore whne applying.

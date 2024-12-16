@@ -33,7 +33,8 @@ vcpkg_remove_package(){
 }
 
 
-vcpkg_install_package(){ #if the first parameter after optionally --head is a function that function will be called on install failure
+vcpkg_install_package(){ #if the first parameter after optionally --head is a function that function will be called on install failure recommend setting BLD_CONFIG_VCPKG_DEPS rather than passing them here
+	CUR_STEP="vcpkg"
 	vcpkg_ensure_installed
 	local TO_INSTALL=""
 	local install_postfix=""
@@ -46,7 +47,8 @@ vcpkg_install_package(){ #if the first parameter after optionally --head is a fu
 		ON_FAIL=$1;
 		shift;
 	fi
-	for TO_INSTALL in "$@"; do
+	declare -a PKGS=("$@" "${BLD_CONFIG_VCPKG_DEPS[@]}")
+	for TO_INSTALL in "${PKGS[@]}"; do
 		mkdir -p "${BLD_CONFIG_VCPKG_BINARY_DIR}"
 		export VCPKG_DEFAULT_BINARY_CACHE="${BLD_CONFIG_VCPKG_BINARY_DIR}"
 		local INSTALL_ROOT=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "no_triplet")
@@ -94,6 +96,7 @@ vcpkg_install_package(){ #if the first parameter after optionally --head is a fu
 			rmdir "${DEBUG_DIR}"
 		fi
 	done
+	SKIP_STEP="";CUR_STEP="";
 }
 get_install_prefix_for_vcpkg_pkg(){
 	local BLD_NAME=$1
@@ -106,6 +109,7 @@ get_install_prefix_for_vcpkg_pkg(){
 	echo "${BLD_CONFIG_VCPKG_INSTALL_TARGET_BASEDIR}/${BLD_NAME}${ADD_TRIPLET}"
 }
 add_vcpkg_pkg_config(){
+	# Adds a package installed via vcpkg to the pkg-config path, note you must call vcpkg_install_package as well if you want to install/make sure its installed
 	local PTH=""
 	#VCPKG_INSTALL_TARGET_BASEDIR
 	for var in "$@"; do

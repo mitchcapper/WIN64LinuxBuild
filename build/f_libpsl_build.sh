@@ -71,7 +71,7 @@ fi
 		GTKDOCIZE=""
 		# BEWARE OF https://ae1020.github.io/undefined-macro-pkg-config/ incase of macro errors
 		autoreconf --symlink --verbose --install || autoreconf --symlink --verbose --install #we don't want to use their autogen.sh script it doesnt fail out properly and has no benefits but may needs to pull extra cmds they add to it in future, we do need to run this twice though t oavoid error
-
+		libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
 		#./autogen.sh
 		SKIP_STEP=""
 	fi

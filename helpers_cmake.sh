@@ -38,7 +38,7 @@ function cmake_settings_setup(){
 		#return
 	#fi
 #	SETUP_CMAKE_SETTINGS_RUN=1
-	CMAKE_TARGET="Visual Studio 17 2022"
+	CMAKE_TARGET="${BLD_CONFIG_CMAKE_VS_VERSION}"
 	CMAKE_CONFIG_BINARY="cmake"
 	CMAKE_MAKE_BINARY="cmake"
 	CMAKE_MAKE_ADDL="--build ${BLD_CONFIG_CMAKE_BUILD_DIR} --verbose"
@@ -130,18 +130,25 @@ function cmake_settings_setup(){
 	esac
 }
 function cmake_config_run(){
+	CUR_STEP="configure"
 	#echo -n "Running: cmake " 1>&2
 	#printf "%q " "$@" 1>&2
 	#echo $@
 	#echo ""
-	
+	setup_build_env "$@";
 	#these almost certainly wont work   normally the static and release are prefixed by something
-	STATIC_VAL=0
-	SHARE_VAL=1
-	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
-		STATIC_VAL=1
-		SHARE_VAL=0
+	declare -g -a CMAKE_FULL_CONFIG_CMD_ARR=("${BLD_CONFIG_CMAKE_CONFIG_CMD_DEFAULT[@]}")
+	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq "1" ]]; then
+		CMAKE_FULL_CONFIG_CMD_ARR+=( "${BLD_CONFIG_CMAKE_CONFIG_CMD_ADDL_STATIC[@]}" )
+		ADL_C_FLAGS+=" ${BLD_CONFIG_CMAKE_BUILD_ADDL_CFLAGS_STATIC[*]}"
+	else
+		CMAKE_FULL_CONFIG_CMD_ARR+=( "${BLD_CONFIG_CMAKE_CONFIG_CMD_ADDL_SHARED[@]}" )
+	fi;
+	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
+		CMAKE_FULL_CONFIG_CMD_ARR+=( "${BLD_CONFIG_CMAKE_CONFIG_CMD_ADDL_DEBUG[@]}" )
 	fi
+	CMAKE_FULL_CONFIG_CMD_ARR+=("${BLD_CONFIG_CMAKE_CONFIG_CMD_ADDL[@]}")
+
 	#  -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" -DCMAKE_AR="${AR}" -DCMAKE_LINKER="${LD}"
 	# well it will call these but its calling from win so bash scripts wont work would need them as PS
 	# We used to do -G "Visual Studio 17 2022" but that doesn't really work with custom compiler/linker/etc specs as it calls msbuild
@@ -151,14 +158,15 @@ function cmake_config_run(){
 #MSYS Makefiles
 
 	cmake_settings_setup;
-	#env
-	#exit 1
-	EXPORT_CMDS=" -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=\"1\"" #only works for makefiles and ninja generators for nmake it does get you real names but no linker command, may not work with unix ones
-	_cmake $CMAKE_CONFIG_BINARY --debug-output -G "$CMAKE_TARGET" --install-prefix "$CMAKE_PREFIX_DIR" -S $BLD_CONFIG_CMAKE_SRC_DIR -B $BLD_CONFIG_CMAKE_BUILD_DIR  $CMAKE_ADDL_FLAGS $EXPORT_CMDS -DCMAKE_C_FLAGS_DEBUG:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DINSTALL_MSVC_PDB:BOOL="${BLD_CONFIG_BUILD_DEBUG}" -DBUILD_TEST:BOOL="0" -DCMAKE_C_FLAGS_RELEASE:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_AR="${AR}" -DCMAKE_C_FLAGS_MINSIZEREL:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DBUILD_STATIC:BOOL="${STATIC_VAL}" -DBUILD_SHARED:BOOL="${SHARE_VAL}" -DBUILD_SHARED_LIBS:BOOL="${SHARE_VAL}" -DCMAKE_CONFIGURATION_TYPES:STRING="${BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO}" -DCMAKE_BUILD_TYPE:STRING="${BLD_CONFIG_CMAKE_BUILD_TYPE_AUTO}" "$@" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+
+	EXPORT_CMDS=" -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=1" #only works for makefiles and ninja generators for nmake it does get you real names but no linker command, may not work with unix ones
+	export -p > "/tmp/test.sh"
+	_cmake $CMAKE_CONFIG_BINARY -G "$CMAKE_TARGET" --install-prefix "$CMAKE_PREFIX_DIR" $CMAKE_ADDL_FLAGS $EXPORT_CMDS -DCMAKE_C_FLAGS_DEBUG:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_C_FLAGS_RELEASE:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_AR="${AR}" -DCMAKE_C_FLAGS_MINSIZEREL:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" "${CMAKE_FULL_CONFIG_CMD_ARR[@]}" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+	SKIP_STEP="";CUR_STEP="";
+	CMAKE_MAKE_ADDL+=" ${BLD_CONFIG_BUILD_MAKE_CMD_ADDL[*]}"
 }
 function cmake_make(){
-
-	
+	CUR_STEP="make"
 	cmake_settings_setup;
 	cd $BLD_CONFIG_CMAKE_BUILD_DIR
 	if [[ -n "${LOG_MAKE_RUN}" ]]; then
@@ -169,7 +177,7 @@ function cmake_make(){
 	cd $BLD_CONFIG_SRC_FOLDER
 }
 function _cmake(){
-	echo "Running ${*@Q}" 1>&2
+	 echo "Running ${*@Q}" 1>&2 
 	ex "$@"
 }
 function cmake_install(){

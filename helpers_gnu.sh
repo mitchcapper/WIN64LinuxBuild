@@ -11,6 +11,7 @@ function gnulib_dump_patches(){
 }
 
 function gnulib_switch_to_master_and_patch(){
+	CUR_STEP="gnulib"
 	cd $BLD_CONFIG_SRC_FOLDER
 
 	#sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
@@ -28,6 +29,7 @@ function gnulib_switch_to_master_and_patch(){
 	rm -f build-aux/wrapper_helper.sh build-aux/wrapper_helper.sh build-aux/ld-link #temporary as we add files rn that the normal checkout clean doesn't cleanup
 	gnulib_patches;
 	git_stash_stage_patches_and_restore_cur_work
+	setup_gnulibtool_py_autoconfwrapper;
 	
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ -f "Makefile.am" ]]; then
@@ -61,7 +63,14 @@ function gnulib_switch_to_master_and_patch(){
 			fi
 			echo "" > build-aux/config.rpath
 			sed -i -E 's/^[ ]*AM_GNU_GETTEXT/#AM_GNU_GETTEXT/g' configure.ac
-			grep -v "texi2pdf" bootstrap.conf > tmp
+			local GREP_LINE_REMOVE="texi2pdf"
+			if [[ $BLD_CONFIG_GNU_LIBS_BOOTSTRAP_EXTRAS_ADD != "" ]]; then
+				GREP_LINE_REMOVE+=" \| gnulib_tool_option_extras"
+			fi
+			grep -v "${GREP_LINE_REMOVE}" bootstrap.conf > tmp
+			if [[ $BLD_CONFIG_GNU_LIBS_BOOTSTRAP_EXTRAS_ADD != "" ]]; then
+				echo "gnulib_tool_option_extras=\" ${BLD_CONFIG_GNU_LIBS_BOOTSTRAP_EXTRAS_ADD}\"" >> tmp
+			fi
 			mv tmp bootstrap.conf
 			if [[ -d "po" ]]; then
 				echo "" > po/Makefile.in.in
@@ -75,6 +84,7 @@ function gnulib_switch_to_master_and_patch(){
 	fi
 		#echo "DBGRAN cat Makefile.am | grep $SUBDIR_REGEX ORIG LINE WAS: $ORIG_LINE NOW: $FINAL_LINE final sed cmd was: " sed -i "s/${SUBDIR_REGEX}.+/$FINAL_LINE/g" Makefile.am
 	#done
+	SKIP_STEP="";CUR_STEP="";
 }
 function gnulib_ensure_buildaux_scripts_copied(){
 	FORCED=0
@@ -88,6 +98,9 @@ function gnulib_ensure_buildaux_scripts_copied(){
 			local gnu_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/${flf}")
 			local SRC_PATH="${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/${flf}"
 			if [[ ! -e "${gnu_path}" || $FORCED -eq 1 ]]; then
+				if [[ -e "${gnu_path}" ]]; then
+					rm "${gnu_path}" #remove it as somehow msys cp will override the symlink target???
+				fi
 				if [[ -e "${SRC_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
 					cp "${SRC_PATH}" "${gnu_path}"
 				else #no gnulib local so lets fetch it from remote
@@ -96,6 +109,39 @@ function gnulib_ensure_buildaux_scripts_copied(){
 			fi
 		done
 	fi
+}
+function gnulib_bootstrap(){
+	declare -a BOOTSTRAP_CMD=("${BLD_CONFIG_GNU_LIBS_BOOTSTRAP_CMD_DEFAULT[@]}" "$@")
+	SRC_DIR_ADD="${GNULIB_SRCDIR}"
+	if [[ ! "${SRC_DIR_ADD}" || ("$SRC_DIR_ADD" && ! -d $SRC_DIR_ADD) ]]; then
+		echo "FOUND GNULIB"
+		SRC_DIR_ADD="gnulib"
+	fi
+	if [[ -d $SRC_DIR_ADD ]]; then
+		BOOTSTRAP_CMD+=("--gnulib-srcdir=${SRC_DIR_ADD}")
+	fi
+	if [[ $BLD_CONFIG_CONFIG_NO_PO -eq 1 ]]; then
+		BOOTSTRAP_CMD+=("--skip-po")
+	fi
+	BOOTSTRAP_CMD+=("${BLD_CONFIG_GNU_LIBS_BOOTSTRAP_CMD_ADDL[@]}")
+	PRE_RUN_LIBTOOL_M4_EXIST=0
+	if [[ -e "m4/libtool.m4" ]]; then
+		PRE_RUN_LIBTOOL_M4_EXIST=1
+	fi
+	if [[ ! -e "README-hacking" ]]; then
+		touch README-hacking
+	fi
+	ex ./bootstrap "${BOOTSTRAP_CMD[@]}"
+
+	if [[ -e "m4/libtool.m4" && $PRE_RUN_LIBTOOL_M4_EXIST -eq 0 ]]; then # so we have patched the m4 macro for libtool but it didn't exist before autoreconf was run by bootstrap so we need to run it again to get the changes to be taken up
+		autoreconf --symlink
+	fi
+}
+function gnulib_add_addl_modules_and_bootstrap(){
+	CUR_STEP="bootstrap"
+	gnulib_add_addl_modules_to_bootstrap;
+	gnulib_bootstrap;
+	SKIP_STEP="";CUR_STEP="";
 }
 function gnulib_add_addl_modules_to_bootstrap(){
 	cd $BLD_CONFIG_SRC_FOLDER
@@ -135,54 +181,54 @@ function libtool_fixes(){
 	# first the newer libtools have more windows support but that makes things actually a bit harder as it has some issues
 	# first it puts the export symbol commands in a .exp file but that is used by the compiler too so .expsym is better and used elsewhere
 	# Secondly it does -Fe [arg] but it needs to be next to the -Fe[arg]
-	# ie libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
-	# note you must run autoreconf after this if it wont automatically happen.  Sometimes these will not be present until after the first bootstrap though so likely want to run autoreconf ourselves.
-#	local POS_FILES=("build-aux/ltmain.sh" "m4/libtool.m4")
-#	for fl in "${POS_FILES[@]}"; do
-#		if [[ -e "$fl" ]]; then
+	# ie libtool_fixes
+	# note you must run autoreconf after this if it wont automatically happen.  Sometimes these will not be present until after the first bootstrap though so likely want to run autoreconf ourselves. If using our libtool wrapper it should auto call this.
 
-			sed -i -E "s/(\\.exp)/\1sym/g;s/expsymsym/expsym/g;s/-Fe /-Fe/g" "$@"
-			sed -i -E "s/func_convert_core_msys_to_w32 \(/func_convert_core_msys_to_w32  (){ func_convert_core_msys_to_w32_result=\$1; }\\nfunc_convert_core_msys_to_w32_old (/" "$@"
+	for fl in "${BLD_CONFIG_GNU_LIBS_LIBTOOL_FIXES[@]}"; do
+		if [[ -e "$fl" ]]; then
+			sed -i -E "s/(\\.exp)/\1sym/g;s/expsymsym/expsym/g;s/-Fe /-Fe/g" "${fl}"
+			sed -i -E "s/func_convert_core_msys_to_w32 \(/func_convert_core_msys_to_w32  (){ func_convert_core_msys_to_w32_result=\$1; }\\nfunc_convert_core_msys_to_w32_old (/" "${fl}"
 			#sed -i -E "s#(gnulib_tool=.+gnulib-tool)\$#\1.py#" bootstrap
-#		fi
-	#done
+		fi
+	done
+}
+function autoreconf_post_run(){
+	cd $BLD_CONFIG_SRC_FOLDER
+	gnulib_ensure_buildaux_scripts_copied --forced
+	libtool_fixes #note if the autoconf hasn't run yet we will likely not have the macro file so even though this will edit the macro file we will likely need to rerun autoreconf again to apply the macro to the output
+}
+function autoreconf_pre_run(){
+	cd $BLD_CONFIG_SRC_FOLDER
+	libtool_fixes #note if the 
+}
+function gnulib_init(){ #called by startcommon
+	if [[ -d $BLD_CONFIG_GNU_LIB_SOURCE_DIR ]]; then
+		export GNULIB_SRCDIR="${BLD_CONFIG_GNU_LIB_SOURCE_DIR}"
+	fi
+	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
+		export GNULIB_TOOL_IMPL="py"
+	else
+		export GNULIB_TOOL_IMPL="sh"
+	fi
+
 }
 function setup_gnulibtool_py_autoconfwrapper(){
 	if [[ $BLD_CONFIG_GNU_LIBS_AUTORECONF_WRAPPER -eq 1 ]]; then
 		local TARGET_FL="${BLD_CONFIG_BUILD_AUX_FOLDER}/AUTORECONF_prewrapper.sh"
 		#For things like coreutils bootstrap will create the mk files we need to fix before it also then runs autoreconf so we will just use our wrapper for autoreconf, call ourselves, then call autoreconf
-		if [[ ! -e "$TARGET_FL" ]]; then
-			WRAPPER=`cat "${SCRIPT_FOLDER}/AUTORECONF_prewrapper.sh.template"`
-			WRAPPER="${WRAPPER/SCRIPT_PATH/"$CALL_SCRIPT_PATH"}"
-			mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
-			echo "${WRAPPER}" > "$TARGET_FL"
+		if [[ -e "${BLD_CONFIG_SRC_FOLDER}/.git" ]]; then
+			if [[ ! -e "$TARGET_FL" ]]; then
+				WRAPPER=`cat "${SCRIPT_FOLDER}/AUTORECONF_prewrapper.sh.template"`
+				WRAPPER="${WRAPPER//SCRIPT_PATH/"$CALL_SCRIPT_PATH"}"
+				mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
+				echo "${WRAPPER}" > "$TARGET_FL"
+			fi
+			gnulib_ensure_buildaux_scripts_copied; #make sure the helpers also get there
 		fi
 		export AUTORECONF="$TARGET_FL"
-
 		#gnulib_tool_py_remove_nmd_makefiles;
 	fi
-	gnulib_ensure_buildaux_scripts_copied; #this has nothing to do wit autoconf but for some reason can get more failures with debug otherwise.
-}
-function gnulib_tool_py_remove_nmd_makefiles() {
-	echo "DONT THINK NEEDED ANYMORE" 1>&2
-	exit 1
-	#this taken from the normal gnulib_tool process, not sure lib/ will exist yet
-
-	#sed_eliminate_NMD='s/@NMD@//;/@!NMD@/d' #this is what is needed for automake subdirs but as that doesn't work with gnulib-tool..py right now no need to worry about it
-	sed_eliminate_NMD='/@NMD@/d;s/@!NMD@//'
-	local FILES=`find . -maxdepth 3 -name Makefile.am`
-	if [[ "${FILES}" != "" ]]; then
-		mapfile -t TO_FIX <<<$FILES
-		TO_FIX=("${TO_FIX[@]}" "${BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY_ADDL_MK_FILES_FIX[@]}")
-		for fl in "${TO_FIX[@]}"; do
-			if [[ -f "${fl}" ]]; then
-				# we grep first so we only modify files we would change 
-				(grep '@NMD@' "${fl}" &>/dev/null && sed -i -e "$sed_eliminate_NMD" "${fl}") || true
-			fi
-		done
-	fi
-	#sed -i -E '/@NMD@/d;s/@!NMD@//' lib/Makefile.am Makefile.am
-	#sed -i -E "s#(gnulib_tool=.+gnulib-tool)\$#\1.py#" bootstrap
+	#gnulib_ensure_buildaux_scripts_copied; #this has nothing to do wit autoconf but for some reason can get more failures with debug otherwise.
 }
 function gnulib_apply_patch(){
 	local patch=$1

@@ -80,9 +80,6 @@ fi
 		setup_build_env;
 	fi
 
-	if [[ $SKIP_STEP == "makefiles" ]]; then #not empty and not setting empty as this is only a skip to step
-		./config.status
-	fi
 	MAKE_ADD=('DEFPATH="\"./;%%PROGRAMDATA%%/gawk/share\""' 'DEFLIBPATH="\"./;%%PROGRAMDATA%%/gawk/lib\""')
 	if [[ -n "${LOG_MAKE_RUN}" ]]; then
 		run_logged_make $BLD_CONFIG_BUILD_MAKE_BIN "${MAKE_ADD[@]}";

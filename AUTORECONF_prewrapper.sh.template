@@ -3,16 +3,25 @@
 # We remove the force option that overrides the build-aux etc files, also add symlink if not there,  an alternative might me to just recopy the build scripts into place  after running the normal
 
 # beware of macro errors may not be real errors https://ae1020.github.io/undefined-macro-pkg-config/
+
 set -e
 WLB_ARGS_ARR=("$@")
 WLB_LEN=${#WLB_ARGS_ARR[@]}
+if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
+	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
+fi
 WLB_FINAL_ARR=()
 for (( WLB_INDEX=0; WLB_INDEX<$WLB_LEN; WLB_INDEX++ )); do
 	WLB_VAL="${WLB_ARGS_ARR[$WLB_INDEX]}"
 	case $WLB_VAL in
 		"--force")
+		    if [[ ! "$WLB_AUTORECONF_DISABLE_FORCE" ]]; then
+				WLB_FINAL_ARR+=($WLB_VAL)
+			fi
 			;;
 		"--symlink")
+			;;
+		"--copy")
 			;;
 		*)
 			WLB_FINAL_ARR+=($WLB_VAL)
@@ -24,5 +33,16 @@ WLB_FINAL_ARR+=("--symlink")
 #pushd .
 #SCRIPT_PATH gnulib_tool_py_remove_nmd_makefiles
 #popd
+pushd . > /dev/null
+SCRIPT_PATH autoreconf_pre_run
+popd > /dev/null
+# can't use exec or our post wont be called
+if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
+	wrapper_exec noexec autoreconf "${WLB_FINAL_ARR[@]}"
+else
+	autoreconf "${WLB_FINAL_ARR[@]}"
+fi
 
-exec autoreconf "${WLB_FINAL_ARR[@]}"
+pushd . > /dev/null
+SCRIPT_PATH autoreconf_post_run
+popd > /dev/null
