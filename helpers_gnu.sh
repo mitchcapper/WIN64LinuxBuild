@@ -78,6 +78,8 @@ function gnulib_switch_to_master_and_patch(){
 		fi
 
 		if [[ $BLD_CONFIG_CONFIG_NO_DOCS -eq 1 ]]; then
+			grep -v "help2man" bootstrap.conf > tmp
+			mv tmp bootstrap.conf
 			FINAL_LINE=${FINAL_LINE//" doc "/" "}
 		fi
 		sed -E -i "s/${SUBDIR_REGEX}.+/$FINAL_LINE/" Makefile.am

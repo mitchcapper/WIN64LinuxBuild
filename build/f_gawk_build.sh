@@ -40,7 +40,7 @@ fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		apply_our_repo_patch; # Applies from patches folder repo_BUILD_NAME.patch to the sources
 	fi
-	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 && ! -e .developing ]]; then
 		touch .developing
 	else
 		rm .developing &>/dev/null || true
@@ -52,17 +52,21 @@ fi
 		cd $BLD_CONFIG_SRC_FOLDER
 		if [[ -z $SKIP_STEP || $SKIP_STEP == "bootstrap" ]]; then
 			gnulib_add_addl_modules_and_bootstrap;
+			autoreconf --symlink --verbose --install --force #needed to get libtool
+			gnulib_ensure_buildaux_scripts_copied --forced
+			libtool_fixes
+
 		fi
-		autoreconf --symlink --verbose --install --force #needed to get libtool
-		gnulib_ensure_buildaux_scripts_copied --force
-		libtool_fixes
 	fi
 
 	if [[ $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
 		autoreconf --symlink --verbose --install
 		SKIP_STEP=""
 	fi
-
+	gnulib_ensure_buildaux_scripts_copied --forced
+	export BLD_CONFIG_GNU_LIBS_AUTORECONF_DISABLE_FORCE=1
+	setup_gnulibtool_py_autoconfwrapper
+	
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
 		configure_apply_fixes_and_run;
