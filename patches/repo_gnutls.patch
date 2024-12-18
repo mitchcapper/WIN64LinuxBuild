@@ -10,6 +10,75 @@ index c4d1fe06b..697cfcf85 100644
  "
  
  # update git submodules
+diff --git a/lib/accelerated/x86/x86-common.c b/lib/accelerated/x86/x86-common.c
+index 3b779865e..e9db405f5 100644
+--- a/lib/accelerated/x86/x86-common.c
++++ b/lib/accelerated/x86/x86-common.c
+@@ -44,7 +44,18 @@
+ #define __get_cpuid(...) 0
+ #define __get_cpuid_count(...) 0
+ #endif
++#ifdef _MSC_VER
++int
++__get_cpuid_max(unsigned int e, unsigned int *s)
++{
++	uint32_t cpuinfo[4];
+ 
++	__cpuid(cpuinfo, e);
++	if (s)
++		*s = cpuinfo[1];
++	return cpuinfo[0];
++}
++#endif
+ /* ebx, ecx, edx 
+  * This is a format compatible with openssl's CPUID detection.
+  */
+@@ -132,8 +143,16 @@ static inline void get_cpuid_level7(unsigned int *eax, unsigned int *ebx,
+ 	/* we avoid using __get_cpuid_count, because it is not available with gcc 4.8 */
+ 	if (__get_cpuid_max(7, 0) < 7)
+ 		return;
+-
++#ifndef _MSC_VER
+ 	__cpuid_count(7, 0, *eax, *ebx, *ecx, *edx);
++#else
++	int regs_array[4];
++	__cpuidex(regs_array, 7, 0);
++	*eax = regs_array[0];
++	*ebx = regs_array[0];
++	*ecx = regs_array[0];
++	*edx = regs_array[0];
++#endif
+ 	return;
+ }
+ #else
+diff --git a/lib/debug.c b/lib/debug.c
+index 53a142cf5..d12bb4cf9 100644
+--- a/lib/debug.c
++++ b/lib/debug.c
+@@ -28,10 +28,12 @@
+ #include "mpi.h"
+ 
+ #ifdef DEBUG
++#define MAX_VECTOR_SIZE 1024*5
++#define DUMP_MPI_BUF_SIZE 400
+ void _gnutls_dump_mpi(const char *prefix, bigint_t a)
+ {
+-	char buf[400];
+-	char buf_hex[2 * sizeof(buf) + 1];
++	char buf[DUMP_MPI_BUF_SIZE];
++	char buf_hex[2 * sizeof(char)*DUMP_MPI_BUF_SIZE + 1];
+ 	size_t n = sizeof buf;
+ 
+ 	if (_gnutls_mpi_print(a, buf, &n))
+@@ -43,7 +45,7 @@ void _gnutls_dump_mpi(const char *prefix, bigint_t a)
+ 
+ void _gnutls_dump_vector(const char *prefix, const uint8_t *a, size_t a_size)
+ {
+-	char buf_hex[2 * a_size + 1];
++	char buf_hex[2 * MAX_VECTOR_SIZE + 1];
+ 
+ 	_gnutls_debug_log("Vector: length: %d\n\t%s%s\n", (int)a_size, prefix,
+ 			  _gnutls_bin2hex(a, a_size, buf_hex, sizeof(buf_hex),
 diff --git a/lib/x509/verify-high2.c b/lib/x509/verify-high2.c
 index dc975baeb..208b89d47 100644
 --- a/lib/x509/verify-high2.c

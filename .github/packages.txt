@@ -4,7 +4,7 @@ coreutils
 diffutils
 findutils
 gawk
-gnutls: libtasn1
+gnutls: libtasn1 p11-kit zlib
 grep: pcre2
 gzip
 highlight
@@ -16,6 +16,7 @@ openssl
 patch
 pcre2
 pdcurses
+p11-kit: libtasn1
 sed
 symlinks
 tar

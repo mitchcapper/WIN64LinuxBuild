@@ -4,12 +4,12 @@ set -e
 
 BLD_CONFIG_BUILD_NAME="gnutls"
 BLD_CONFIG_GNU_LIBS_ADDL=( "dirent" "getopt-gnu" "opendir" "closedir" "readdir" )
-BLD_CONFIG_CONFIG_CMD_ADDL=( "--with-included-unistring" "--without-p11-kit" )
+BLD_CONFIG_CONFIG_CMD_ADDL=( "--with-included-unistring" )
 BLD_CONFIG_VCPKG_DEPS=( "gmp" "nettle" "brotli" "zstd" )
 BLD_CONFIG_PKG_CONFIG_MANUAL_ADD=( "gmp" )
 BLD_CONFIG_BUILD_ADDL_CFLAGS=( "-I../gl/" )
 BLD_CONFIG_BUILD_ADDL_CFLAGS_STATIC=("-DASN1_STATIC")
-BLD_CONFIG_OUR_LIB_DEPS=("libtasn1")
+BLD_CONFIG_OUR_LIB_DEPS=("libtasn1" "p11-kit" "zlib")
 BLD_CONFIG_OUR_LIB_BINS_PATH=("libtasn1")
 
 # BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
@@ -28,6 +28,7 @@ fi
 
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		apply_our_repo_patch; # Applies from patches folder repo_BUILD_NAME.patch to the sources
+		sed -i -E 's/p11tool_options;/p11tool_options ;\n#undef write/' cligen/fixtures/output/p11tool-args.c
 	fi
 
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then

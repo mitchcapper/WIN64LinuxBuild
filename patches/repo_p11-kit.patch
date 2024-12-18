@@ -1,0 +1,397 @@
+diff --git a/Makefile.am b/Makefile.am
+index e591fb4..651227b 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -3,6 +3,8 @@ NULL =
+ 
+ AM_CPPFLAGS = \
+ 	-I$(top_srcdir) \
++	-I$(top_srcdir)/lib \
++	-I$(top_builddir)/lib \
+ 	-I$(top_srcdir)/common \
+ 	-I$(top_builddir) \
+ 	-I$(top_builddir)/common \
+@@ -64,9 +66,9 @@ PKCS11_JSON_INPUT = $(srcdir)/common/pkcs11.h
+ 
+ include subprojects/pkcs11-json/Makefile.am
+ 
+-SUBDIRS = . doc po
++ SUBDIRS = lib .
+ 
+-ACLOCAL_AMFLAGS = -I build/m4
++ACLOCAL_AMFLAGS = -I m4
+ 
+ DISTCHECK_CONFIGURE_FLAGS = \
+ 	--enable-doc \
+@@ -89,7 +91,7 @@ AM_TESTS_ENVIRONMENT = \
+ AM_TESTS_FD_REDIRECT = 9>&2;
+ 
+ LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
+-	$(top_srcdir)/build/litter/tap-driver.sh
++	$(top_srcdir)/build-aux/tap-driver.sh
+ LOG_DRIVER_FLAGS = --comments --ignore-exit
+ 
+ MEMCHECK_ENV = $(TEST_RUNNER) valgrind --error-exitcode=80 --quiet
+@@ -113,7 +115,7 @@ dist-hook:
+ 		echo Creating ChangeLog && \
+ 		( cd "$(top_srcdir)" && \
+ 		  echo '# Generate automatically. Do not edit.'; echo; \
+-		  $(top_srcdir)/build/litter/missing --run git log --stat --date=short ) > ChangeLog.tmp \
++		  $(top_srcdir)/build-aux/missing --run git log --stat --date=short ) > ChangeLog.tmp \
+ 		&& mv -f ChangeLog.tmp $(top_distdir)/ChangeLog \
+ 		|| ( rm -f ChangeLog.tmp ; \
+ 		     echo Failed to generate ChangeLog >&2 ); \
+diff --git a/common/Makefile.am b/common/Makefile.am
+index 91b6dc5..7542909 100644
+--- a/common/Makefile.am
++++ b/common/Makefile.am
+@@ -57,11 +57,13 @@ libp11_tool_la_SOURCES += \
+ 	$(NULL)
+ 
+ if NEED_READPASSPHRASE
++if !OS_WIN32
+ libp11_tool_la_SOURCES += \
+ 	common/readpassphrase.c \
+ 	$(NULL)
+ endif
+ endif
++endif
+ 
+ # Tests ----------------------------------------------------------------
+ 
+diff --git a/common/compat.c b/common/compat.c
+index 6b39a7b..db7c56b 100644
+--- a/common/compat.c
++++ b/common/compat.c
+@@ -183,7 +183,7 @@ getprogname (void)
+ 
+ extern char **__argv;
+ static char prognamebuf[256];
+-
++#ifndef _WIN32
+ const char *
+ getprogname (void)
+ {
+@@ -211,7 +211,7 @@ getprogname (void)
+ 
+ 	return prognamebuf;
+ }
+-
++#endif
+ #endif /* OS_WIN32 */
+ 
+ #endif /* HAVE_GETPROGNAME */
+@@ -548,7 +548,7 @@ strndup (const char *data,
+ }
+ 
+ #endif /* HAVE_STRNDUP */
+-
++#ifndef _WIN32
+ #ifndef HAVE_REALLOCARRAY
+ 
+ void *
+@@ -564,8 +564,9 @@ reallocarray (void *ptr,
+ 	return realloc (ptr, nmemb * size);
+ }
+ 
+-#endif /* HAVE_MEMDUP */
+ 
++#endif /* HAVE_MEMDUP */
++#endif
+ #ifndef HAVE_STRCONCAT
+ 
+ #include <stdarg.h>
+@@ -715,7 +716,7 @@ gmtime_r (const time_t *timep,
+ #if !defined(HAVE_MKDTEMP) || !defined(HAVE_MKSTEMP)
+ #include <sys/stat.h>
+ #include <fcntl.h>
+-
++#define maxpathlen 1024
+ static int
+ _gettemp (char *path,
+           int *doopen,
+@@ -724,7 +725,7 @@ _gettemp (char *path,
+ {
+ 	static const char padchar[] =
+ 		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+-	static const int maxpathlen = 1024;
++	//static const int maxpathlen = 1024;
+ 
+ 	char *start, *trv, *suffp, *carryp;
+ 	char *pad;
+@@ -792,7 +793,7 @@ _gettemp (char *path,
+ #ifdef OS_UNIX
+ 			if (mkdir (path, 0700) == 0)
+ #else
+-			if (mkdir (path) == 0)
++			if (mkdir (path, 0700) == 0)
+ #endif
+ 				return (1);
+ 			if (errno != EEXIST)
+diff --git a/common/compat.h b/common/compat.h
+index 20b050a..1e24035 100644
+--- a/common/compat.h
++++ b/common/compat.h
+@@ -109,7 +109,9 @@ void         p11_dl_close       (void * dl);
+  */
+ 
+ #ifdef OS_WIN32
+-
++#if !defined(__PRETTY_FUNCTION__) && !defined(__GNUC__)
++#define __PRETTY_FUNCTION__ __FUNCSIG__
++#endif
+ #ifndef _WIN32_WINNT
+ #define _WIN32_WINNT 0x500
+ #endif
+diff --git a/configure.ac b/configure.ac
+index a21d750..200cb4d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,4 +1,4 @@
+-AC_PREREQ(2.61)
++AC_PREREQ([2.64])
+ 
+ AC_INIT([p11-kit],
+ 	[0.25.5],
+@@ -25,15 +25,15 @@ P11KIT_RPC_MAX=1
+ # ------------------------------------------------------------------------------
+ 
+ AC_CONFIG_HEADERS([config.h])
+-AC_CONFIG_MACRO_DIR([build/m4])
+-AC_CONFIG_AUX_DIR([build/litter])
++AC_CONFIG_MACRO_DIR([m4])
++AC_CONFIG_AUX_DIR([build-aux])
+ AC_REQUIRE_AUX_FILE([tap-driver.sh])
+ AM_INIT_AUTOMAKE([1.12 dist-xz no-dist-gzip foreign subdir-objects])
+ AM_SANITY_CHECK
+ AM_MAINTAINER_MODE([enable])
+ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])],)
+ m4_ifdef([PKG_PREREQ], [PKG_PREREQ(0.29)],
+-  [m4_fatal([pkg.m4 is too old; copy the latest version in build/m4])])
++  [m4_fatal([pkg.m4 is too old; copy the latest version in m4])])
+ 
+ dnl Enable platform specific extensions.
+ AC_USE_SYSTEM_EXTENSIONS
+@@ -60,17 +60,20 @@ AC_SUBST(LDFLAGS_Z_NODELETE)
+ 
+ dnl Checks for programs.
+ AC_PROG_CC
++gl_EARLY
+ AC_PROG_CPP
+ AM_PROG_CC_C_O
++
++gl_INIT
+ PKG_PROG_PKG_CONFIG
+ AM_PATH_PYTHON([3.6],, [:])
+ AM_MISSING_PROG([CASTXML], [castxml])
+ 
+ LINGUAS=""
+-AM_GNU_GETTEXT([external], [need-ngettext])
+-AM_GNU_GETTEXT_VERSION([0.19.8])
++#AM_GNU_GETTEXT([external], [need-ngettext])
++#AM_GNU_GETTEXT_VERSION([0.19.8])
+ m4_ifdef([AM_GNU_GETTEXT_REQUIRE_VERSION],[
+-AM_GNU_GETTEXT_REQUIRE_VERSION([0.19.8])
++#AM_GNU_GETTEXT_REQUIRE_VERSION([0.19.8])
+ ])
+ 
+ if test "$enable_static" = "yes"; then
+@@ -229,6 +232,9 @@ if test "$os_unix" = "yes"; then
+ 	                AC_MSG_RESULT([yes])],
+ 	               [AC_MSG_RESULT([no])])
+ 
++else # os_unix = yes
++	AM_CONDITIONAL([NEED_READPASSPHRASE], [false])
++
+ fi
+ 
+ # These are thngs we can work around
+@@ -714,6 +720,7 @@ AM_CONDITIONAL(WITH_BASH_COMPLETION, [test "$with_bash_completion" = "yes"])
+ 
+ 
+ AC_CONFIG_FILES([Makefile
++	lib/Makefile
+ 	common/test-init.sh
+ 	doc/Makefile
+ 	doc/manual/Makefile
+diff --git a/p11-kit/Makefile.am b/p11-kit/Makefile.am
+index 87d136f..1bbe14e 100644
+--- a/p11-kit/Makefile.am
++++ b/p11-kit/Makefile.am
+@@ -87,6 +87,7 @@ COMMON_CFLAGS = \
+ COMMON_LIBS = \
+ 	libp11-common.la \
+ 	libp11-library.la \
++	lib/libp11kit.la \
+ 	$(LIBFFI_LIBS) \
+ 	$(LTLIBINTL) \
+ 	$(NULL)
+@@ -295,6 +296,7 @@ p11_kit_p11_kit_LDADD += \
+ 	libp11-kit-internal.la \
+ 	libp11-common.la \
+ 	libp11-tool.la \
++	lib/libp11kit.la \
+ 	$(LTLIBINTL) \
+ 	$(NULL)
+ 
+@@ -316,6 +318,7 @@ endif
+ p11_kit_p11_kit_testable_LDADD += \
+ 	libp11-common.la \
+ 	libp11-tool.la \
++	lib/libp11kit.la \
+ 	libp11-kit-testable.la \
+ 	$(NULL)
+ 
+@@ -334,6 +337,7 @@ p11_kit_p11_kit_remote_LDADD = \
+ 	libp11-tool.la \
+ 	libp11-common.la \
+ 	libp11-kit.la \
++	lib/libp11kit.la \
+ 	$(NULL)
+ 
+ check_PROGRAMS += p11-kit/p11-kit-remote-testable
+@@ -343,6 +347,7 @@ p11_kit_p11_kit_remote_testable_LDADD = \
+ 	libp11-tool.la \
+ 	libp11-common.la \
+ 	libp11-kit-testable.la \
++	lib/libp11kit.la \
+ 	$(NULL)
+ 
+ private_PROGRAMS += p11-kit/p11-kit-server
+@@ -355,6 +360,7 @@ p11_kit_p11_kit_server_LDADD = \
+ 	libp11-tool.la \
+ 	libp11-common.la \
+ 	libp11-kit.la \
++	lib/libp11kit.la \
+ 	$(LIBSYSTEMD_LIBS) \
+ 	$(NULL)
+ 
+@@ -371,6 +377,7 @@ p11_kit_p11_kit_server_testable_LDADD = \
+ 	libp11-tool.la \
+ 	libp11-common.la \
+ 	libp11-kit-testable.la \
++	lib/libp11kit.la \
+ 	$(LIBSYSTEMD_LIBS) \
+ 	$(NULL)
+ 
+diff --git a/p11-kit/conf.c b/p11-kit/conf.c
+index 549aa72..4cbdd8c 100644
+--- a/p11-kit/conf.c
++++ b/p11-kit/conf.c
+@@ -44,8 +44,9 @@
+ #include "message.h"
+ #include "path.h"
+ #include "private.h"
+-
++#ifndef _WIN32
+ #include <sys/param.h>
++#endif
+ #include <sys/stat.h>
+ #include <sys/types.h>
+ #ifdef OS_UNIX
+diff --git a/p11-kit/rpc-server.c b/p11-kit/rpc-server.c
+index ef3b383..14a6d6e 100644
+--- a/p11-kit/rpc-server.c
++++ b/p11-kit/rpc-server.c
+@@ -52,13 +52,17 @@
+ #include "uri.h"
+ 
+ #include <sys/types.h>
++#ifndef _WIN32
+ #include <sys/param.h>
++#endif
+ #include <assert.h>
+ #include <errno.h>
+ #include <limits.h>
+ #include <stdlib.h>
+ #include <string.h>
++#ifndef _WIN32
+ #include <unistd.h>
++#endif
+ 
+ #ifdef ENABLE_NLS
+ #include <libintl.h>
+diff --git a/p11-kit/server.c b/p11-kit/server.c
+index 553ed02..ff9fdc5 100644
+--- a/p11-kit/server.c
++++ b/p11-kit/server.c
+@@ -41,7 +41,7 @@
+ #include "p11-kit.h"
+ #include "remote.h"
+ #include "options.h"
+-
++#define WINBOOL BOOL
+ #include <assert.h>
+ #include <errno.h>
+ #include <fcntl.h>
+diff --git a/trust/Makefile.am b/trust/Makefile.am
+index 89bc2e0..ad6fa7e 100644
+--- a/trust/Makefile.am
++++ b/trust/Makefile.am
+@@ -48,6 +48,7 @@ p11_kit_trust_la_LIBADD = \
+ 	libp11-library.la \
+ 	libp11-asn1.la \
+ 	libp11-common.la \
++	lib/libp11kit.la \
+ 	$(LIBTASN1_LIBS) \
+ 	$(HASH_LIBS) \
+ 	$(NULL)
+@@ -81,6 +82,7 @@ trust_trust_LDADD = \
+ 	libp11-kit.la \
+ 	libp11-asn1.la \
+ 	libp11-common.la \
++	lib/libp11kit.la \
+ 	libp11-tool.la \
+ 	$(LTLIBINTL) \
+ 	$(LIBTASN1_LIBS) \
+@@ -139,6 +141,7 @@ trust_LIBS = \
+ 	libp11-test.la \
+ 	libp11-asn1.la \
+ 	libp11-common.la \
++	lib/libp11kit.la \
+ 	$(LIBTASN1_LIBS) \
+ 	$(HASH_LIBS) \
+ 	$(NULL)
+@@ -276,6 +279,7 @@ frob_ku_CFLAGS = $(trust_CFLAGS)
+ frob_nss_trust_SOURCES = trust/frob-nss-trust.c
+ frob_nss_trust_LDADD = \
+ 	libp11-common.la \
++	lib/libp11kit.la \
+ 	libp11-kit.la \
+ 	$(HASH_LIBS) \
+ 	$(NULL)
+diff --git a/trust/save.c b/trust/save.c
+index acabcbf..eaf2525 100644
+--- a/trust/save.c
++++ b/trust/save.c
+@@ -350,7 +350,7 @@ p11_save_open_directory (const char *path,
+ 	/* We update the permissions when we finish writing */
+ 	if (mkdir (path, S_IRWXU) < 0) {
+ #else /* OS_WIN32 */
+-	if (mkdir (path) < 0) {
++	if (mkdir (path,0700) < 0) {
+ #endif
+ 		/* Some random error, report it */
+ 		if (errno != EEXIST) {
+diff --git a/trust/token.c b/trust/token.c
+index f2c14b3..b56363a 100644
+--- a/trust/token.c
++++ b/trust/token.c
+@@ -663,7 +663,7 @@ mkdir_with_parents (const char *path)
+ 	int mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+ 	if (mkdir (path, mode) == 0)
+ #else
+-	if (mkdir (path) == 0)
++	if (mkdir (path, 0700) == 0)
+ #endif
+ 		return true;
+ 
+@@ -677,7 +677,7 @@ mkdir_with_parents (const char *path)
+ #ifdef OS_UNIX
+ 				if (mkdir (path, mode) == 0)
+ #else
+-				if (mkdir (path) == 0)
++				if (mkdir (path, 0700) == 0)
+ #endif
+ 					return true;
+ 			}

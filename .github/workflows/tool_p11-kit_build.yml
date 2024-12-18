@@ -1,4 +1,4 @@
-name: gnutls Tool Build
+name: p11-kit Tool Build
 on:
   push:
     branches-ignore:
@@ -10,8 +10,6 @@ jobs:
   build:
     uses: ./.github/workflows/tool_build.yml
     with:
-      ToolName: gnutls
+      ToolName: p11-kit
       RequiredDeps: |
         libtasn1
-        p11-kit
-        zlib

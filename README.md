@@ -52,6 +52,8 @@ The link to the changes in each row will show the source changes. For build time
 |  [zlib](repo_notes/zlib_README.md)  |  [![zlib Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zlib_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zlib_build.yml)  |
 |  [zstd](repo_notes/zstd_README.md)  |  [![zstd Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zstd_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zstd_build.yml)  |
 |  [gnutls](repo_notes/gnutls_README.md)  |  [![gnutls Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gnutls_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gnutls_build.yml)  |
+|  [p11-kit](repo_notes/gnutls_README.md)  |  [![p11-kit Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_p11-kit_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_p11-kit_build.yml)  |
+|  [libtasn1](repo_notes/gnutls_README.md)  |  [![libtasn1 Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_libtasn1_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_libtasn1_build.yml)  |
 |  WIP: [bash](repo_notes/bash_README.md)  |  [![bash Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_bash_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_bash_build.yml)  |
 
 # What is it?

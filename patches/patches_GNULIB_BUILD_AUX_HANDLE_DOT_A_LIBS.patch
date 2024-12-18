@@ -1,20 +1,19 @@
 diff --git a/build-aux/ar-lib b/build-aux/ar-lib
-index 1521987496..edcc491b70 100644
+index 1521987496..855ab90a27 100644
 --- a/build-aux/ar-lib
 +++ b/build-aux/ar-lib
-@@ -1,6 +1,11 @@
+@@ -1,6 +1,10 @@
  #! /bin/sh
  # Wrapper for Microsoft lib.exe
 +set -eo pipefail
  
-+# Wrapper for compilers which do not understand '-c -o'.
 +if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
 +	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
 +fi
  me=ar-lib
  scriptversion=2024-06-19.01; # UTC
  
-@@ -29,6 +34,14 @@ scriptversion=2024-06-19.01; # UTC
+@@ -29,6 +33,14 @@ scriptversion=2024-06-19.01; # UTC
  # bugs to <bug-automake@gnu.org> or send patches to
  # <automake-patches@gnu.org>.
  
@@ -29,7 +28,7 @@ index 1521987496..edcc491b70 100644
  
  # func_error message
  func_error ()
-@@ -49,6 +62,10 @@ func_file_conv ()
+@@ -49,6 +61,10 @@ func_file_conv ()
      / | /[!/]*) # absolute file, and not a UNC file
        if test -z "$file_conv"; then
  	# lazily determine how to convert abs files
@@ -40,7 +39,7 @@ index 1521987496..edcc491b70 100644
  	case `uname -s` in
  	  MINGW*)
  	    file_conv=mingw
-@@ -60,6 +77,7 @@ func_file_conv ()
+@@ -60,6 +76,7 @@ func_file_conv ()
  	    file_conv=wine
  	    ;;
  	esac
@@ -48,16 +47,16 @@ index 1521987496..edcc491b70 100644
        fi
        case $file_conv in
  	mingw)
-@@ -92,7 +110,7 @@ func_at_file ()
+@@ -92,7 +109,7 @@ func_at_file ()
  
    for member
    do
 -    $AR -NOLOGO $operation:"$member" "$archive" || exit $?
-+    func_ar_run $operation:"$member" "$archive"
++    func_ar_run $operation:"${COLOR_MINOR2}$member${COLOR_NONE}" "$archive"
    done
  }
  
-@@ -199,7 +217,7 @@ esac
+@@ -199,7 +216,7 @@ esac
  
  if test -n "$delete"; then
    if test ! -f "$orig_archive"; then
@@ -66,7 +65,7 @@ index 1521987496..edcc491b70 100644
    fi
    for member
    do
-@@ -209,14 +227,14 @@ if test -n "$delete"; then
+@@ -209,14 +226,14 @@ if test -n "$delete"; then
          ;;
        *)
          func_file_conv "$1"
@@ -83,7 +82,7 @@ index 1521987496..edcc491b70 100644
    fi
    if test $# -gt 0; then
      for member
-@@ -227,15 +245,15 @@ elif test -n "$extract"; then
+@@ -227,15 +244,15 @@ elif test -n "$extract"; then
            ;;
          *)
            func_file_conv "$1"
@@ -98,11 +97,11 @@ index 1521987496..edcc491b70 100644
        | while read member
          do
 -          $AR -NOLOGO -EXTRACT:"$member" "$archive" || exit $?
-+          func_ar_run -EXTRACT:"$member" "$archive"
++          func_ar_run -EXTRACT:${COLOR_MINOR2}"$member"${COLOR_NONE} "$archive"
          done
    fi
  
-@@ -266,14 +284,14 @@ elif test -n "$quick$replace"; then
+@@ -266,14 +283,14 @@ elif test -n "$quick$replace"; then
    done
  
    if test -n "$orig_archive"; then
@@ -122,7 +121,7 @@ index 1521987496..edcc491b70 100644
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index c3e8760e96..55eb76649e 100644
+index c3e8760e96..d0df0ab4ff 100644
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,5 +1,10 @@
@@ -353,7 +352,7 @@ index c3e8760e96..55eb76649e 100644
  	  shift
  	  ;;
  	*)
-@@ -225,8 +316,29 @@ func_cl_wrapper ()
+@@ -225,8 +316,31 @@ func_cl_wrapper ()
    if test -n "$linker_opts"; then
      linker_opts="-link$linker_opts"
    fi
@@ -367,6 +366,8 @@ index c3e8760e96..55eb76649e 100644
 +				"-nologo")
 +				;;
 +				\/*) #strip slash commands
++				;;
++				-D*) #any defines
 +				;;
 +				*)
 +					FINAL_ARR+=($VAL)
@@ -387,14 +388,14 @@ index c3e8760e96..55eb76649e 100644
  eat=
 diff --git a/build-aux/ld-link b/build-aux/ld-link
 new file mode 100644
-index 0000000000..3b57d4e63b
+index 0000000000..a8bc17a1a8
 --- /dev/null
 +++ b/build-aux/ld-link
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,44 @@
 +#!/bin/bash
 +set -eo pipefail
 +
-+# Wrapper for compilers which do not understand '-c -o'.
++#wrapper around windows 'ld' aka link.exe.  Primarily just colorization, path conversion, and making sure the MSVC link.exe is called NOT *nix link.
 +if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
 +	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
 +fi
@@ -407,7 +408,7 @@ index 0000000000..3b57d4e63b
 +	echo $WPATH
 +}
 +
-+# with the other wrappers you can use cl or lib  as they genreally wont collide with msys but link.exe does 
++# with the other wrappers you can use cl or lib  as they generally wont collide with msys but link.exe does 
 +if [[ ! -v MS_LINK ]]; then
 +	MS_LINK=`cygpath.exe -m "$VCToolsInstallDir"`
 +	MS_LINK="${LINK_PATH}bin/HostX64/x64/link.exe"
@@ -430,7 +431,6 @@ index 0000000000..3b57d4e63b
 +    set -- "$@" "$file"
 +    shift
 +done
-+echo "HI MSLINK IS: $MS_LINK"
 +if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
 +	wrapper_exec "$MS_LINK" -NOLOGO "$@"
 +else
@@ -438,16 +438,21 @@ index 0000000000..3b57d4e63b
 +fi
 diff --git a/build-aux/wrapper_helper.sh b/build-aux/wrapper_helper.sh
 new file mode 100644
-index 0000000000..4ff5b73c53
+index 0000000000..7f3bc6c350
 --- /dev/null
 +++ b/build-aux/wrapper_helper.sh
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,62 @@
 +#!/bin/bash
 +set -eo pipefail
 +shopt -s inherit_errexit
 +
 +function clear_colors {
 +	unset COLOR_MINOR COLOR_MINOR2 COLOR_MAJOR COLOR_NONE
++}
++function safer_color_echo {
++	local STR="${@//\\/\\\\}"
++	#prevent escape sequences other than \e[ so we dont get accidental escapes
++	echo -e "${STR//\\\\e[/\\e[}" 1>&2
 +}
 +
 +CALLER_NAME=`basename ${0^^}`
@@ -460,7 +465,7 @@ index 0000000000..4ff5b73c53
 +	else
 +		clear_colors;
 +	fi
-+	echo -e ${COLOR_MINOR}GNU ${CALLER_NAME} INPUT${COLOR_NONE}: "$@" 1>&2
++	safer_color_echo "${COLOR_MINOR}GNU ${CALLER_NAME} INPUT${COLOR_NONE}: $@"
 +else
 +	clear_colors;
 +fi
@@ -483,7 +488,7 @@ index 0000000000..4ff5b73c53
 +		echo -e "${@//'\e'\[*([0-9;])m/}" >> "$GNU_BUILD_CMD_FILE"
 +	fi
 +	if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then	
-+		echo -e "${COLOR_MINOR}GNU ${CALLER_NAME} OUTPUT${COLOR_NONE}: " "$@" $STD_DECLARE $linker_opts 1>&2
++		safer_color_echo "${COLOR_MINOR}GNU ${CALLER_NAME} OUTPUT${COLOR_NONE}: $@"
 +	fi
 +	declare -a WLB_RUN_CMD=("$@")
 +
