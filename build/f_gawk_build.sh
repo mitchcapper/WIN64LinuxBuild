@@ -7,7 +7,7 @@ BLD_CONFIG_GNU_LIBS_ADD_TO_REPO=1
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 BLD_CONFIG_GNU_LIBS_ADDL=( "mkstemp" "fts" "sys_socket" "strcasestr" "regex" "random" "flexmember" "setlocale" "locale" "dfa" "sleep" "strsignal" "sys_ioctl" "connect" "listen" "accept" "fnmatch-h" "fnmatch-gnu" "recvfrom" "bind" "setsockopt" "getsockopt" "getopt-gnu" "shutdown" "sys_random" "popen" "pclose" "socket" "strcase" "timegm" "setenv" "unsetenv" "usleep" "fprintf-gnu" )
 BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS=( "4068" )
-BLD_CONFIG_CONFIG_CMD_ADDL=( "ac_cv_search_dlopen=\"none required\"" "--enable-extensions" "--enable-threads=windows" "acl_shlibext=dll" "ac_cv_header_dlfcn_h=yes" )
+BLD_CONFIG_CONFIG_CMD_ADDL=( "ac_cv_search_dlopen=-luser32" "--enable-extensions" "--enable-threads=windows" "acl_shlibext=dll" "ac_cv_header_dlfcn_h=yes" )
 BLD_CONFIG_BUILD_MAKE_CMD_ADDL=( "DEFPATH=\"\\\"./;%%PROGRAMDATA%%/gawk/share\\\"\"" "DEFLIBPATH=\"\\\"./;%%PROGRAMDATA%%/gawk/lib\\\"\"" )
 BLD_CONFIG_PREFER_STATIC_LINKING=0
 
@@ -26,7 +26,7 @@ fi
 		cp gnulib/build-aux/bootstrap.conf .
 		echo "gnulib_tool_option_extras=\" --without-tests --symlink --m4-base=m4 --lib=libgawk --source-base=lib --cache-modules\"" >> bootstrap.conf
 		git mv m4 m4_orig
-		git rm build-aux/*
+		git rm build-aux/ -r
 		mkdir -p m4
 		mkdir -p pc/old
 		mv pc/* pc/old/ || true
@@ -72,7 +72,6 @@ fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
 		configure_apply_fixes_and_run;
 		echo "#include <osfixes.h>" > "lib/dlfcn.h"
-		sed -i -E 's#"none required"##' Makefile awklib/Makefile
 	else
 		setup_build_env;
 	fi
