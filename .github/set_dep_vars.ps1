@@ -15,7 +15,7 @@ foreach ($dep in $arr) {
 $failAction="fail"
 $postfix=""
 if ($env:Configuration -eq "Debug") {
-	$failAction="ignore"
+	#$failAction="ignore"
 	$postfix="-Debug"
 }
 echo "DepsCacheKey=$cacheKey" >> $env:GITHUB_OUTPUT
