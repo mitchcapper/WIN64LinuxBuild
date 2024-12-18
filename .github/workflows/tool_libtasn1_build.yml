@@ -1,4 +1,4 @@
-name: automake Tool Build
+name: libtasn1 Tool Build
 on:
   push:
     branches-ignore:
@@ -10,5 +10,5 @@ jobs:
   build:
     uses: ./.github/workflows/tool_build.yml
     with:
-      ToolName: automake
-      NoDebugBuild: true
+      ToolName: libtasn1
+      

@@ -1,14 +1,16 @@
-automake
+automake: -NoDebug
 awk
 coreutils
 diffutils
 findutils
 gawk
+gnutls: libtasn1
 grep: pcre2
 gzip
 highlight
 libhsts
 libpsl
+libtasn1
 make
 openssl
 patch
@@ -17,7 +19,7 @@ pdcurses
 sed
 symlinks
 tar
-wget: pcre2 libpsl zlib
+wget: pcre2 libpsl zlib openssl
 wget2: pcre2 libpsl zlib libhsts wolfcrypt tar
 which
 wolfcrypt

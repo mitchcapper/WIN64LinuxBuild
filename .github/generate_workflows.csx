@@ -5,12 +5,21 @@ foreach (var package in packages){
     var pkg_name = arr[0];
     if (String.IsNullOrWhiteSpace(pkg_name))
     	continue;
-    var deps ="";
-    if (arr.Length > 1){
-    	var dep_arr = arr[1].Split(new []{" "},StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var deps = arr.Length > 1 ? arr[1] : "";
+    var noDebug=false;
+    if (deps.Contains("-NoDebug")){
+        deps = deps.Replace("-NoDebug","");
+        noDebug=true;
+    }
+    if (! string.IsNullOrWhiteSpace(deps)){
+    	var dep_arr = deps.Split(new []{" "},StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var tabs="        ";
+       
 		deps = $"RequiredDeps: |\n{tabs}" + string.Join("\n" + tabs,dep_arr);
 	}
+    if (noDebug)
+        deps +="\n      NoDebugBuild: true";
+    deps = deps.Trim();
     var cont = orig_cont.Replace("[NAME]",pkg_name).Replace("[DEPS]",deps);
     File.WriteAllText($"workflows/tool_{pkg_name}_build.yml", cont);
 }
