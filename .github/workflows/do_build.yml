@@ -26,6 +26,7 @@ on:
 env:
   CI_REQ_DOTNET_SDK_VER: 6.0.401
   NUKE_TELEMETRY_OPTOUT: 1
+  BLD_CONFIG_GIT_PRINT_LAST_COMMIT_ON_CLONE: 1
   MSYS: "winsymlinks:native wincmdln"
   MSYS2_ARG_CONV_EXCL: "*"
   MSYS2_PATH_TYPE: inherit
@@ -153,12 +154,21 @@ jobs:
         run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}"
 
       - name: Debug Session
-        if: ${{ failure() && (vars.DEBUG_FAIL == '1') && (vars.ACTIONS_RUNNER_DEBUG == true) }}
+        if: ${{ failure() && (vars.DEBUG_FAIL == '1') && (runner.debug) }}
         run: ${{env.WLB_SCRIPT_FOLDER}}/.github/debug_ssh_start.ps1
 
-      - uses: actions/upload-artifact@v3.1.1
+      - name: Failure Artifact Upload
+        if: ${{ failure() && (runner.debug) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAILURE-${{env.BUILD_PKG}}${{matrix.Configuration=='Debug' && '-Debug' || ''}}
+          retention-days: 2
+          path: ${{env.WLB_BASE_FOLDER}}/${{env.BUILD_PKG}}
+      
+      - uses: actions/upload-artifact@v4
         if: ${{ inputs.BuildPkg != 'script' }}
         with:
           name: WLB-${{env.BUILD_PKG}}${{matrix.Configuration=='Debug' && '-Debug' || ''}}
           path: ${{env.WLB_BASE_FOLDER}}/${{env.BUILD_PKG}}/final
           if-no-files-found: error
+      

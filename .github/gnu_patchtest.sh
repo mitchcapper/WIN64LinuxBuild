@@ -4,17 +4,19 @@ PATCH_NAME="$2"
 . "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
 BLD_CONFIG_BUILD_NAME="gnulib";
+BLD_CONFIG_GNU_LIBS_USED=1;
 BLD_CONFIG_LOG_FILE_AUTOTAIL=0;
 function ourmain() {
 	startcommon;
 	set -e
 	git config --global user.email "you@example.com"
   	git config --global user.name "Your Name"
-	git clone --quiet "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" https://github.com/mitchcapper/gnulib .
-	git remote add upstream https://github.com/coreutils/gnulib.git
-	git fetch upstream --quiet
-	git checkout master --quiet
-	git branch master -u upstream/master
+	git_clone --no-checkout --no-recurse-submodules --quiet --use-ref-src https://github.com/coreutils/gnulib.git .
+	git remote add ours https://github.com/mitchcapper/gnulib 
+	git ours upstream --quiet --all
+	git branch -D master
+	git checkout ours/master --quiet
+	git branch master -u origin/master
 	git pull
 	TEST_WHAT="$SKIP_STEP"
 	BRANCH_NAME="ours_${PATCH_NAME,,}"
