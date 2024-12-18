@@ -162,7 +162,7 @@ Add autoconf section before configure:
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
 		gnulib_ensure_buildaux_scripts_copied
 		autoreconf --symlink --verbose --install
-		libtool_fixes "build-aux/ltmain.sh" "m4/libtool.m4"
+		libtool_fixes
 		autoreconf --verbose #update for libtool fixes
 		SKIP_STEP=""
 	fi
@@ -207,14 +207,14 @@ Right before configure:
 
 ## Gawk
 ### Template Script Args
-`--BUILD_NAME gawk --GitRepo https://git.savannah.gnu.org/git/gawk.git --GNU_LIBS_ADD_TO_REPO 1 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --PREFER_STATIC_LINKING=0 --GNU_LIBS_ADDL "mkstemp" "fts" "sys_socket" "strcasestr" "regex" "random" "flexmember" "setlocale" "locale" "dfa" "sleep" "strsignal" "sys_ioctl" "connect" "listen" "accept" "fnmatch-h" "fnmatch-gnu" "recvfrom" "bind" "setsockopt" "getsockopt" "getopt-gnu" "shutdown" "sys_random" "popen" "pclose" "socket" "strcase" "timegm" "setenv" "unsetenv" "usleep" "fprintf-gnu" --BUILD_MSVC_IGNORE_WARNINGS 4068 --CONFIG_CMD_ADDL "ac_cv_search_dlopen=`"none required`"" "--enable-extensions" "--enable-threads=windows" "acl_shlibext=dll" "ac_cv_header_dlfcn_h=yes"  --BUILD_MAKE_CMD_ADDL 'DEFPATH="\"./;%%PROGRAMDATA%%/gawk/share\""' 'DEFLIBPATH="\"./;%%PROGRAMDATA%%/gawk/lib\""'`
+`--BUILD_NAME gawk --GitRepo https://git.savannah.gnu.org/git/gawk.git --GNU_LIBS_ADD_TO_REPO 1 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --PREFER_STATIC_LINKING=0 --GNU_LIBS_ADDL "mkstemp" "fts" "sys_socket" "strcasestr" "regex" "random" "flexmember" "setlocale" "locale" "dfa" "sleep" "strsignal" "sys_ioctl" "connect" "listen" "accept" "fnmatch-h" "fnmatch-gnu" "recvfrom" "bind" "setsockopt" "getsockopt" "getopt-gnu" "shutdown" "sys_random" "popen" "pclose" "socket" "strcase" "timegm" "setenv" "unsetenv" "usleep" "fprintf-gnu" --BUILD_MSVC_IGNORE_WARNINGS 4068 --CONFIG_CMD_ADDL "ac_cv_search_dlopen=-luser32" "--enable-extensions" "--enable-threads=windows" "acl_shlibext=dll" "ac_cv_header_dlfcn_h=yes"  --BUILD_MAKE_CMD_ADDL 'DEFPATH="\"./;%%PROGRAMDATA%%/gawk/share\""' 'DEFLIBPATH="\"./;%%PROGRAMDATA%%/gawk/lib\""'`
 
 ### Modifications
-We specifically set it to not statically link.  It will compile with static linking fine, but extensions are also compiled statically into libs which obviously gawk can't use at runtime then.  The only dependency gawk has when dynamically compiled is the vc runtime.
+We specifically set it to not statically link.  It will compile with static linking fine, but extensions are also compiled statically into libs which obviously gawk can't use at runtime then.  The only dependency gawk has when dynamically compiled is the vc runtime.  As for the ac_cv_search_dlopen setting it to something will bypass the check we would fail, but the none-required value no longer works so we just set it to a lib we will include anyway.
 
 In the clone step add
 ```bash
-cp gnulib/build-aux/bootstrap .
+		cp gnulib/build-aux/bootstrap .
 		cp gnulib/build-aux/bootstrap.conf .
 		echo "gnulib_tool_option_extras=\" --without-tests --symlink --m4-base=m4 --lib=libgawk --source-base=lib --cache-modules\"" >> bootstrap.conf
 		git mv m4 m4_orig
@@ -499,9 +499,39 @@ make ships with a bunch of gnulib baked in but doesn't use gnulib proper we chan
 
 ## gnutls
 ### Template Script Args
-`--BUILD_NAME gnutls --GitRepo https://github.com/gnutls/gnutls.git --GNU_LIBS_ADDL "dirent" "getopt-gnu" --CONFIG_CMD_ADDL "--with-included-unistring" "--with-included-libtasn1" "--without-p11-kit" --VC_PKGDEPS "gmp" "nettle" "brotli" "zstd"  --PKG_CONFIG_MANUAL_ADD "gmp" --BUILD_ADDL_CFLAGS "-I../gl/"`
+`--BUILD_NAME gnutls --GitRepo https://github.com/gnutls/gnutls.git --GNU_LIBS_ADDL "dirent" "getopt-gnu" --CONFIG_CMD_ADDL "--with-included-unistring"  "--without-p11-kit" --VC_PKGDEPS "gmp" "nettle" "brotli" "zstd"  --PKG_CONFIG_MANUAL_ADD "gmp" --BUILD_ADDL_CFLAGS "-I../gl/" --OUR_LIB_DEPS "libtasn1" --OUR_LIB_BINS_PATH "libtasn1"`
 
 ### Modifications
+At top after startcommon add: `BLD_CONFIG_GNU_LIBS_EXCLUDE=("${BLD_CONFIG_GNU_LIBS_DEFAULT[@]}")` have to wait until then as otherwise full template sub not done
+Would prefer if --with-included-libtasn1 would work but for some reason it doesn't seem to still use it so we compile it ourselves instead.
+
+After switch_to_master_and_patch add:
+```bash
+			if [[ $BLD_CONFIG_CONFIG_NO_TESTS -eq 1 ]]; then
+				sed -i -E '/SUBDIRS \+= tests/d' Makefile.am
+				sed -i -E '/tests\//d;/fuzz\//d;' configure.ac
+			fi
+			if [[ $BLD_CONFIG_CONFIG_NO_DOCS -eq 1 ]]; then
+				sed -i -E '/enable-doc/d;/enable-gtk-doc/d;/SUBDIRS \+= doc/d;' Makefile.am
+				sed -i -E '/doc\//d;/GTK_DOC_CHECK/d' configure.ac
+			fi
+			if [[ $BLD_CONFIG_CONFIG_NO_PO -eq 1 ]]; then
+				sed -i -E '/SUBDIRS \+= po/d' Makefile.am
+				sed -i -E '/po\//d;' configure.ac
+			fi
+			if [[ -f "gl/override/doc/gendocs_template.diff" && $BLD_CONFIG_CONFIG_NO_DOCS -eq "1" ]]; then
+				git rm "gl/override/doc/gendocs_template.diff"
+			fi
+```
+
+Before configure:
+`ensure_perl_installed_set_exports "AS"`
+
+## libtasn1
+### Template Script Args
+`--BUILD_NAME libtasn1 --GitRepo https://gitlab.com/gnutls/libtasn1.git --HaveOurPatch=0 --BUILD_ADDL_CFLAGS_STATIC -DASN1_STATIC`
+
+### modifications
 At top after startcommon add: `BLD_CONFIG_GNU_LIBS_EXCLUDE=("${BLD_CONFIG_GNU_LIBS_DEFAULT[@]}")` have to wait until then as otherwise full template sub not done
 
 After switch_to_master_and_patch add:
@@ -515,7 +545,7 @@ After switch_to_master_and_patch add:
 				sed -i -E '/doc\//d;/GTK_DOC_CHECK/d' configure.ac
 			fi
 			if [[ $BLD_CONFIG_CONFIG_NO_PO -eq 1 ]]; then
-			sed -i -E '/SUBDIRS \+= po/d' Makefile.am
+				sed -i -E '/SUBDIRS \+= po/d' Makefile.am
 				sed -i -E '/po\//d;' configure.ac
 			fi
 			if [[ -f "gl/override/doc/gendocs_template.diff" && $BLD_CONFIG_CONFIG_NO_DOCS -eq "1" ]]; then
@@ -523,5 +553,35 @@ After switch_to_master_and_patch add:
 			fi
 ```
 
-Before configure:
-`ensure_perl_installed_set_exports "AS"`
+## p11-kit
+
+### Template Script Args
+`--BUILD_NAME p11-kit --GitRepo https://github.com/p11-glue/p11-kit --HaveOurPatch=0  --GNU_LIBS_USED=0`
+
+### modifications
+Before configure add:
+```bash
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
+		gnulib_ensure_buildaux_scripts_copied
+		autoreconf --symlink --verbose --install
+		libtool_fixes
+		autoreconf --verbose #update for libtool fixes
+		SKIP_STEP=""
+	fi
+```
+
+## gzip
+### Template Script Args
+`--BUILD_NAME gzip --HaveOurPatch=0 --GitRepo https://git.savannah.gnu.org/git/gzip.git --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1`
+
+## rsync
+### Template Script Args
+`--BUILD_NAME rsync --HaveOurPatch=0 --GitRepo https://github.com/WayneD/rsync.git  --GNU_LIBS_ADD_TO_REPO 1  --CONFIG_CMD_ADDL --enable-lz4 --disable-md2man --OUR_LIB_DEPS openssl zstd --VCPKG_DEPS "xxhash" "lz4" --GNU_LIBS_ADDL "getsockopt" "strcase" "strerror" "getaddrinfo" "setsockopt" "sleep" "getsockname" "getpeername" "ioctl" "alloca" "alloca-opt" "socket" "bind" "symlink" "unistd" "fsync" "gettimeofday" "sys_socket" "lock" "flock" "signal-h" "sys_ioctl" "symlink" "symlinkat" "unlinkat" "netinet_in" "arpa_inet" "dirent" "sys_stat" "sys_types" "sys_file" "stdbool" "stat-time" "dirname" "attribute" "dirfd" "dup2" "readlink" "stat-macros" "lstat" "stat-size" "stat-time" "open" "openat" "stdopen" "fcntl" "fcntl-h" "errno"`
+
+after clone
+```bash
+	cp gnulib/build-aux/bootstrap .
+	cp gnulib/build-aux/bootstrap.conf .
+	#it doesn't use extras so we can just ad ours, they use paxutils to gnulib everyhting
+	echo "gnulib_tool_option_extras=\" --without-tests --symlink\"" >> bootstrap.conf
+```

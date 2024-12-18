@@ -14,6 +14,8 @@ The helpers are where the bulk of code is consolidated down that we would use fo
 - helpers_vcpkg.sh - handles installing and removing vcpkg packages, adding them to the proper path/env/includes even installs vcpkg is not installed (we use a local copy separate from the system to avoid polluting the users vcpkg.
 - helpers_ini.sh - INI reader and config merge/templating tool.  It also handles exporting the final config to a file so it can be consumed by other things (ie our visual studio sln generator).
 
+# Custom build steps / blocks
+In an effort to create cleaner build scripts some code was moved more behind the scenes in non obvious ways.  For example many steps will start the block with: `if [[ -z $SKIP_STEP || $SKIP_STEP == "STEPNAME" ]]; then` this means if no step is specified or if it is the step to resume at go into the block.  Easy enough.  What needs to happen inside that block is `SKIP_STEP=""` otherwise it won't proceed to the next step properly on resumes.  The built in steps this happens automatically on, generally the first function they call has a `SKIP_STEP=""` line.   The other item, purely for error messages, is "CUR_STEP".  If yo want to set this on entering a step to the step name and then set it back to empty at the end if there is an error it will say "you may be able to resume by passing step X to the build script.  This is not required though, purely a user help thing.
 
 # debugging build failures
 
@@ -31,3 +33,11 @@ It is not recommended to run most commands manually but rather try to use the re
 Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
 
 You will want to preserve whitespace when generating the patch but we will ignore whne applying.
+
+
+# GitHub Actions
+The github action build scripts use some cheats to work. For one, because we can't wait cross workflow completions deps are done based on the last flow.  If openssl depends on our zstd then the zstd copy it uses to build is the one from the github action prior to the current one.  This past artifact use means if a bug is fixed in a dep it may require two commits to show in the final product. Technically this can have a recursive effect.  If A depends on B which depends on C and a bug is fixed in C it may take 3 commits to reach A (first commit fixes it in C and generates the C artifact, next commit results in B being built with the updated artifact, and finally the 3rd commit results in C picking it up).  This only applies when one dep completely includes the other.  If B just references A and C also references A then in two commits C will pick it up.
+
+In theory we could build on non-windows platforms but right now we dont try to do so as I am not sure there is much reason.  There would also need to be some windows specific changes to the helpers gated properly.
+
+Right now we build static versions in debug and release configurations for every library.
