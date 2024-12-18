@@ -1,81 +1,63 @@
 #!/bin/bash
+set -e
+. "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
-OUR_PATH="$(readlink -f "$0")";
-CALL_CMD="$1"
+BLD_CONFIG_BUILD_NAME="rsync"
+BLD_CONFIG_GNU_LIBS_ADD_TO_REPO=1
+BLD_CONFIG_CONFIG_CMD_ADDL=( "--enable-lz4" "--disable-md2man" )
+BLD_CONFIG_OUR_LIB_DEPS=( "openssl" "zstd" )
+BLD_CONFIG_VCPKG_DEPS=( "xxhash" "lz4" )
+BLD_CONFIG_PKG_CONFIG_MANUAL_ADD=( "libxxhash" "liblz4" "libzstd" "openssl" )
+BLD_CONFIG_GNU_LIBS_ADDL=( "connect" "sys_wait" "listen" "accept" "asprintf" "getpass-gnu" "vasprintf-gnu" "getsockopt" "strcase" "strerror" "getaddrinfo" "setsockopt" "sleep" "getsockname" "getpeername" "ioctl" "alloca" "alloca-opt" "socket" "bind" "symlink" "unistd" "fsync" "gettimeofday" "sys_socket" "lock" "flock" "signal-h" "sys_ioctl" "symlinkat" "unlinkat" "netinet_in" "arpa_inet" "dirent" "sys_stat" "sys_types" "sys_file" "stdbool" "stat-time" "dirname" "attribute" "dirfd" "dup2" "readlink" "stat-macros" "lstat" "stat-size" "open" "openat" "stdopen" "fcntl" "fcntl-h" "errno" )
 
-SCRIPT_FOLDER="$(dirname "${OUR_PATH}")"
-if [[ ! -z "$WLB_SCRIPT_FOLDER" ]]; then
-	SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER}"
-fi
-. "$SCRIPT_FOLDER/helpers.sh" "${CALL_CMD}" "${OUR_PATH}"
+# BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
+# BLD_CONFIG_BUILD_DEBUG=1
 
-PreInitialize;
-#BLD_CONFIG_LOG_ON_AT_INIT=0
-
-
-BLD_CONFIG_BUILD_NAME="rsync";
-BLD_CONFIG_CONFIG_CMD_ADDL="--enable-lz4 --disable-md2man" #--disable-nls --enable-static
-BLD_CONFIG_ADD_WIN_ARGV_LIB=0
-#BLD_CONFIG_GNU_LIBS_USED=0
-#BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED=1
-#BLD_CONFIG_LOG_FILE_AUTOTAIL=0
-
-#BLD_CONFIG_LOG_EXPAND_VARS=1
-BLD_CONFIG_GNU_LIBS_ADDL=( "getsockopt" "strcase" "strerror" "getaddrinfo" "setsockopt" "sleep" "getsockname" "getpeername" "ioctl" "alloca" "alloca-opt" "socket" "bind" "symlink" "unistd" "fsync" "gettimeofday" "sys_socket" "lock" "flock" "signal-h" "sys_ioctl" "symlink" "symlinkat" "unlinkat" "netinet_in" "arpa_inet" "dirent" "sys_stat" "sys_types" "sys_file" "stdbool" "stat-time" "dirname" "attribute" "dirfd" "dup2" "readlink" "stat-macros" "lstat" "stat-size" "stat-time" "open" "openat" "stdopen" "fcntl" "fcntl-h" "errno" )
-
-# Set DO_EXPAND_OF_LOGGED_VARS=1 # set this to expand vars in log - so this works well but this is the only way I found to properly log the current command in a reproducible form.  It is exceptionally slow.
-# after including this script have:
 function ourmain() {
 	startcommon;
-	#CFLAGS="-I ./lib/"
-	add_lib_pkg_config  "zstd"
-	add_vcpkg_pkg_config  "openssl" "xxhash" "lz4"
-	pkg_config_manual_add "libzstd" "openssl" "libxxhash" "liblz4"
 
 if test 5 -gt 100; then
-		echo "Just move the fi down as you want to skip steps"
-#fi
-
-	git clone --recurse-submodules https://github.com/WayneD/rsync.git .
-
-	git clone --recurse-submodules https://github.com/coreutils/gnulib
-	cp gnulib/build-aux/bootstrap .
-	cp gnulib/build-aux/bootstrap.conf .
-	#it doesn't use extras so we can just ad ours, they use paxutils to gnulib everyhting
-	echo "gnulib_tool_option_extras=\" --without-tests --symlink\"" >> bootstrap.conf
-	gnulib_switch_to_master_and_patch;
+		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
 fi
-	gnulib_add_addl_modules_to_bootstrap;
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
+		git_clone_and_add_ignore https://github.com/WayneD/rsync.git .
+		cp gnulib/build-aux/bootstrap .
+		cp gnulib/build-aux/bootstrap.conf .
+		#it doesn't use extras so we can just ad ours, they use paxutils to gnulib everyhting
+		echo "gnulib_tool_option_extras=\" --without-tests --symlink\"" >> bootstrap.conf
+	fi
 
-	setup_gnulibtool_py_autoconfwrapper #needed for generated .mk/.ac files but if just stock then the below line likely works
-	#gnulib_tool_py_remove_nmd_makefiles;
-	./bootstrap --no-bootstrap-sync --no-git --gnulib-srcdir=gnulib --skip-po --force
+	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then
+		if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib" ]]; then
+			gnulib_switch_to_master_and_patch;
+		fi
+		cd $BLD_CONFIG_SRC_FOLDER
+		if [[ -z $SKIP_STEP || $SKIP_STEP == "bootstrap" ]]; then
+			gnulib_add_addl_modules_and_bootstrap;
+		fi
+	fi
 
-	add_items_to_gitignore;
+	if [[ $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
+		autoreconf --symlink --verbose --install
+		SKIP_STEP=""
+	fi
+
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "vcpkg" ]]; then
+		vcpkg_install_package
+	fi
 
 	cd $BLD_CONFIG_SRC_FOLDER
-	vcpkg_install_package "openssl" "xxhash" "lz4"
-#	pkg_config_manual_add "libzstd" "openssl" "libxxhash" "liblz4"
-#fi
-
-#not sure why we have to do this somethinng isnnt autogening right or nwe need lib moved up in the make order
-	cp c:/software/gnulib/build-aux/compile "${BLD_CONFIG_BUILD_AUX_FOLDER}/"
-	#sometimes runnning make requires re-running make
-	#
-
-	cd $BLD_CONFIG_SRC_FOLDER
-#fi
-	configure_fixes;
-	configure_run || (./config.status --recheck && configure_run);
-
-
-	setup_build_env;
-	cd $BLD_CONFIG_SRC_FOLDER/lib && (make || make)
-	cd $BLD_CONFIG_SRC_FOLDER
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
+		configure_apply_fixes_and_run;
+	else
+		setup_build_env;
+	fi
+	pushd lib
 	make
-	make install
+	popd
+	run_make
+	make_install
 
 	finalcommon;
 }
 ourmain;
-
