@@ -27,6 +27,7 @@ function usage(){
 		[bootstrap]="bootstrap gnulib and related project autoconf files"
 		[configure]="configure run (does use cache opt)"
 		[make]="make, default that happens if not matched to another arg (but an arg is passed)"
+		[make_single]="same as make, but no skip even the first parallel make try (aka -j1)"
 		[make_log_undefines]="Try make but capture output and put undefined symbols into undefines.txt"
 		[makefiles]="runs ./config.status to regenerate makefile templates from config output before make"
 		[dep_print]="Print the other build libs we depend on"
@@ -279,7 +280,7 @@ function run_make(){
 		exit 1
 		CUR_STEP="";SKIP_STEP="";
 	fi
-	if [[ $BLD_CONFIG_BUILD_MAKE_JOBS -gt 1 ]]; then
+	if [[ $BLD_CONFIG_BUILD_MAKE_JOBS -gt 1 && $SKIP_STEP != "make_single" ]]; then
 		declare -a MULTI_MAKE_CMD=( ${DEF_MAKE_CMD[0]} "-j" $BLD_CONFIG_BUILD_MAKE_JOBS "${DEF_MAKE_CMD[@]:1}" )
 		ex "${MULTI_MAKE_CMD[@]}" || ex "${DEF_MAKE_CMD[@]}"
 	else
@@ -420,7 +421,7 @@ function setup_build_env(){
 	else
 		FULL_CONFIG_CMD_ARR+=( "${BLD_CONFIG_CONFIG_CMD_ADDL_SHARED[@]}" )
 	fi;
-	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
+	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
 		FULL_CONFIG_CMD_ARR+=( "${BLD_CONFIG_CONFIG_CMD_ADDL_DEBUG[@]}" )
 		ADL_C_FLAGS+=" ${BLD_CONFIG_BUILD_ADDL_CFLAGS_DEBUG[*]}"
 	fi
@@ -588,16 +589,22 @@ function startcommon(){
 		exit 0;
 	fi
 	if [[ $SKIP_STEP == "dep_print" ]]; then
-		ALL_DEPS=( "${BLD_CONFIG_OUR_LIB_DEPS[@]}" "${BLG_CONFIG_OUR_LIB_BINS_PATH[@]}" )
+		ALL_DEPS=( "${BLD_CONFIG_OUR_LIB_DEPS[@]}" "${BLD_CONFIG_OUR_LIB_BINS_PATH[@]}" )
 		echo "Depends on: ${ALL_DEPS[@]}"
 		exit 0;
 	fi	
 	trace_init;
 	if [[ $SKIP_STEP == "dep_build" ]]; then
-		ALL_DEPS=( "${BLD_CONFIG_OUR_LIB_DEPS[@]}" "${BLG_CONFIG_OUR_LIB_BINS_PATH[@]}" )
+		ALL_DEPS=( "${BLD_CONFIG_OUR_LIB_DEPS[@]}" "${BLD_CONFIG_OUR_LIB_BINS_PATH[@]}" )
 		#this is somewhat tricky as we don't want any vars set in this script to effect the next so we will export at start and then start a fresh env and import, we can't just souce it here as any new vars that were set by us would still be set if not originally set
 		for dep in "${ALL_DEPS[@]}"; do
-			ex env --ignore-environment /bin/bash -c "source \"${OLD_ENV_FILE}\" && rm \"${OLD_ENV_FILE}\" && \"${WLB_SCRIPT_FOLDER}/build-new/f_${dep}_build.sh\""
+			PTH=$(get_install_prefix_for_pkg "${dep}")
+			if [[ ! -d "$PTH" ]]; then
+				ex env --ignore-environment /bin/bash -c "source \"${OLD_ENV_FILE}\" && rm \"${OLD_ENV_FILE}\" && \"${WLB_SCRIPT_FOLDER}/build/f_${dep}_build.sh\""
+			else
+				echo "Assuming dep ${dep} complete as final build directory exists"
+			fi
+			echo "Done with all deps."
 		done
 		exit 0;
 	fi
@@ -616,7 +623,7 @@ function startcommon(){
 	fi
 	gnulib_init;
 	add_lib_pkg_config "${BLD_CONFIG_OUR_LIB_DEPS[@]}";
-	add_lib_bin_to_path "${BLG_CONFIG_OUR_LIB_BINS_PATH[@]}";
+	add_lib_bin_to_path "${BLD_CONFIG_OUR_LIB_BINS_PATH[@]}";
 	add_vcpkg_pkg_config "${BLD_CONFIG_VCPKG_DEPS[@]}";
 	setup_gnulibtool_py_autoconfwrapper;
 	if [[ $BLD_CONFIG_OUR_OS_FIXES_APPLY_TO_DBG -eq 1 ]]; then

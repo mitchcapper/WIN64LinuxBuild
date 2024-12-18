@@ -93,23 +93,27 @@ function gnulib_ensure_buildaux_scripts_copied(){
 	if [[ $1 == "--forced" ]]; then
 		FORCED=1
 	fi
-	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]] || [[ $BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED -eq 1 ]]; then
-		mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
-		declare -a SCRIPTS_TO_ADD=("${BLD_CONFIG_BUILD_AUX_SCRIPTS_DEFAULT[@]}" "${BLD_CONFIG_BUILD_AUX_SCRIPTS_ADDL[@]}")
-		for flf in "${SCRIPTS_TO_ADD[@]}"; do
-			local gnu_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/${flf}")
-			local SRC_PATH="${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/${flf}"
-			if [[ ! -e "${gnu_path}" || $FORCED -eq 1 ]]; then
-				if [[ -e "${gnu_path}" ]]; then
-					rm "${gnu_path}" #remove it as somehow msys cp will override the symlink target???
+	if [[ -d "${BLD_CONFIG_SRC_FOLDER}/.git" ]]; then #make sure we are a valid checkout before doing this to avoid poluting an empty dir
+		if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]] || [[ $BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED -eq 1 ]]; then
+			mkdir -p "$BLD_CONFIG_BUILD_AUX_FOLDER"
+			declare -a SCRIPTS_TO_ADD=("${BLD_CONFIG_BUILD_AUX_SCRIPTS_DEFAULT[@]}" "${BLD_CONFIG_BUILD_AUX_SCRIPTS_ADDL[@]}")
+			for flf in "${SCRIPTS_TO_ADD[@]}"; do
+				local gnu_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/${flf}")
+				local SRC_PATH="${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/${flf}"
+				if [[ ! -e "${gnu_path}" || $FORCED -eq 1 ]]; then
+					if [[ -e "${gnu_path}" ]]; then
+						rm "${gnu_path}" #remove it as somehow msys cp will override the symlink target???
+					fi
+					if [[ -e "${SRC_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
+						cp "${SRC_PATH}" "${gnu_path}"
+					else #no gnulib local so lets fetch it from remote
+						wget --quiet "https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/${flf}" -O "${gnu_path}"
+					fi
 				fi
-				if [[ -e "${SRC_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
-					cp "${SRC_PATH}" "${gnu_path}"
-				else #no gnulib local so lets fetch it from remote
-					wget --quiet "https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/${flf}" -O "${gnu_path}"
-				fi
-			fi
-		done
+			done
+		fi
+	else
+		echo "gnulib_ensure_buildaux_scripts_copied called but no git folder found on build root so skipping, likely an error" 1>&2
 	fi
 }
 function gnulib_bootstrap(){

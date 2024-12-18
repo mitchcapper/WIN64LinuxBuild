@@ -182,5 +182,6 @@ _failure() {
 		echo "${DBG_OUT_STR}" 1>&2
 		echo -e "${DBG_OUT_STR_FINAL}" 1>&2
 	fi
-	kill -- -$$ || true
+	kill -- -$$ &>/dev/null || true
+	exit $ERR_CODE
 }
