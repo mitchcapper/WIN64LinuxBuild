@@ -11,6 +11,7 @@ BLD_CONFIG_BUILD_ADDL_CFLAGS=( "-I../gl/" )
 BLD_CONFIG_BUILD_ADDL_CFLAGS_STATIC=("-DASN1_STATIC")
 BLD_CONFIG_OUR_LIB_DEPS=("libtasn1" "p11-kit" "zlib")
 BLD_CONFIG_OUR_LIB_BINS_PATH=("libtasn1")
+BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS=( "4068" "4061" "4820" "5045" "4668" )
 
 # BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
 # BLD_CONFIG_BUILD_DEBUG=1
@@ -28,7 +29,6 @@ fi
 
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		apply_our_repo_patch; # Applies from patches folder repo_BUILD_NAME.patch to the sources
-		sed -i -E 's/p11tool_options;/p11tool_options ;\n#undef write/' cligen/fixtures/output/p11tool-args.c
 	fi
 
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then
@@ -71,6 +71,13 @@ fi
 		configure_apply_fixes_and_run;
 	else
 		setup_build_env;
+	fi
+	P11_FILE="src/p11tool-options.c"
+	if [[ -e "${P11_FILE}" ]]; then
+		if grep -Fq " p11tool_options;" "${P11_FILE}"; then
+			sed -i -E 's/ p11tool_options;/ p11tool_options ;\n#undef write/' "${P11_FILE}" # fix issue where write is refined to _write but then .write on a struct has problems
+			echo "Fixed ${P11_FILE} for _write bug"
+		fi
 	fi
 
 	run_make
