@@ -196,7 +196,7 @@ function git_clone(){
 	declare -a REF_ARGS=() #global incase we are just doing a gnulib add	
 	if [[ "$USE_REF_SRC_DIR" -eq 1 ]]; then
 		REF_ARGS=( "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" )
-		if "$USE_REF_SRC_DIR_ON_INITIAL_CLONE" -eq 1 ]]; then
+		if [[ "$USE_REF_SRC_DIR_ON_INITIAL_CLONE" -eq 1 ]]; then
 			FINAL_ARR+=("${REF_ARGS[@]}")
 		fi
 	fi
