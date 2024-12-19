@@ -3,10 +3,16 @@ Set-StrictMode -version latest;
 $ErrorActionPreference = "Stop";
 
 if (! $env:VS_ENV_INITIALIZED) {
-    $env:VS_ENV_INITIALIZED=1;
-    $VS_INSTANCE=Get-CimInstance MSFT_VSInstance -Namespace root/cimv2/vs;
+    $instances=Get-CimInstance MSFT_VSInstance -Namespace root/cimv2/vs;
+    $VS_INSTANCE = $instances[0]
+    foreach ($instance in $instances) {
+        if ( [System.Version]$VS_INSTANCE.Version -gt [System.Version]$instance.Version ) {
+            $VS_INSTANCE=$instance;
+        }
+    }
     $VS_DEV_SHELL_PATH="$($VS_INSTANCE.InstallLocation)/Common7/Tools/Microsoft.VisualStudio.DevShell.dll";
     $VS_INSTANCE_ID=$VS_INSTANCE.IdentifyingNumber;
+    $env:VS_ENV_INITIALIZED=1;
     Import-Module $VS_DEV_SHELL_PATH;
     Enter-VsDevShell $VS_INSTANCE_ID -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64";
 }

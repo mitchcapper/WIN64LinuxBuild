@@ -16,6 +16,11 @@ on:
         type: boolean
         description: 'Only do release build'
         default: false
+      InstallLatestVSTools:
+        required: false
+        type: boolean
+        description: 'Install the very latest preview of VS Build TOOLS needed for some bug fixes'
+        default: false        
 
 env:
   CI_REQ_DOTNET_SDK_VER: 6.0.401
@@ -41,3 +46,4 @@ jobs:
       BuildPkg: ${{ inputs.ToolName }}
       RequiredDeps: ${{ inputs.RequiredDeps }}
       NoDebugBuild: ${{ inputs.NoDebugBuild }}
+      InstallLatestVSTools: ${{ inputs.InstallLatestVSTools }}

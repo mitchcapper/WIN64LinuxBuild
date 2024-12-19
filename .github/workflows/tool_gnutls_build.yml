@@ -11,6 +11,7 @@ jobs:
     uses: ./.github/workflows/tool_build.yml
     with:
       ToolName: gnutls
+      InstallLatestVSTools: true
       RequiredDeps: |
         libtasn1
         p11-kit

@@ -19,6 +19,11 @@ on:
         type: boolean
         description: 'Only do release build'
         default: false
+      InstallLatestVSTools:
+        required: false
+        type: boolean
+        description: 'Install the very latest preview of VS Build TOOLS needed for some bug fixes'
+        default: false
     outputs:
       ScriptRes:
         description: "Result of script execution (optional)"
@@ -139,6 +144,10 @@ jobs:
       - name: Unpack / Move Artifacts
         if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
         run: ${{env.WLB_SCRIPT_FOLDER}}/.github/move_dl_artifacts.ps1
+      - name: VSLatest Build Tools Install
+        if: ${{ inputs.InstallLatestVSTools }}
+        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_buildtools_installer.ps1
+        
 
       - name: Build Package
         if: ${{ inputs.BuildPkg != 'script' }}
