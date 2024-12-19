@@ -13,7 +13,7 @@ function ourmain() {
   	git config --global user.name "Your Name"
 	git_clone --no-checkout --no-recurse-submodules --quiet --use-ref-src https://github.com/coreutils/gnulib.git .
 	git remote add ours https://github.com/mitchcapper/gnulib 
-	git fetch ours --quiet --all
+	git fetch --quiet --all
 	git branch -D master
 	git checkout ours/master --quiet
 	git branch master -u origin/master
