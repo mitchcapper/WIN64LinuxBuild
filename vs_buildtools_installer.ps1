@@ -1,6 +1,9 @@
+param (
+	[string] $install_path="c:/Program Files/vs_buildtools"
+)
+
 Set-StrictMode -version latest;
 $ErrorActionPreference = "Stop";
-param ($install_path="c:/Program Files/vs_buildtools")
 $installer=Get-ChildItem ([IO.Path]::GetTempFileName()) | Rename-Item -NewName { [IO.Path]::ChangeExtension($_, ".exe") } -PassThru
 Invoke-WebRequest 'https://aka.ms/vs/17/pre/vs_buildtools.exe'  -OutFile $installer
 $startInfo = New-Object System.Diagnostics.ProcessStartInfo
