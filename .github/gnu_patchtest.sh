@@ -14,8 +14,9 @@ function ourmain() {
 	git_clone --no-checkout --no-recurse-submodules --quiet --use-ref-src https://github.com/coreutils/gnulib.git .
 	git remote add ours https://github.com/mitchcapper/gnulib 
 	git fetch --quiet --all
-	git branch -D master
 	git checkout ours/master --quiet
+	git branch -D master
+	git checkout -b master ours/master # should do ours/master anyway as its what we are on
 	git branch master -u origin/master
 	git pull
 	TEST_WHAT="$SKIP_STEP"
