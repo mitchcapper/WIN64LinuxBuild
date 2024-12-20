@@ -52,7 +52,7 @@ jobs:
         lookup-only: true
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep1Name }}
-      uses: mitchcapper/action-download-artifact@6aeaa1ddc66f3e526ea4e409313f8f93a3ed95cc
+      uses: mitchcapper/action-download-artifact@305efd0d44a6795c0a2a4cffaa7ce38aaf6c62ad
       if: ${{ steps.vars.outputs.Dep1Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep1Name }}
@@ -65,7 +65,7 @@ jobs:
         workflow: tool_${{ steps.vars.outputs.Dep1Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep2Name }}
-      uses: mitchcapper/action-download-artifact@6aeaa1ddc66f3e526ea4e409313f8f93a3ed95cc
+      uses: mitchcapper/action-download-artifact@305efd0d44a6795c0a2a4cffaa7ce38aaf6c62ad
       if: ${{ steps.vars.outputs.Dep2Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep2Name }}
@@ -78,7 +78,7 @@ jobs:
         workflow: tool_${{ steps.vars.outputs.Dep2Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep3Name }}
-      uses: mitchcapper/action-download-artifact@6aeaa1ddc66f3e526ea4e409313f8f93a3ed95cc
+      uses: mitchcapper/action-download-artifact@305efd0d44a6795c0a2a4cffaa7ce38aaf6c62ad
       if: ${{ steps.vars.outputs.Dep3Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep3Name }}
@@ -91,7 +91,7 @@ jobs:
         workflow: tool_${{ steps.vars.outputs.Dep3Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep4Name }}
-      uses: mitchcapper/action-download-artifact@6aeaa1ddc66f3e526ea4e409313f8f93a3ed95cc
+      uses: mitchcapper/action-download-artifact@305efd0d44a6795c0a2a4cffaa7ce38aaf6c62ad
       if: ${{ steps.vars.outputs.Dep4Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep4Name }}
@@ -104,7 +104,7 @@ jobs:
         workflow: tool_${{ steps.vars.outputs.Dep4Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep5Name }}
-      uses: mitchcapper/action-download-artifact@6aeaa1ddc66f3e526ea4e409313f8f93a3ed95cc
+      uses: mitchcapper/action-download-artifact@305efd0d44a6795c0a2a4cffaa7ce38aaf6c62ad
       if: ${{ steps.vars.outputs.Dep5Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep5Name }}
@@ -117,7 +117,7 @@ jobs:
         workflow: tool_${{ steps.vars.outputs.Dep5Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep6Name }}
-      uses: mitchcapper/action-download-artifact@6aeaa1ddc66f3e526ea4e409313f8f93a3ed95cc
+      uses: mitchcapper/action-download-artifact@305efd0d44a6795c0a2a4cffaa7ce38aaf6c62ad
       if: ${{ steps.vars.outputs.Dep6Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep6Name }}
@@ -130,7 +130,7 @@ jobs:
         workflow: tool_${{ steps.vars.outputs.Dep6Name }}_build.yml
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep7Name }}
-      uses: mitchcapper/action-download-artifact@6aeaa1ddc66f3e526ea4e409313f8f93a3ed95cc
+      uses: mitchcapper/action-download-artifact@305efd0d44a6795c0a2a4cffaa7ce38aaf6c62ad
       if: ${{ steps.vars.outputs.Dep7Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep7Name }}
