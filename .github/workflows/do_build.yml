@@ -98,7 +98,7 @@ jobs:
 
       - name: Restore Existing Dep Cache
         if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: |
             d:/artifacts
