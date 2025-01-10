@@ -1,5 +1,5 @@
 diff --git a/lib/fts.c b/lib/fts.c
-index 92306bc72f..2073e4ff6b 100644
+index d31443902b..6c06ce0ce1 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -123,6 +123,9 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";

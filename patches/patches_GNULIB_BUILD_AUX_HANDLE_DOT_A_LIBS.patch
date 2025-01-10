@@ -1,5 +1,5 @@
 diff --git a/build-aux/ar-lib b/build-aux/ar-lib
-index 1521987496..855ab90a27 100644
+index 7d62dea998..9599275f4e 100644
 --- a/build-aux/ar-lib
 +++ b/build-aux/ar-lib
 @@ -1,6 +1,10 @@
@@ -121,7 +121,7 @@ index 1521987496..855ab90a27 100644
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index c3e8760e96..d0df0ab4ff 100644
+index 14aec56218..9259c80636 100644
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,5 +1,10 @@

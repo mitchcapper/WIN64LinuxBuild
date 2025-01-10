@@ -1,5 +1,5 @@
 diff --git a/m4/printf.m4 b/m4/printf.m4
-index 4c3e8ecf2d..e1d99ea315 100644
+index 0bfd8eece9..b742c61a7e 100644
 --- a/m4/printf.m4
 +++ b/m4/printf.m4
 @@ -931,6 +931,7 @@ int main ()

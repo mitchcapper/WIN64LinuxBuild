@@ -1,5 +1,5 @@
 diff --git a/lib/poll.c b/lib/poll.c
-index 37cb2d7ba4..292d3b3b99 100644
+index c261ba1dd1..b58e54f65b 100644
 --- a/lib/poll.c
 +++ b/lib/poll.c
 @@ -359,6 +359,11 @@ compute_revents (int fd, int sought, fd_set *rfds, fd_set *wfds, fd_set *efds)
@@ -79,7 +79,7 @@ index 37cb2d7ba4..292d3b3b99 100644
 +}
 \ No newline at end of file
 diff --git a/lib/poll.in.h b/lib/poll.in.h
-index 29b2d26150..48a2f7565c 100644
+index a1cdaea659..a341835317 100644
 --- a/lib/poll.in.h
 +++ b/lib/poll.in.h
 @@ -124,7 +124,7 @@ _GL_WARN_ON_USE (poll, "poll is unportable - "

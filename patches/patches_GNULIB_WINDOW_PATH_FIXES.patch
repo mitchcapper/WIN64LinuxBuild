@@ -1,5 +1,5 @@
 diff --git a/lib/argp-help.c b/lib/argp-help.c
-index 193fd384b7..397157da7d 100644
+index fc6fcf456b..0249ed735b 100644
 --- a/lib/argp-help.c
 +++ b/lib/argp-help.c
 @@ -47,7 +47,7 @@
@@ -21,7 +21,7 @@ index 193fd384b7..397157da7d 100644
  # else
    /* FIXME: What now? Miles suggests that it is better to use NULL,
 diff --git a/lib/basename.c b/lib/basename.c
-index c5a6bdc9d5..c330723c9b 100644
+index 9d2852d4ba..d554daf39e 100644
 --- a/lib/basename.c
 +++ b/lib/basename.c
 @@ -22,6 +22,7 @@
@@ -42,7 +42,7 @@ index c5a6bdc9d5..c330723c9b 100644
  
    /* Finally, copy the basename.  */
 diff --git a/lib/canonicalize-lgpl.c b/lib/canonicalize-lgpl.c
-index efd79ceebb..7a4ae6e265 100644
+index 7aea4aaba6..9bfade367d 100644
 --- a/lib/canonicalize-lgpl.c
 +++ b/lib/canonicalize-lgpl.c
 @@ -242,12 +242,12 @@ realpath_stk (const char *name, char *resolved, struct realpath_bufs *bufs)
@@ -84,7 +84,7 @@ index efd79ceebb..7a4ae6e265 100644
                      }
                    /* Install the new prefix to be in effect hereafter.  */
 diff --git a/lib/canonicalize.c b/lib/canonicalize.c
-index 2572b40558..46224b63c6 100644
+index 88472cc927..6e55592d4d 100644
 --- a/lib/canonicalize.c
 +++ b/lib/canonicalize.c
 @@ -45,11 +45,6 @@
@@ -139,7 +139,7 @@ index 2572b40558..46224b63c6 100644
                      }
                    /* Install the new prefix to be in effect hereafter.  */
 diff --git a/lib/chdir-long.c b/lib/chdir-long.c
-index 6160025113..370a7adbcb 100644
+index a7b55991f3..174860d07d 100644
 --- a/lib/chdir-long.c
 +++ b/lib/chdir-long.c
 @@ -25,7 +25,7 @@
@@ -207,7 +207,7 @@ index 6160025113..370a7adbcb 100644
            goto Fail;
  
 diff --git a/lib/chmod.c b/lib/chmod.c
-index 827c7f9b26..a8255bd872 100644
+index a8ea754a33..f1940516c6 100644
 --- a/lib/chmod.c
 +++ b/lib/chmod.c
 @@ -22,6 +22,7 @@
@@ -228,7 +228,7 @@ index 827c7f9b26..a8255bd872 100644
        struct stat st;
        if (lstat (filename, &st) < 0)
 diff --git a/lib/chown.c b/lib/chown.c
-index 398f8c1855..41db83dc04 100644
+index 6cfc7e52b8..c0f2044cb5 100644
 --- a/lib/chown.c
 +++ b/lib/chown.c
 @@ -27,6 +27,7 @@
@@ -249,7 +249,7 @@ index 398f8c1855..41db83dc04 100644
      }
  # endif
 diff --git a/lib/concat-filename.c b/lib/concat-filename.c
-index b46ff1b520..1722a22291 100644
+index ccb55c0599..530931974a 100644
 --- a/lib/concat-filename.c
 +++ b/lib/concat-filename.c
 @@ -64,7 +64,7 @@ concatenated_filename (const char *directory, const char *filename,
@@ -262,7 +262,7 @@ index b46ff1b520..1722a22291 100644
    p = stpcpy (p, filename);
    if (suffix != NULL)
 diff --git a/lib/creat.c b/lib/creat.c
-index 81626f9164..6c7d8e1f2f 100644
+index 84a1b9b9ff..5624c79b13 100644
 --- a/lib/creat.c
 +++ b/lib/creat.c
 @@ -47,6 +47,7 @@ orig_creat (const char *filename, mode_t mode)
@@ -283,7 +283,7 @@ index 81626f9164..6c7d8e1f2f 100644
          errno = EISDIR;
          return -1;
 diff --git a/lib/dirname.h b/lib/dirname.h
-index 33935ba937..aa203785e4 100644
+index d4d03f662e..497cd392f9 100644
 --- a/lib/dirname.h
 +++ b/lib/dirname.h
 @@ -30,7 +30,7 @@
@@ -296,7 +296,7 @@ index 33935ba937..aa203785e4 100644
  
  #ifdef __cplusplus
 diff --git a/lib/exclude.c b/lib/exclude.c
-index 81549fa8fc..51ce296f09 100644
+index 485beb64f5..92c1460553 100644
 --- a/lib/exclude.c
 +++ b/lib/exclude.c
 @@ -337,7 +337,7 @@ fnmatch_no_wildcards (char const *pattern, char const *f, int options)
@@ -348,7 +348,7 @@ index 81549fa8fc..51ce296f09 100644
              f++;
          }
 diff --git a/lib/faccessat.c b/lib/faccessat.c
-index 6eed1b642a..98d4639986 100644
+index abb912090a..495ea0e26d 100644
 --- a/lib/faccessat.c
 +++ b/lib/faccessat.c
 @@ -30,6 +30,8 @@
@@ -379,7 +379,7 @@ index 6eed1b642a..98d4639986 100644
        struct stat st;
        int ret = fstatat (fd, file, &st, 0);
 diff --git a/lib/fchownat.c b/lib/fchownat.c
-index 61902d1d98..f49db5ee3e 100644
+index 453810d653..a18f08334b 100644
 --- a/lib/fchownat.c
 +++ b/lib/fchownat.c
 @@ -31,6 +31,7 @@
@@ -400,7 +400,7 @@ index 61902d1d98..f49db5ee3e 100644
          if (fstatat (fd, file, &st, 0))
            return -1;
 diff --git a/lib/filename.h b/lib/filename.h
-index 4f0f0fbc3c..07b2214673 100644
+index e353363e99..c31e157e4d 100644
 --- a/lib/filename.h
 +++ b/lib/filename.h
 @@ -57,8 +57,12 @@ extern "C" {
@@ -457,7 +457,7 @@ index 4f0f0fbc3c..07b2214673 100644
  
  /* Deprecated macros.  For backward compatibility with old users of the
 diff --git a/lib/filenamecat-lgpl.c b/lib/filenamecat-lgpl.c
-index dc6d3468c8..197c1e0eaf 100644
+index 10c3ea8eb7..dd0b0f110a 100644
 --- a/lib/filenamecat-lgpl.c
 +++ b/lib/filenamecat-lgpl.c
 @@ -56,7 +56,7 @@ mfile_name_concat (char const *dir, char const *base, char **base_in_result)
@@ -470,7 +470,7 @@ index dc6d3468c8..197c1e0eaf 100644
    else if (ISSLASH (*base))
      {
 diff --git a/lib/findprog-in.c b/lib/findprog-in.c
-index 5c71c309ee..ae359876e8 100644
+index a07dee534d..591d2089d0 100644
 --- a/lib/findprog-in.c
 +++ b/lib/findprog-in.c
 @@ -30,13 +30,7 @@
@@ -489,7 +489,7 @@ index 5c71c309ee..ae359876e8 100644
  /* Separator in PATH like lists of pathnames.  */
  #if (defined _WIN32 && !defined __CYGWIN__) || defined __EMX__ || defined __DJGPP__
 diff --git a/lib/fnmatch_loop.c b/lib/fnmatch_loop.c
-index 4e6e0865e9..aadaead8b2 100644
+index e361be2f76..4421389b1d 100644
 --- a/lib/fnmatch_loop.c
 +++ b/lib/fnmatch_loop.c
 @@ -18,6 +18,7 @@
@@ -600,7 +600,7 @@ index 4e6e0865e9..aadaead8b2 100644
                         NULL, alloca_used) == 0))
              /* This is successful.  */
 diff --git a/lib/fopen.c b/lib/fopen.c
-index d3b57a987a..946fc91836 100644
+index 41587d2c05..e3d8821101 100644
 --- a/lib/fopen.c
 +++ b/lib/fopen.c
 @@ -24,6 +24,7 @@
@@ -608,7 +608,7 @@ index d3b57a987a..946fc91836 100644
  /* Get the original definition of fopen.  It might be defined as a macro.  */
  #include <stdio.h>
 +#include "filename.h"
- #undef _GL_ALREADY_INCLUDING_STDIO_H
+ #undef _GL_SKIP_GNULIB_STDIO_H
  
  static FILE *
 @@ -167,7 +168,7 @@ rpl_fopen (const char *filename, const char *mode)
@@ -621,7 +621,7 @@ index d3b57a987a..946fc91836 100644
          int fd;
          struct stat statbuf;
 diff --git a/lib/fstatat.c b/lib/fstatat.c
-index 470ef336cf..2381040128 100644
+index 36dd5e9a20..f2a73a6ced 100644
 --- a/lib/fstatat.c
 +++ b/lib/fstatat.c
 @@ -26,6 +26,7 @@
@@ -651,7 +651,7 @@ index 470ef336cf..2381040128 100644
        errno = ENOTDIR;
        return -1;
 diff --git a/lib/fts.c b/lib/fts.c
-index 92306bc72f..324464c6c2 100644
+index d31443902b..9ac69259bb 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -67,7 +67,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
@@ -720,7 +720,7 @@ index 92306bc72f..324464c6c2 100644
                  /* GCC, you're too verbose. */
                  cp = NULL;
 diff --git a/lib/getcwd.c b/lib/getcwd.c
-index 214950a144..29e30eeefd 100644
+index 05b5e56a37..1431a330e9 100644
 --- a/lib/getcwd.c
 +++ b/lib/getcwd.c
 @@ -30,7 +30,7 @@
@@ -759,7 +759,7 @@ index 214950a144..29e30eeefd 100644
  
        thisdev = dotdev;
        thisino = dotino;
-@@ -519,7 +519,7 @@ __getcwd_generic (char *buf, size_t size)
+@@ -525,7 +525,7 @@ __getcwd_generic (char *buf, size_t size)
      }
  
    if (dirp == &dir[allocated - 1])
@@ -769,7 +769,7 @@ index 214950a144..29e30eeefd 100644
  #if ! HAVE_OPENAT_SUPPORT
    if (dotlist != dots)
 diff --git a/lib/glob.c b/lib/glob.c
-index dc1a915c05..c9c001dd8f 100644
+index 0bd8b4237c..1bd310b2a0 100644
 --- a/lib/glob.c
 +++ b/lib/glob.c
 @@ -50,6 +50,7 @@
@@ -880,7 +880,7 @@ index dc1a915c05..c9c001dd8f 100644
                          if (! is_dir (s.data, flags, pglob))
                            continue;
 diff --git a/lib/lchmod.c b/lib/lchmod.c
-index 8056f0b197..093c04372d 100644
+index 4391a4aa94..4f938f9e01 100644
 --- a/lib/lchmod.c
 +++ b/lib/lchmod.c
 @@ -29,6 +29,7 @@
@@ -901,7 +901,7 @@ index 8056f0b197..093c04372d 100644
        struct stat st;
        if (lstat (file, &st) < 0)
 diff --git a/lib/lchown.c b/lib/lchown.c
-index 03836bcb3b..49fca6cb4c 100644
+index 74cb9afa41..ce02570a9b 100644
 --- a/lib/lchown.c
 +++ b/lib/lchown.c
 @@ -25,6 +25,7 @@
@@ -922,7 +922,7 @@ index 03836bcb3b..49fca6cb4c 100644
      }
  # endif
 diff --git a/lib/link.c b/lib/link.c
-index 97aa6d52c2..feb514a911 100644
+index b2f2132f5e..122ddb8c6e 100644
 --- a/lib/link.c
 +++ b/lib/link.c
 @@ -23,6 +23,7 @@
@@ -974,7 +974,7 @@ index 97aa6d52c2..feb514a911 100644
          {
            *p = '\0';
 diff --git a/lib/linkat.c b/lib/linkat.c
-index 7ce1f81feb..6651e5aac5 100644
+index d1d789b73e..6ba8e86e1b 100644
 --- a/lib/linkat.c
 +++ b/lib/linkat.c
 @@ -32,6 +32,7 @@
@@ -997,7 +997,7 @@ index 7ce1f81feb..6651e5aac5 100644
          /* Let linkat() decide whether hard-linking directories is legal.
             If fstatat() fails, then linkat() should fail for the same reason;
 diff --git a/lib/lstat.c b/lib/lstat.c
-index 7c09957e20..3d3b532953 100644
+index bb4a59f174..531c229b45 100644
 --- a/lib/lstat.c
 +++ b/lib/lstat.c
 @@ -22,7 +22,7 @@
@@ -1019,7 +1019,7 @@ index 7c09957e20..3d3b532953 100644
        else
          {
 diff --git a/lib/mkfifo.c b/lib/mkfifo.c
-index 5fc089646c..06c119a487 100644
+index 419b7b1dfd..765380167d 100644
 --- a/lib/mkfifo.c
 +++ b/lib/mkfifo.c
 @@ -22,6 +22,7 @@
@@ -1040,7 +1040,7 @@ index 5fc089646c..06c119a487 100644
        struct stat st;
        if (stat (name, &st) == 0 || errno == EOVERFLOW)
 diff --git a/lib/mkfifoat.c b/lib/mkfifoat.c
-index 7bb031babb..de0b64a434 100644
+index 8bac32111b..6d7ac58b1f 100644
 --- a/lib/mkfifoat.c
 +++ b/lib/mkfifoat.c
 @@ -22,6 +22,7 @@
@@ -1061,7 +1061,7 @@ index 7bb031babb..de0b64a434 100644
        struct stat st;
  
 diff --git a/lib/mknodat.c b/lib/mknodat.c
-index a31450abab..d99521eb21 100644
+index 2154a94451..cdd79d34a2 100644
 --- a/lib/mknodat.c
 +++ b/lib/mknodat.c
 @@ -22,6 +22,7 @@
@@ -1082,7 +1082,7 @@ index a31450abab..d99521eb21 100644
        struct stat st;
  
 diff --git a/lib/mountlist.c b/lib/mountlist.c
-index 06300d6b73..c8ad9bd11f 100644
+index 3376b730fc..4914fa505e 100644
 --- a/lib/mountlist.c
 +++ b/lib/mountlist.c
 @@ -30,7 +30,7 @@
@@ -1104,7 +1104,7 @@ index 06300d6b73..c8ad9bd11f 100644
                }
  
 diff --git a/lib/open.c b/lib/open.c
-index e690c9ea77..ffc8600b46 100644
+index 7415b48f81..49671617d4 100644
 --- a/lib/open.c
 +++ b/lib/open.c
 @@ -21,7 +21,7 @@
@@ -1161,7 +1161,7 @@ index e690c9ea77..ffc8600b46 100644
            struct stat statbuf;
  
 diff --git a/lib/openat-proc.c b/lib/openat-proc.c
-index 7ccb734f42..278c8898ee 100644
+index a333a3f878..c9b7916dae 100644
 --- a/lib/openat-proc.c
 +++ b/lib/openat-proc.c
 @@ -38,6 +38,7 @@
@@ -1182,7 +1182,7 @@ index 7ccb734f42..278c8898ee 100644
  #endif
  
 diff --git a/lib/openat.c b/lib/openat.c
-index 609b03d627..ad9954d778 100644
+index f6dce43ba7..0e70c14260 100644
 --- a/lib/openat.c
 +++ b/lib/openat.c
 @@ -99,7 +99,7 @@ rpl_openat (int dfd, char const *filename, int flags, ...)
@@ -1204,7 +1204,7 @@ index 609b03d627..ad9954d778 100644
            struct stat statbuf;
  
 diff --git a/lib/progname.c b/lib/progname.c
-index db17f5b208..e6a441a204 100644
+index ee62489285..8bd9a76ea6 100644
 --- a/lib/progname.c
 +++ b/lib/progname.c
 @@ -21,7 +21,7 @@
@@ -1226,7 +1226,7 @@ index db17f5b208..e6a441a204 100644
    if (base - argv0 >= 7 && strncmp (base - 7, "/.libs/", 7) == 0)
      {
 diff --git a/lib/progreloc.c b/lib/progreloc.c
-index 9f49ed16ff..875edef9ea 100644
+index 17848589e8..dfdeb4c20f 100644
 --- a/lib/progreloc.c
 +++ b/lib/progreloc.c
 @@ -50,6 +50,7 @@
@@ -1291,7 +1291,7 @@ index 9f49ed16ff..875edef9ea 100644
                    }
                  if (maybe_executable (concat_name))
 diff --git a/lib/readlinkat.c b/lib/readlinkat.c
-index f4d64c0d13..f7816c02a5 100644
+index 4d7851dd2c..7fd784de9c 100644
 --- a/lib/readlinkat.c
 +++ b/lib/readlinkat.c
 @@ -20,7 +20,7 @@
@@ -1313,7 +1313,7 @@ index f4d64c0d13..f7816c02a5 100644
        /* Even if FILE without the slash is a symlink to a directory,
           both lstat() and stat() must resolve the trailing slash to
 diff --git a/lib/relocatable.c b/lib/relocatable.c
-index 365c085825..a2ce7ceae9 100644
+index 15b3bc442d..292ceda96a 100644
 --- a/lib/relocatable.c
 +++ b/lib/relocatable.c
 @@ -25,7 +25,7 @@
@@ -1363,7 +1363,7 @@ index 365c085825..a2ce7ceae9 100644
                    size_t size;
                    int len;
 diff --git a/lib/rename.c b/lib/rename.c
-index b6c93db474..eb8cc6fe25 100644
+index 4e524c0ab9..9c631e38b3 100644
 --- a/lib/rename.c
 +++ b/lib/rename.c
 @@ -320,8 +320,8 @@ rpl_rename (char const *src, char const *dst)
@@ -1387,7 +1387,7 @@ index b6c93db474..eb8cc6fe25 100644
            rename_errno = EINVAL;
            goto out;
 diff --git a/lib/renameatu.c b/lib/renameatu.c
-index 437fc8f71a..533c7e0e59 100644
+index b71e8e3fe4..75b3227d63 100644
 --- a/lib/renameatu.c
 +++ b/lib/renameatu.c
 @@ -163,8 +163,8 @@ renameatu (int fd1, char const *src, int fd2, char const *dst,
@@ -1402,7 +1402,7 @@ index 437fc8f71a..533c7e0e59 100644
      return renameat2ish (fd1, src, fd2, dst, flags);
  
 diff --git a/lib/spawni.c b/lib/spawni.c
-index 211394bb9f..dae8502070 100644
+index f6558dfd16..10e8ec42f7 100644
 --- a/lib/spawni.c
 +++ b/lib/spawni.c
 @@ -1028,7 +1028,7 @@ __spawni (pid_t *pid, const char *file,
@@ -1424,7 +1424,7 @@ index 211394bb9f..dae8502070 100644
    p = path;
    do
 diff --git a/lib/symlink.c b/lib/symlink.c
-index 6ba83666e1..3ab4bd431b 100644
+index 8839a9818c..2d9d0f5ce9 100644
 --- a/lib/symlink.c
 +++ b/lib/symlink.c
 @@ -19,6 +19,7 @@
@@ -1445,7 +1445,7 @@ index 6ba83666e1..3ab4bd431b 100644
        struct stat st;
        if (lstat (name, &st) == 0 || errno == EOVERFLOW)
 diff --git a/lib/symlinkat.c b/lib/symlinkat.c
-index 920001a6fa..2c101271fc 100644
+index f24a0e0145..48d406a9a0 100644
 --- a/lib/symlinkat.c
 +++ b/lib/symlinkat.c
 @@ -26,7 +26,7 @@
@@ -1467,7 +1467,7 @@ index 920001a6fa..2c101271fc 100644
        struct stat st;
        if (fstatat (fd, name, &st, AT_SYMLINK_NOFOLLOW) == 0
 diff --git a/lib/tmpdir.c b/lib/tmpdir.c
-index dd43fe22c1..7e740c99a2 100644
+index db1f1e48eb..7364b9521f 100644
 --- a/lib/tmpdir.c
 +++ b/lib/tmpdir.c
 @@ -21,7 +21,7 @@

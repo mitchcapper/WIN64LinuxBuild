@@ -1,5 +1,5 @@
 diff --git a/lib/pipe.c b/lib/pipe.c
-index 167d8f8c5e..92a8e602bb 100644
+index 1add15b4c6..4e3264f675 100644
 --- a/lib/pipe.c
 +++ b/lib/pipe.c
 @@ -34,7 +34,7 @@ pipe (int fd[2])
@@ -12,7 +12,7 @@ index 167d8f8c5e..92a8e602bb 100644
      {
        fd[0] = tmp[0];
 diff --git a/lib/spawn-pipe.c b/lib/spawn-pipe.c
-index fe60646c43..d9e44d0161 100644
+index 098352e2d5..066d9ed1b5 100644
 --- a/lib/spawn-pipe.c
 +++ b/lib/spawn-pipe.c
 @@ -596,7 +596,7 @@ create_pipe (const char *progname,
@@ -25,7 +25,7 @@ index fe60646c43..d9e44d0161 100644
    return -1;
  }
 diff --git a/lib/spawn_faction_addclose.c b/lib/spawn_faction_addclose.c
-index af1e77a0d4..f4685fbacd 100644
+index 6c84d9c759..2f2b7698c1 100644
 --- a/lib/spawn_faction_addclose.c
 +++ b/lib/spawn_faction_addclose.c
 @@ -15,7 +15,12 @@
@@ -60,7 +60,7 @@ index af1e77a0d4..f4685fbacd 100644
    return posix_spawn_file_actions_addclose (file_actions, fd);
  #else
 diff --git a/lib/w32sock.h b/lib/w32sock.h
-index 166a5f777e..18a6d781ec 100644
+index d7087a285b..7b0b2eb029 100644
 --- a/lib/w32sock.h
 +++ b/lib/w32sock.h
 @@ -33,7 +33,7 @@

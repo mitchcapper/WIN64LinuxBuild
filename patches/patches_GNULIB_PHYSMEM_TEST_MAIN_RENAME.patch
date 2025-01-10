@@ -1,5 +1,5 @@
 diff --git a/lib/physmem.c b/lib/physmem.c
-index 5c226b8abf..b640a7706e 100644
+index f2e60effda..8f58fa13ae 100644
 --- a/lib/physmem.c
 +++ b/lib/physmem.c
 @@ -398,7 +398,7 @@ physmem_available (void)

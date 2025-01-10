@@ -1,5 +1,5 @@
 diff --git a/lib/fsusage.c b/lib/fsusage.c
-index 97d0eef7aa..cd7a7da4c9 100644
+index e26bda88aa..140e0011fb 100644
 --- a/lib/fsusage.c
 +++ b/lib/fsusage.c
 @@ -22,8 +22,7 @@
@@ -105,7 +105,7 @@ index 97d0eef7aa..cd7a7da4c9 100644
    return 0;
  }
 diff --git a/lib/fsusage.h b/lib/fsusage.h
-index da87859060..080c8642ac 100644
+index 00d9067e12..8a1b00b569 100644
 --- a/lib/fsusage.h
 +++ b/lib/fsusage.h
 @@ -22,6 +22,17 @@
@@ -141,7 +141,7 @@ index da87859060..080c8642ac 100644
  
  int get_fs_usage (char const *file, char const *disk, struct fs_usage *fsp);
 diff --git a/lib/mountlist.c b/lib/mountlist.c
-index 06300d6b73..db8b79f307 100644
+index 3376b730fc..aeddffc751 100644
 --- a/lib/mountlist.c
 +++ b/lib/mountlist.c
 @@ -187,6 +187,10 @@

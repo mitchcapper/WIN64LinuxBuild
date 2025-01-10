@@ -1,5 +1,5 @@
 diff --git a/lib/dirchownmod.c b/lib/dirchownmod.c
-index d5f7b5432a..42ab816fa8 100644
+index ab009a3379..c69023c684 100644
 --- a/lib/dirchownmod.c
 +++ b/lib/dirchownmod.c
 @@ -68,6 +68,7 @@ dirchownmod (int fd, char const *dir, mode_t mkdir_mode,
@@ -19,7 +19,7 @@ index d5f7b5432a..42ab816fa8 100644
 +#endif
  }
 diff --git a/lib/idcache.c b/lib/idcache.c
-index ccaf56dad2..239a332746 100644
+index 18c33fcf0e..70e083f956 100644
 --- a/lib/idcache.c
 +++ b/lib/idcache.c
 @@ -22,8 +22,10 @@
@@ -107,7 +107,7 @@ index ccaf56dad2..239a332746 100644
 +  #endif
  }
 diff --git a/lib/savewd.c b/lib/savewd.c
-index 3a0361425a..301127e7e0 100644
+index 7105cfe822..e4851298a6 100644
 --- a/lib/savewd.c
 +++ b/lib/savewd.c
 @@ -87,7 +87,11 @@ savewd_save (struct savewd *wd)
@@ -136,7 +136,7 @@ index 3a0361425a..301127e7e0 100644
              if (! WIFEXITED (child_status))
                raise (WTERMSIG (child_status));
 diff --git a/lib/userspec.c b/lib/userspec.c
-index 833f7f58d7..1f992e083a 100644
+index bae72c97c0..327a751148 100644
 --- a/lib/userspec.c
 +++ b/lib/userspec.c
 @@ -24,8 +24,12 @@

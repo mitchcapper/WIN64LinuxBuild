@@ -1,8 +1,8 @@
 diff --git a/gnulib-tool.sh b/gnulib-tool.sh
-index 2a5949f584..667b3f0704 100644
+index e1188eeb20..d78ecc4a2f 100644
 --- a/gnulib-tool.sh
 +++ b/gnulib-tool.sh
-@@ -1825,7 +1825,7 @@ func_lookup_file ()
+@@ -1826,7 +1826,7 @@ func_lookup_file ()
      IFS="$PATH_SEPARATOR"
      for patchfile in $lkpatches; do
        IFS="$saved_IFS"
