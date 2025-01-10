@@ -1,5 +1,5 @@
 diff --git a/find/exec.c b/find/exec.c
-index 1f6bc83d..7a1a2073 100644
+index f281fcc0..f9f5b39d 100644
 --- a/find/exec.c
 +++ b/find/exec.c
 @@ -307,10 +307,49 @@ launch (struct buildcmd_control *ctl, void *usercontext, int argc, char **argv)
@@ -54,7 +54,7 @@ index 1f6bc83d..7a1a2073 100644
      error (EXIT_FAILURE, errno, _("cannot fork"));
    if (child_pid == 0)
 diff --git a/find/fstype.c b/find/fstype.c
-index a7ca25df..42cbe5ed 100644
+index bd157f65..2681608f 100644
 --- a/find/fstype.c
 +++ b/find/fstype.c
 @@ -109,6 +109,7 @@ in_afs (char *path)
@@ -108,7 +108,7 @@ index a7ca25df..42cbe5ed 100644
 +#endif  
  }
 diff --git a/find/parser.c b/find/parser.c
-index 1b389b3c..76ec600d 100644
+index 4843a5d7..4b3da2b6 100644
 --- a/find/parser.c
 +++ b/find/parser.c
 @@ -23,9 +23,12 @@
@@ -162,7 +162,7 @@ index 1b389b3c..76ec600d 100644
  
  static bool
 diff --git a/find/pred.c b/find/pred.c
-index 6c792423..1cff7c6c 100644
+index 1a41ade7..fdcc2125 100644
 --- a/find/pred.c
 +++ b/find/pred.c
 @@ -24,9 +24,14 @@
@@ -181,7 +181,7 @@ index 6c792423..1cff7c6c 100644
  #include <selinux/selinux.h>
  #include <stdarg.h>
  #include <sys/stat.h>
-@@ -669,17 +674,25 @@ pred_newerXY (const char *pathname, struct stat *stat_buf, struct predicate *pre
+@@ -651,17 +656,25 @@ pred_newerXY (const char *pathname, struct stat *stat_buf, struct predicate *pre
  bool
  pred_nogroup (const char *pathname, struct stat *stat_buf, struct predicate *pred_ptr)
  {
@@ -208,7 +208,7 @@ index 6c792423..1cff7c6c 100644
  
  
 diff --git a/find/print.c b/find/print.c
-index 465e9ec6..8c92e028 100644
+index 04d638d4..f7c6064c 100644
 --- a/find/print.c
 +++ b/find/print.c
 @@ -22,9 +22,12 @@
@@ -276,7 +276,7 @@ index 465e9ec6..8c92e028 100644
  
            /* %Y: type of file system entry like `ls -l`:
 diff --git a/find/util.c b/find/util.c
-index a1736807..936772ca 100644
+index b22e6e7b..88a4a576 100644
 --- a/find/util.c
 +++ b/find/util.c
 @@ -196,8 +196,8 @@ Tests (N can be +N or -N or N):\n\
@@ -291,7 +291,7 @@ index a1736807..936772ca 100644
    HTL (_("\n\
  Other common options:\n"));
 diff --git a/lib/buildcmd.c b/lib/buildcmd.c
-index b648c2bf..66791084 100644
+index 6718599e..5a593d82 100644
 --- a/lib/buildcmd.c
 +++ b/lib/buildcmd.c
 @@ -24,8 +24,13 @@
@@ -310,7 +310,7 @@ index b648c2bf..66791084 100644
  #include <unistd.h>
  #include <wchar.h>
 diff --git a/lib/fdleak.c b/lib/fdleak.c
-index f79b3424..fcba379f 100644
+index 7786760c..e594196e 100644
 --- a/lib/fdleak.c
 +++ b/lib/fdleak.c
 @@ -31,7 +31,9 @@
@@ -337,7 +337,7 @@ index f79b3424..fcba379f 100644
  
    /* We assume if RLIMIT_NOFILE is defined, all the related macros are, too. */
 diff --git a/lib/listfile.c b/lib/listfile.c
-index f98c22c7..8d34cfe5 100644
+index e6ee70e3..9a42bc29 100644
 --- a/lib/listfile.c
 +++ b/lib/listfile.c
 @@ -21,8 +21,10 @@
@@ -352,7 +352,7 @@ index f98c22c7..8d34cfe5 100644
  #include <stdlib.h>
  #include <string.h>
 diff --git a/lib/regextype.c b/lib/regextype.c
-index 2f090892..df9415f5 100644
+index 512cfccf..6c61f41a 100644
 --- a/lib/regextype.c
 +++ b/lib/regextype.c
 @@ -48,15 +48,15 @@ static struct tagRegexTypeMap regex_map[] =
@@ -381,7 +381,7 @@ index 2f090892..df9415f5 100644
     { "sed",                   CONTEXT_GENERIC,   RE_SYNTAX_SED                   },
     /*    ,{ "posix-common",   CONTEXT_GENERIC,  _RE_SYNTAX_POSIX_COMMON   } */
 diff --git a/lib/regextype.h b/lib/regextype.h
-index 2127ad4d..80c9b9c9 100644
+index 552e3893..094770b3 100644
 --- a/lib/regextype.h
 +++ b/lib/regextype.h
 @@ -29,7 +29,7 @@ int get_regex_type(const char *s);
@@ -394,7 +394,7 @@ index 2127ad4d..80c9b9c9 100644
  
  
 diff --git a/locate/locate.c b/locate/locate.c
-index 31459e9e..229d910b 100644
+index a1575e80..c014845f 100644
 --- a/locate/locate.c
 +++ b/locate/locate.c
 @@ -66,7 +66,9 @@
@@ -450,7 +450,7 @@ index 31459e9e..229d910b 100644
    return fd;
  }
 diff --git a/xargs/xargs.c b/xargs/xargs.c
-index c1963b19..5255f41f 100644
+index 517f963c..53a190d1 100644
 --- a/xargs/xargs.c
 +++ b/xargs/xargs.c
 @@ -46,10 +46,14 @@
@@ -500,7 +500,7 @@ index c1963b19..5255f41f 100644
 +	int fd[1];
 +#endif
    int buf;
-   size_t r;
+   ptrdiff_t r;
  
 @@ -1319,7 +1333,8 @@ xargs_do_exec (struct buildcmd_control *ctl, void *usercontext, int argc, char *
           ./xargs -P 200 -n 20  sh -c 'echo "$@"; sleep $((1 + $RANDOM % 5))' sleeper
@@ -549,7 +549,7 @@ index c1963b19..5255f41f 100644
        switch (child)
          {
          case -1:
-@@ -1472,6 +1516,10 @@ static unsigned int
+@@ -1456,6 +1500,10 @@ static unsigned int
  add_proc (pid_t pid)
  {
    unsigned int i, j;
@@ -560,7 +560,7 @@ index c1963b19..5255f41f 100644
  
    /* Find an empty slot.  */
    for (i = 0; i < pids_alloc && pids[i]; i++)
-@@ -1506,6 +1554,7 @@ static void
+@@ -1490,6 +1538,7 @@ static void
  wait_for_proc (bool all, unsigned int minreap)
  {
    unsigned int reaped = 0;
@@ -568,7 +568,7 @@ index c1963b19..5255f41f 100644
    int deferred_exit_status = 0;
  
    while (procs_executing)
-@@ -1628,6 +1677,7 @@ wait_for_proc (bool all, unsigned int minreap)
+@@ -1612,6 +1661,7 @@ wait_for_proc (bool all, unsigned int minreap)
        child_error = deferred_exit_status > child_error ? deferred_exit_status : child_error;
        exit (child_error);
      }

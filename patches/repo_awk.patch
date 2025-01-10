@@ -1,5 +1,5 @@
 diff --git a/awk.h b/awk.h
-index ccd16c9..dde7ee4 100644
+index b92faa3..7487dbd 100644
 --- a/awk.h
 +++ b/awk.h
 @@ -30,7 +30,38 @@ THIS SOFTWARE.
@@ -42,7 +42,7 @@ index ccd16c9..dde7ee4 100644
  
  /* unsigned char is more trouble than it's worth */
 diff --git a/lib.c b/lib.c
-index ebe296f..d206007 100644
+index 486d7da..37fc4c6 100644
 --- a/lib.c
 +++ b/lib.c
 @@ -25,7 +25,9 @@ THIS SOFTWARE.
@@ -56,10 +56,10 @@ index ebe296f..d206007 100644
  #include <errno.h>
  #include <stdlib.h>
 diff --git a/makefile b/makefile
-index df966ef..1d0f86c 100644
+index 0240e5e..c81a3f4 100644
 --- a/makefile
 +++ b/makefile
-@@ -38,6 +38,7 @@ CC = $(HOSTCC)  # change this is cross-compiling.
+@@ -39,6 +39,7 @@ CC = $(HOSTCC)  # change this is cross-compiling.
  # If you want something else, you're on your own.
  # YACC = yacc -d -b awkgram
  YACC = bison -d
@@ -67,7 +67,7 @@ index df966ef..1d0f86c 100644
  
  OFILES = b.o main.o parse.o proctab.o tran.o lib.o run.o lex.o
  
-@@ -50,8 +51,8 @@ LISTING = awk.h proto.h awkgram.y lex.c b.c main.c maketab.c parse.c \
+@@ -51,8 +52,8 @@ LISTING = awk.h proto.h awkgram.y lex.c b.c main.c maketab.c parse.c \
  SHIP = README LICENSE FIXES $(SOURCE) awkgram.tab.[ch].bak makefile  \
  	 awk.1
  
@@ -78,7 +78,7 @@ index df966ef..1d0f86c 100644
  
  $(OFILES):	awk.h awkgram.tab.h proto.h
  
-@@ -97,10 +98,15 @@ test check:
+@@ -98,10 +99,15 @@ test check:
  	./REGRESS
  
  clean: testclean
@@ -97,10 +97,10 @@ index df966ef..1d0f86c 100644
  # This is a bit of a band-aid until we can invest some more time
  # in the test suite.
 diff --git a/proto.h b/proto.h
-index a64991b..136bf4f 100644
+index cfd4b7c..73839d7 100644
 --- a/proto.h
 +++ b/proto.h
-@@ -135,12 +135,19 @@ extern	Cell	*fieldadr(int);
+@@ -131,12 +131,19 @@ extern	Cell	*fieldadr(int);
  extern	void	yyerror(const char *);
  extern	void	bracecheck(void);
  extern	void	bcheck2(int, int, int);
@@ -124,28 +124,32 @@ index a64991b..136bf4f 100644
  extern	void	eprint(void);
  extern	void	bclass(int);
 diff --git a/run.c b/run.c
-index 483b9d9..3985a61 100644
+index 2586f7c..cad1dc6 100644
 --- a/run.c
 +++ b/run.c
-@@ -36,7 +36,9 @@ THIS SOFTWARE.
- #include <stdlib.h>
+@@ -36,7 +36,13 @@ THIS SOFTWARE.
  #include <time.h>
  #include <sys/types.h>
+ #include <sys/stat.h>
 +#ifndef _WIN32
  #include <sys/wait.h>
++#else
++// we do have these in gnulib but don't want to add gnulib just for this to awk
++#define S_IFLNK  0x0800 // symbolic link / junction point
++#define S_ISDIR(m) (((m) & (S_IFMT ^ S_IFLNK)) == S_IFDIR)
 +#endif
  #include "awk.h"
  #include "awkgram.tab.h"
  
-@@ -1830,6 +1832,7 @@ FILE *openfile(int a, const char *us, bool *pnewflag)
- 	}
- 	fflush(stdout);	/* force a semblance of order */
+@@ -2292,6 +2298,7 @@ FILE *openfile(int a, const char *us, bool *pnewflag)
+ 				return NULL;
+ 
  	m = a;
 +#ifndef _WIN32
  	if (a == GT) {
  		fp = fopen(s, "w");
  	} else if (a == APPEND) {
-@@ -1852,6 +1855,28 @@ FILE *openfile(int a, const char *us, bool *pnewflag)
+@@ -2314,6 +2321,28 @@ FILE *openfile(int a, const char *us, bool *pnewflag)
  		if (fp != stdin && fp != stdout && fp != stderr)
  			(void) fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
  	}

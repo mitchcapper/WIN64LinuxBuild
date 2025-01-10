@@ -43,7 +43,7 @@ index 289f7c10..814abe59 100644
      wordsplit_varexp },
    { N_("quote removal"),        0,                EXPOPT_NEG,
 diff --git a/src/buffer.c b/src/buffer.c
-index 8b6028ce..1c65c2e2 100644
+index 1cdeffc6..f8cb4c86 100644
 --- a/src/buffer.c
 +++ b/src/buffer.c
 @@ -53,6 +53,9 @@ static idx_t short_read_slop;	/* excess bytes at end of short read */
@@ -57,13 +57,13 @@ index 8b6028ce..1c65c2e2 100644
  struct timespec volume_start_time;
  struct tar_stat_info current_stat_info;
 diff --git a/src/checkpoint.c b/src/checkpoint.c
-index a0edaf26..4402edf2 100644
+index 02621d67..2372b178 100644
 --- a/src/checkpoint.c
 +++ b/src/checkpoint.c
 @@ -1,465 +1,476 @@
 -/* Checkpoint management for tar.
 -
--   Copyright 2007-2024 Free Software Foundation, Inc.
+-   Copyright 2007-2025 Free Software Foundation, Inc.
 -
 -   This file is part of GNU tar.
 -
@@ -528,7 +528,7 @@ index a0edaf26..4402edf2 100644
 -}
 +/* Checkpoint management for tar.
 +
-+   Copyright 2007-2024 Free Software Foundation, Inc.
++   Copyright 2007-2025 Free Software Foundation, Inc.
 +
 +   This file is part of GNU tar.
 +
@@ -1003,7 +1003,7 @@ index a0edaf26..4402edf2 100644
 +    }
 +}
 diff --git a/src/common.h b/src/common.h
-index df87478c..ae60aaf7 100644
+index 7fba6325..00a83eb3 100644
 --- a/src/common.h
 +++ b/src/common.h
 @@ -20,6 +20,16 @@
@@ -1065,7 +1065,7 @@ index df87478c..ae60aaf7 100644
  
  int set_file_atime (int fd, int parentfd, char const *file,
 diff --git a/src/compare.c b/src/compare.c
-index f5493975..40c96e72 100644
+index de54d652..e8c4040d 100644
 --- a/src/compare.c
 +++ b/src/compare.c
 @@ -546,7 +546,7 @@ verify_volume (void)
@@ -1078,7 +1078,7 @@ index f5493975..40c96e72 100644
  #endif
  #ifdef FDFLUSH
 diff --git a/src/extract.c b/src/extract.c
-index f741943f..ca910722 100644
+index 5fc2d9cf..a97f7d90 100644
 --- a/src/extract.c
 +++ b/src/extract.c
 @@ -1227,7 +1227,7 @@ open_output_file (char const *file_name, char typeflag, mode_t mode,
@@ -1101,7 +1101,7 @@ index f741943f..ca910722 100644
  extract_node (char *file_name, char typeflag)
  {
 diff --git a/src/map.c b/src/map.c
-index fcd75f42..8b29b022 100644
+index d5d4f49b..b53279b2 100644
 --- a/src/map.c
 +++ b/src/map.c
 @@ -21,7 +21,9 @@
@@ -1141,7 +1141,7 @@ index fcd75f42..8b29b022 100644
  
  void
 diff --git a/src/misc.c b/src/misc.c
-index 0d7407bc..3e538cd8 100644
+index 187e45f5..1aa70688 100644
 --- a/src/misc.c
 +++ b/src/misc.c
 @@ -1206,6 +1206,7 @@ file_removed_diag (const char *name, bool top_level,
@@ -1161,7 +1161,7 @@ index 0d7407bc..3e538cd8 100644
  /* Create a pipe, aborting if unsuccessful.  */
  void
 diff --git a/src/names.c b/src/names.c
-index 49132fe1..63f0e7fa 100644
+index ced15aee..63535e4b 100644
 --- a/src/names.c
 +++ b/src/names.c
 @@ -476,6 +476,7 @@ static gid_t cached_no_such_gid;
@@ -1236,7 +1236,7 @@ index 49132fe1..63f0e7fa 100644
  
  
 diff --git a/src/system.c b/src/system.c
-index c0211642..0b4d95b2 100644
+index 72dfade4..b1b18b08 100644
 --- a/src/system.c
 +++ b/src/system.c
 @@ -16,12 +16,23 @@
@@ -1736,7 +1736,7 @@ index c0211642..0b4d95b2 100644
 +#endif
  #endif /* not MSDOS */
 diff --git a/src/tar.c b/src/tar.c
-index c6b3b007..bcb38515 100644
+index 414264cc..a7f55704 100644
 --- a/src/tar.c
 +++ b/src/tar.c
 @@ -185,7 +185,7 @@ confirm (const char *message_action, const char *message_name)

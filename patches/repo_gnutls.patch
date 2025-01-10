@@ -1,15 +1,15 @@
 diff --git a/bootstrap.conf b/bootstrap.conf
-index c4d1fe06b..697cfcf85 100644
+index fcea3310a..67747751a 100644
 --- a/bootstrap.conf
 +++ b/bootstrap.conf
-@@ -50,7 +50,6 @@ git        1.4.4
- perl       5.5
+@@ -50,7 +50,6 @@ bison      2.4
+ gettext    0.17
+ git        1.4.4
  gperf      -
- autopoint  -
 -gtkdocize  -
+ perl       5.5
+ wget       -
  "
- 
- # update git submodules
 diff --git a/lib/accelerated/x86/x86-common.c b/lib/accelerated/x86/x86-common.c
 index 3b779865e..e9db405f5 100644
 --- a/lib/accelerated/x86/x86-common.c
