@@ -9,7 +9,23 @@ function gnulib_dump_patches(){
 	done
 	echo "ScriptRes=[$STROUT]" >> "$GITHUB_OUTPUT"
 }
-
+function gnulib_add_submodule_to_proj() {
+	git_submodule_sha=""
+	submodule_branch="${BLD_CONFIG_GNU_LIBS_BRANCH}"
+	if [[ ${#BLD_CONFIG_GNU_LIBS_BRANCH} -eq 40 ]]; then #its a sha not a branch name so lets do this manually
+		git_submodule_sha="$BLD_CONFIG_GNU_LIBS_BRANCH"
+		submodule_branch="master"
+	fi
+	ex git submodule add "${GIT_REF_ARGS[@]}" -b "$submodule_branch" git://git.savannah.gnu.org/gnulib.git "${GNULIB_DIR_NAME}"
+	if [[ "$git_submodule_sha" != "" ]]; then
+		ex git -C "${GNULIB_DIR_NAME}" checkout --quiet "$git_submodule_sha"
+	fi
+	if [[ "${BLD_CONFIG_GNU_LIBS_BRANCH}" && "${BLD_CONFIG_GNU_LIBS_BRANCH}" != "master" ]]; then
+		git config "submodule.${GNULIB_DIR_NAME}.update" none #required to not switch off BLD_CONFIG_GNU_LIBS_BRANCH
+	fi
+	#ex git restore --staged "${GNULIB_DIR_NAME}"
+	git_staging_add "${GNULIB_DIR_NAME}"
+}
 function gnulib_switch_to_master_and_patch(){
 	CUR_STEP="gnulib"
 	cd $BLD_CONFIG_SRC_FOLDER
@@ -120,7 +136,6 @@ function gnulib_bootstrap(){
 	declare -a BOOTSTRAP_CMD=("${BLD_CONFIG_GNU_LIBS_BOOTSTRAP_CMD_DEFAULT[@]}" "$@")
 	SRC_DIR_ADD="${GNULIB_SRCDIR}"
 	if [[ ! "${SRC_DIR_ADD}" || ("$SRC_DIR_ADD" && ! -d $SRC_DIR_ADD) ]]; then
-		echo "FOUND GNULIB"
 		SRC_DIR_ADD="gnulib"
 	fi
 	if [[ -d $SRC_DIR_ADD ]]; then

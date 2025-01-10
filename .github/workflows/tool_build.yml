@@ -35,6 +35,7 @@ env:
 jobs:
   deps:
     uses: ./.github/workflows/restore_deps_to_cache.yml
+    if: ${{ vars.ONLY_BUILD_TOOL == '' || vars.ONLY_BUILD_TOOL == '-' || contains(vars.ONLY_BUILD_TOOL, inputs.ToolName) }}
     with:
       BuildPkg: ${{ inputs.ToolName }}
       RequiredDeps: ${{ inputs.RequiredDeps }}
@@ -42,6 +43,7 @@ jobs:
   build:
     uses: ./.github/workflows/do_build.yml
     needs: deps
+    if: ${{ vars.ONLY_BUILD_TOOL == '' || vars.ONLY_BUILD_TOOL == '-' || contains(vars.ONLY_BUILD_TOOL, inputs.ToolName) }}
     with:
       BuildPkg: ${{ inputs.ToolName }}
       RequiredDeps: ${{ inputs.RequiredDeps }}

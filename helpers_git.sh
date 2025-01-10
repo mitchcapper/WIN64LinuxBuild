@@ -131,6 +131,7 @@ function git_clone(){
 	local LEN=${#ARGS_ARR[@]}
 	local USE_REF_SRC_DIR=0
 	local ADD_RECURSE=1
+	local GNULIB_DIR_NAME="gnulib" #name for gnulib under repos
 	local USE_REF_SRC_DIR_ON_INITIAL_CLONE=0 #only done when cloning gnulib itself
 	local DO_RECURSIVE_SUBMODULE_INIT=0 #we set this to true when we would normally do a recursive clone but as we are using a reference src repo we can't so after we finish we do initilize and update all modules recursively
 	if [[ "$BLD_CONFIG_GIT_NO_RECURSE" -eq 1 ]]; then
@@ -193,24 +194,24 @@ function git_clone(){
 	if [[ "$GIT_DIR" != "" ]]; then
 		FINAL_ARR+=($GIT_DIR)
 	fi
-	declare -a REF_ARGS=() #global incase we are just doing a gnulib add	
+	declare -a GIT_REF_ARGS=()
 	if [[ "$USE_REF_SRC_DIR" -eq 1 ]]; then
-		REF_ARGS=( "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" )
+		GIT_REF_ARGS=( "--dissociate" "--reference" "${BLD_CONFIG_GNU_LIB_REFERENCE_SOURCE_DIR}" )
 		if [[ "$USE_REF_SRC_DIR_ON_INITIAL_CLONE" -eq 1 ]]; then
-			FINAL_ARR+=("${REF_ARGS[@]}")
+			FINAL_ARR+=("${GIT_REF_ARGS[@]}")
 		fi
 	fi
+
 	ex git clone "${FINAL_ARR[@]}"
 	if [[ "$BLD_CONFIG_GIT_PRINT_LAST_COMMIT_ON_CLONE" -eq 1 ]]; then
 		git log --decorate=full -n 1
 	fi
-	if [[ "$USE_REF_SRC_DIR" -eq 1 && -d "gnulib" ]]; then
+	if [[ "$USE_REF_SRC_DIR" -eq 1 && -d "${GNULIB_DIR_NAME}" ]]; then
 		if [[ "$BLD_CONFIG_GNU_LIB_REFERENCE_MASTER_SHORTCUT" -eq 1 && "$BLD_CONFIG_GNU_LIBS_BRANCH" != "" ]]; then
-			ex git rm gnulib
-			ex git submodule add "${REF_ARGS[@]}" -b "$BLD_CONFIG_GNU_LIBS_BRANCH" git://git.savannah.gnu.org/gnulib.git gnulib
-			ex git restore --staged gnulib
+			ex git rm "${GNULIB_DIR_NAME}"
+			gnulib_add_submodule_to_proj
 		else
-			ex git submodule update --init "${REF_ARGS[@]}" gnulib
+			ex git submodule update --init "${GIT_REF_ARGS[@]}" "${GNULIB_DIR_NAME}"
 		fi
 	fi
 	if [[ "$ADD_RECURSE" -eq "0" ]]; then
@@ -223,7 +224,7 @@ function git_clone(){
 		ex git submodule update --init --recursive #make sure any other sub modules are inited if we would have done a recursive clone
 	fi
 	if [[ "$BLD_CONFIG_GNU_LIBS_ADD_TO_REPO" -eq 1 ]]; then
-		ex git submodule add "${REF_ARGS[@]}" -b "$BLD_CONFIG_GNU_LIBS_BRANCH" git://git.savannah.gnu.org/gnulib.git gnulib
+		gnulib_add_submodule_to_proj
 	fi
 	SKIP_STEP="";CUR_STEP="";
 }

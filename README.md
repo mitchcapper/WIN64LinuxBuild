@@ -151,6 +151,7 @@ Most of the work here was not done by me and there are some great resources out 
 - To build debug builds set the env var `BLD_CONFIG_BUILD_DEBUG=1` 
 - To generate batch files for building without msys run the build script with the arg "log_full".  Note you likely need some generated files (like config.h) so these would need to be added along with the normal sources.
 - Generally, when we make changes we try to stage them after so that unstaged work represents things you may have changed.  The exception is we don't stage config /build files themselves.   See warning under WARNINGS about the stage behavior.
+- By default if a project uses gnulib we use the latest main branch from the project.  Sometimes our patches might get out of sink and be unable to apply cleanly until they are updated.  If this is the case you can still successfully build by running `export BLD_CONFIG_GNU_LIBS_BRANCH=known_ok_gnulib_commit_sha`. To figure out what commit to use look at our github action logs for the project you will see in the "Build Package" job a step called "GET GNULIB Success Commit" click it and you should see the commit ID ie: `Found GNULIB Success Commit: 109e2ea1836d171ff2e50df35380aa1926a99dee`
 
 ## Why don't you add these patches upstream?
 
@@ -158,7 +159,7 @@ Normally I do start with PR for changesets I think are likely to be integrated. 
 
 ## Why does it take so long to build?
 
-Almost everything uses straight from the master branch sources rather than actual release archives.  ~~~For those tools that rely on gnulib that means there is nearly always a bootstrap process, and it can be very slow. This is largely due to msys fork performance and the cost of process startup on windows vs *nix systems.~~~ Happy to say now that gnulib-tool.py is near parity for gnulib-tool bootstrapping is 100x faster.
+Almost everything uses straight from the master branch sources rather than actual release archives.  For projects that use gnulib the cloning of this submodule can take quite some time.  If you are running build scripts multiple times you can provide a reference bare repo that it can fetch most of the data from (much faster).  To do so in your WLB_BASE_FOLDER run this command: `git clone --mirror https://git.savannah.gnu.org/git/gnulib.git` and thats it, we should automatically pick it up and use it. ~~~For those tools that rely on gnulib that means there is nearly always a bootstrap process, and it can be very slow. This is largely due to msys fork performance and the cost of process startup on windows vs *nix systems.~~~ Happy to say now that gnulib-tool.py is near parity for gnulib-tool bootstrapping is 100x faster.
 
 ### Things we try to do to fix this
 

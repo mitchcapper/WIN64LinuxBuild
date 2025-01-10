@@ -25,16 +25,20 @@ jobs:
       NoDebugBuild: true
   gnulib_source_cache:
     runs-on: windows-latest
+    needs: gnulib_test_all_patches # doesn't actually need it for the bare clone but as we also use this step to cache the last successful commit id we require it    
     defaults:
         run:
           shell: pwsh
     steps:
       - name: clone src
-        run: git clone --bare git://git.sv.gnu.org/gnulib.git d:/WLB/gnulib.git
+        run: git clone --bare git://git.sv.gnu.org/gnulib.git ${{env.WLB_BASE_FOLDER}}/gnulib.git
+      - name: Export Success Commit
+        shell: pwsh
+        run: echo ${{ needs.gnulib_test_all_patches.outputs.ScriptRes }} > ${{env.WLB_BASE_FOLDER}}/gnulib.git/gnulib_success_commit.txt
       - name: Cache gnulib bare repo
         uses: actions/cache/save@v4
         with:
-          path: d:/WLB/gnulib.git
+          path: ${{env.WLB_BASE_FOLDER}}/gnulib.git
           key: gnulib-bare
           enableCrossOsArchive: true
 
@@ -45,7 +49,7 @@ jobs:
       BuildPkg: script
       NoDebugBuild: true
       Script: .github/gnu_patchtest.sh all_patch
-
+  
   gnulib_test_patch:
     name: Test Single
     needs: get_patch_matrix
