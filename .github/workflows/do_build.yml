@@ -142,7 +142,7 @@ jobs:
         with:
           msystem: ucrt64
           location: d:\
-          install: pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex
+          install: pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex patch
 
       - name: Save ENV
         run: "Get-ChildItem env: | Select-Object -Property Name, Value | ConvertTo-Json | Out-File -FilePath d:/env.json -Encoding ASCII"
