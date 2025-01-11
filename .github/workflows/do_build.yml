@@ -37,6 +37,7 @@ env:
   MSYS2_PATH_TYPE: inherit
   WLB_BASE_FOLDER: "d:/WLB"
   MSYSTEM: UCRT64
+  BLD_CONFIG_LOG_COPY_LOGS_TO_INFODIR: 1 #copy logs to the info dir in final build, only happens for debug builds
   MSYS_PATH: d:/msys64
 
 jobs:

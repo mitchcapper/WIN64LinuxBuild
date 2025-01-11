@@ -258,7 +258,20 @@ function make_install(){
 	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
 		mkdir -p "${BLD_CONFIG_INSTALL_FOLDER}/bin"
 		copy_pdbs
+		if [[ $BLD_CONFIG_LOG_COPY_LOGS_TO_INFODIR -eq 1 ]]; then
+			copy_infos
+		fi
+
 	fi
+}
+function copy_infos(){
+	mkdir -p "${BLD_CONFIG_INSTALL_FOLDER}/info"
+	declare -a POS_COPY=( "${BLD_CONFIG_LOG_FILE}" "${BLD_CONFIG_LOG_MAKE_CMD_FILE}" "${BLD_CONFIG_LOG_CONFIG_ENV_FILE}" "${BLD_CONFIG_LOG_CONFIGURE_FILE}" "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" )
+	for file in "${POS_COPY[@]}"; do
+		if [[ -f "$file" ]]; then
+			cp "$file" "${BLD_CONFIG_INSTALL_FOLDER}/info"
+		fi
+	done
 }
 function copy_pdbs(){
 	ex find -name "*.pdb" | grep -v vc1 | xargs cp -t "${BLD_CONFIG_INSTALL_FOLDER}/bin" &>/dev/null || true

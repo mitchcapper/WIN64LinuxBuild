@@ -19,7 +19,19 @@ if (! $env:VS_ENV_INITIALIZED) {
     Enter-VsDevShell $VS_INSTANCE_ID -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64";
     if (! $env:WLB_NO_PATH_CLEAN ){ #this is similar to what msys2 does when -full-path is not used but we want to preserve the VS additions (plus any WLB_PATH_ADD The user might want)
         $path_after=$env:PATH;
-        $pathAdd="${env:SystemRoot};${env:SystemRoot}/system32;${env:SystemRoot}/Wbem;${env:SystemRoot};WindowsPowerShell/v1.0"
+        # pwsh powershell location attempt
+
+        $pwshPath = ""
+        $versions = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\PowerShellCore\InstalledVersions\"
+        foreach ($version in $versions) {
+            $installedDir = Get-ItemPropertyValue -Path $version.PSPath -Name "InstallDir" -ErrorAction SilentlyContinue
+            if ($installedDir -and (Test-Path "$installedDir\pwsh.exe")) {
+                $pwshPath = ";$installedDir"
+                break
+            }
+    }
+
+        $pathAdd="${env:SystemRoot};${env:SystemRoot}/system32;${env:SystemRoot}/Wbem;${env:SystemRoot}/WindowsPowerShell/v1.0${pwshPath}"
         if ( $env:WLB_PATH_ADD ){
             $pathAdd="$env:WLB_PATH_ADD;$pathAdd"
         }
