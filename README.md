@@ -95,7 +95,7 @@ By focusing on the core gnulib library we can have fewer changes to maintain and
 
 # Requirements
 
-A great way to figure out all the requirements is to look at the github actions environment setup.  If you run into build failures it may be because you have common apps in your bin PATH conflicting with native functionality. There are some linux programs as well that we try to prevent being called but can cause some havoc.   Two big ones `lib.exe` and `ranlib.exe` if your msys2 doesn't need them rename them to lib2.exe and ranlib2.exe.  We try to avoid any build script calling them but the msys2 versions, if called, can just wreak enough havoc to not cause hard failures but bugs very annoying to figure out.
+In short only msys2 needs to be installed along with the Visual Studio Build Environment (or Visual Studio itself).  If you don't have one of those just run our powershell script "vs_buildtools_installer.ps1" and it will install it for you.  For some builds there are additional tools we may need (generally we try to download them local however). A great way to figure out all the requirements is to look at the github actions environment setup.  It is best if your msys2 env is fairly clean, you can install multiple msys2 envs on one computer.
 
 ## MSYS2
 
@@ -114,6 +114,8 @@ Almost all config is done through the default_config.ini and overriding those se
 
 - WLB_BASE_FOLDER - The base folder for compiles
 - WLB_SCRIPT_FOLDER - The checkout folder for this repo, most of the time we can get this from the executing script but a few bat files use it to be able to work with absolute paths
+- WLB_NO_PATH_CLEAN - Disables the default PATH variable cleaning to avoid conflicts if set to 1.  Instead of using this recommend using the next var.
+- WLB_PATH_ADD - When we clean the path (default) add these additional paths back in, in normal windows path form "c:/mine/dir1;c:/bin/otherdir"
 - MSYS_PATH - Path to your msys install used by the shell launcher scripts not required can edit them if you have non-default path.
 - You can override any setting using ENV variables as well, for example to enable debug building rather than editing the build script you can do `export BLD_CONFIG_BUILD_DEBUG=1`
 
@@ -145,6 +147,7 @@ Most of the work here was not done by me and there are some great resources out 
 ## Tips & Tricks
 
 - For paths try to use a path form that is compatible with both native msys binaries and windows binaries.  This form is "c:/path/to/item"  using forward slashes means works for both platforms and while normal msys autocompleting for paths is /c/path/to/item (no colon and leading slash) all tools seem to understand the "c:/path/to/item" form, in addition this is a valid windows path format so no conversion is needed.
+- If you run into build failures it may be because you have common apps in your bin PATH conflicting with native functionality. There are some linux programs as well that we try to prevent being called but can cause some havoc.   Two big ones `lib.exe` and `ranlib.exe` if your msys2 doesn't need them rename them to lib2.exe and ranlib2.exe (ranlib.exe should not be present unless other packages are installed).  We try to avoid any build script calling them but the msys2 versions, if called, can just wreak enough havoc to not cause hard failures but bugs very annoying to figure out.  We strip the default PATH down to only a few windows folders by default to try and reduce this problem.
 - Even for non gnulib based tools using the gnulib build-aux comple/ar-lib wrappers that convert native gcc/ar commands to the MSVC equivalents is often enough to make many libraries work.
 - It is possible to use msys to generate build batch files for Windows.   The helper scripts have a "log_make" function that can be called before the actual make command and will log the make sequence to a file.
 - Non-makefile based builds (cmake etc) are a bit overcomplicated using wrapper scripts (or for cmake entire other build processes) to be able to capture the build commands and generate build .bat files.  This is often not needed and is more prone to breaking.   To prevent this set the best cmake style var to "vs" and any `BLD_CONFIG_BUILD_WINDOWS_COMPILE_WRAPPERS` set to 1 are set to 0.
