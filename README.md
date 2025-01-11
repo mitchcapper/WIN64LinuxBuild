@@ -95,7 +95,7 @@ By focusing on the core gnulib library we can have fewer changes to maintain and
 
 # Requirements
 
-A great way to figure out all the requirements is to look at the github actions environment setup.  If you run into build failures it may be because you have common apps in your bin PATH conflicting with native functionality.
+A great way to figure out all the requirements is to look at the github actions environment setup.  If you run into build failures it may be because you have common apps in your bin PATH conflicting with native functionality. There are some linux programs as well that we try to prevent being called but can cause some havoc.   Two big ones `lib.exe` and `ranlib.exe` if your msys2 doesn't need them rename them to lib2.exe and ranlib2.exe.  We try to avoid any build script calling them but the msys2 versions, if called, can just wreak enough havoc to not cause hard failures but bugs very annoying to figure out.
 
 ## MSYS2
 

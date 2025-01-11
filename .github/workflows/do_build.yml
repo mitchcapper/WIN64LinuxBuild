@@ -131,6 +131,10 @@ jobs:
       - name: Move Bad DEFAULT MSYS
         shell: powershell
         run: Rename-Item c:/msys64 c:/trashmsys
+      
+      - name: Move Bad mingw64 #grrrr github
+        shell: powershell
+        run: Rename-Item c:/mingw64 c:/trashmingw64
 
       - name: MSYS Setup
         uses: msys2/setup-msys2@v2

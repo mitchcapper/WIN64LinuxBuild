@@ -391,6 +391,7 @@ function setup_build_env(){
 	SETUP_BUILD_ENV_RUN=1
 	CL_PREFIX=""
 	USING_GNU_COMPILE_WRAPPER=0
+	export RANLIB="/bin/true" # ranlib can be 'dangerous' if left to its own devices, libtool likes to use it to just make the lib index files which can screw up libs just enough to break things.
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]] || [[ $BLD_CONFIG_GNU_LIBS_BUILD_AUX_ONLY_USED -eq 1 ]]; then
 
 		gnulib_ensure_buildaux_scripts_copied
