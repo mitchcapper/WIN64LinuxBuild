@@ -39,7 +39,7 @@ void Main() {
 		Console.Error.WriteLine(usage);
 		Environment.Exit(1);
 	}
-	var config = new ConfigRead();
+	var config = new ConfigRead("proj_config.ini");
 	config.ReadConfig();
 	var VS_DEBUG_FOLDER = Path.Combine(config.GetVal("SCRIPT_FOLDER"), "vs_debug_help");
 	var TEMPLATE_DICT = BuildTemplateDict(config, opts);
