@@ -7,17 +7,19 @@
 - [Warnings](#warnings)
 - [Why](#why)
 - [Requirements](#requirements)
-  - [MSYS2](#msys2)
-  - [Visual Studio 2022](#visual-studio-2022)
-  - [ENV Vars](#env-vars)
-  - [Shell Launch](#shell-launch)
-- [Other Notes](#other-notes)
-  - [Credits](#credits)
-  - [Tips & Tricks](#tips--tricks)
-  - [Why don't you add these patches upstream?](#why-dont-you-add-these-patches-upstream)
-  - [Why does it take so long to build?](#why-does-it-take-so-long-to-build)
-    - [Things we try to do to fix this](#things-we-try-to-do-to-fix-this)
-  - [Why bash?](#why-bash)
+	- [MSYS2](#msys2)
+		- [Avoid Packages](#avoid-packages)
+	- [Visual Studio 2022](#visual-studio-2022)
+	- [ENV Vars](#env-vars)
+	- [Shell Launch](#shell-launch)
+	- [Credits](#credits)
+	- [Tips & Tricks](#tips--tricks)
+	- [Why don't you add these patches upstream?](#why-dont-you-add-these-patches-upstream)
+	- [Why does it take so long to build?](#why-does-it-take-so-long-to-build)
+		- [Things we try to do to fix this](#things-we-try-to-do-to-fix-this)
+	- [Why bash?](#why-bash)
+	- [Other Tools Not Considered](#other-tools-not-considered)
+- [Developers / Custom Builds](#developers--custom-builds)
 
 <!-- /MarkdownTOC -->
 
@@ -63,16 +65,16 @@ It is a few primary components:
 - This is a set of patches, mostly for [gnulib](repo_notes/gnulib_README.md), to increase compatibility with windows systems.
 - A common bash script helper (helpers*.sh) and short template file for easily compiling gnulib and non-gnulib linux apps.  The focus is on moving as much duplicate code to the helper includes rather than in each build script. This includes several debug/trace tools and make/cmake/nmake wrappers.
 - A bash script that uses the above helper lib to compile a variety of common *nix tools for details on changes for each use the link in the list above.
-- A tool to generate a basic Visual Studio debug project to debug the target, if you can't run the binary in the debugger you can add `launchdebugger()` to the code run from the CLI and will get the normal JIT prompt.  Note due to how the debugger launch works it may better to do a bit earlier than needed (or in the main launch).  If the code you want to debug into is part of a library then you need to remove that code from the library (and add to your MSVC project) or build that library in MSVC.  The VS project comes with `wlb_debug.h` and `wlb_debug.c` that includes a basic console/file logger.
+- A tool to generate a basic Visual Studio debug project to debug the target, if you can't run the binary in the debugger you can add `launchdebugger()` to the code run from the CLI and will get the normal JIT prompt.  Due to how the debugger launch works it may better to do a bit earlier than needed (or in the main launch).  If the code you want to debug into is part of a library then you need to remove that code from the library (and add to your MSVC project) or build that library in MSVC.  The VS project comes with `wlb_debug.h` and `wlb_debug.c` that includes a basic console/file logger.
 - Easy build flags to compile debug versions of all the libraries and the project itself with MSVC edit and continue support (without needing them all in a VS project)
 - Minimal changes to each target to make it work, to reduce maintenance requirements as the code changes.  For some of these projects we throw additional gnulib modules at it that seem to fix the problems, there may be easier ways but this does result in minimal changes to the native code base.
 - Build entire projects in Windows native debug mode for full VS debugging and symbols
 - Logging of build process to create a batch file (.bat) to be able to build most projects without any subsystem at all
-- Github actions produces **Windows binaries** for download.  You can find these under the workflow links in the list above, click on a successful one and then the downloads can be found under Artifacts on that page.  Note: you must be signed into github to see the artifacts produced.
+- Github actions produces **Windows binaries** for download.  You can find these under the workflow links in the list above, click on a successful one and then the downloads can be found under Artifacts on that page.  You must be signed into github to see the artifacts produced.
 
 # Warnings
 
-DO NOT STAGE CHANGES in build folder.  NOTE: During the step in which we apply our patch we assumed any staged work is ours and discard it to a backup file.  Technically after we have run our_patch we won't mess with staged items again.   Similarly if there is gnulib used we use the same stage behavior when we go to patch it.
+DO NOT STAGE CHANGES in build folder.  During the step in which we apply our patch we assumed any staged work is ours and discard it to a backup file.  Technically after we have run our_patch we won't mess with staged items again.   Similarly if there is gnulib used we use the same stage behavior when we go to patch it.
 
 This code and the scripts were quickly written without much testing, and often involving poor quality hacks.  Things like disabling testing, help generation, direct manipulation of autogenerated files post generation rather than fixing the generators.  Often I use _WIN32 gating for changes, this might break cygwin platforms or using gcc/g++ in Windows. Again these code changes are low quality, if upstream projects want to consider including them may be able to clean up those code blocks.
 
@@ -99,10 +101,10 @@ In short only msys2 needs to be installed along with the Visual Studio Build Env
 
 ## MSYS2
 
-https://www.msys2.org/ MSYS2 is a linux sub-system for windows but unlike cygwin largely works not to simulate all things linux but to provide the infrastructure to do native windows compiling.  Note msys does use some cygwin packages for its env.  We don't need any packages installed from the UI just launch a shell once installed or unzipped and then run: `pacman -S pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex`.  Note for actually compiling we use a special way to enter the shell to make sure things we need are available (See Shell Launch below).  Note if you have an existing msys instance and already have various developer tools installed it may screw builds up. Configure scripts look for certain things and either fallback or try alternates when not found.  If you have something like GCC or msys/cygwin developer headers for certain packages installed these may take preference and either prevent builds from working, or require additional dlls to work.  The best solution is just create a second msys2 install just for this extract the msys2 archive to an alternate path and use the proper launcher to enter that msys and all will be well. Similarly it is possible that if you have certain tools in your default path for windows say gcc or some other app configure looks for you may find again strange behavior.  This can be harder to fix as you will need to edit your shell launch script to remove those paths from your path before starting.  I would highly recommend adding the environmental variable `MSYS2_ARG_CONV_EXCL="*")
+https://www.msys2.org/ MSYS2 is a linux sub-system for windows but unlike cygwin largely works not to simulate all things linux but to provide the infrastructure to do native windows compiling.  Msys does use some cygwin packages for its env.  We don't need any packages installed from the UI just launch a shell once installed or unzipped and then run: `pacman -S pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex ppatch unzip`.  For compiling we use a special way to enter the shell to make sure things we need are available (See Shell Launch below).  If you have an existing msys instance and already have various developer tools installed it may screw builds up. Configure scripts look for certain things and either fallback or try alternates when not found.  If you have something like GCC or msys/cygwin developer headers for certain packages installed these may take preference and either prevent builds from working, or require additional dlls to work.  The best solution is just create a second msys2 install just for this extract the msys2 archive to an alternate path and use the proper launcher to enter that msys and all will be well. Similarly it is possible that if you have certain tools in your default path for windows say gcc or some other app configure looks for you may find again strange behavior.  This can be harder to fix as you will need to edit your shell launch script to remove those paths from your path before starting.  I would highly recommend adding the environmental variable `MSYS2_ARG_CONV_EXCL="*")
 
-###
-Msys should generally not have a few tools NOT installed or not in the path including: cmake
+### Avoid Packages
+Msys should generally have a few tools NOT installed or not in the path including: cmake, any compilers other than MSVC (unless you want to use an alternate one).  There also some executables best not to be in your path (see tips & tricks below).
 
 ## Visual Studio 2022
 
@@ -121,7 +123,7 @@ Almost all config is done through the default_config.ini and overriding those se
 
 ## Shell Launch
 
-To launch an msys shell you can use the helper msys_shell.ps1 or msys_shell.bat helper scripts from this repo.  Note these are expected to be run from the "VS Developer Command Prompt" or "VS Developer Powershell", this makes all the MSVC compilers in our path and configured. The helpers do a few key things:
+To launch an msys shell you can use the helper msys_shell.ps1 or msys_shell.bat helper scripts from this repo.  These are expected to be run from the "VS Developer Command Prompt" or "VS Developer Powershell", this makes all the MSVC compilers in our path and configured. You can also use the `vs_msys_shell_launch.ps1` which will choose the latest vs copy installed to add to the path and enter the msys shell.   The helpers do a few key things:
 
 - Exclude the msys path assistance that turns windows paths (ie: c:\temp\etc) into nix equivalents.   This is because it often will break all backslash handling when we actually want a backslash.  Use forward slashes for paths (see tips and tricks below).
 - Puts us in with the ucrt64/gcc default toolset, this is what we want we dont even have gcc/g++ installed but it prevents us accidentally linking with the wrong items.
@@ -131,9 +133,8 @@ To launch an msys shell you can use the helper msys_shell.ps1 or msys_shell.bat 
 If you want to configure your term launcher to automatically put you into the msys term ready to go you can simulate what the Developer Term is doing and use a start command for the terminal like:
 `&{Import-Module "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"; Enter-VsDevShell $VS_INSTANCE_ID -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64"; . "$env:WLB_SCRIPT_FOLDER/msys_shell.ps1"}`.  To figure out your VS_INSTANCE_ID use the powershell command `Get-CimInstance MSFT_VSInstance`  and take the `IdentifyingNumber` from the one you want.  You can use the included `vs_msys_shell_launch.ps1` that will try to do the above before launching the msys shell.
 
-Note the shell launch tools assume msys in c:\msys64 if the ENV var MSYS_PATH is not specified.  If you have it elsewhere update them accordingly or set the env var. 
+The shell launch tools assume msys in c:\msys64 if the ENV var MSYS_PATH is not specified.  If you have it elsewhere update them accordingly or set the env var. 
 
-# Other Notes
 
 ## Credits
 
@@ -152,7 +153,7 @@ Most of the work here was not done by me and there are some great resources out 
 - It is possible to use msys to generate build batch files for Windows.   The helper scripts have a "log_make" function that can be called before the actual make command and will log the make sequence to a file.
 - Non-makefile based builds (cmake etc) are a bit overcomplicated using wrapper scripts (or for cmake entire other build processes) to be able to capture the build commands and generate build .bat files.  This is often not needed and is more prone to breaking.   To prevent this set the best cmake style var to "vs" and any `BLD_CONFIG_BUILD_WINDOWS_COMPILE_WRAPPERS` set to 1 are set to 0.
 - To build debug builds set the env var `BLD_CONFIG_BUILD_DEBUG=1` 
-- To generate batch files for building without msys run the build script with the arg "log_full".  Note you likely need some generated files (like config.h) so these would need to be added along with the normal sources.
+- To generate batch files for building without msys run the build script with the arg "log_full".  You likely need some generated files (like config.h) so these would need to be added along with the normal sources.
 - Generally, when we make changes we try to stage them after so that unstaged work represents things you may have changed.  The exception is we don't stage config /build files themselves.   See warning under WARNINGS about the stage behavior.
 - By default if a project uses gnulib we use the latest main branch from the project.  Sometimes our patches might get out of sink and be unable to apply cleanly until they are updated.  If this is the case you can still successfully build by running `export BLD_CONFIG_GNU_LIBS_BRANCH=known_ok_gnulib_commit_sha`. To figure out what commit to use look at our github action logs for the project you will see in the "Build Package" job a step called "GET GNULIB Success Commit" click it and you should see the commit ID ie: `Found GNULIB Success Commit: 109e2ea1836d171ff2e50df35380aa1926a99dee`
 
