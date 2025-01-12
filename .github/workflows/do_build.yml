@@ -36,6 +36,7 @@ env:
   MSYS2_ARG_CONV_EXCL: "*"
   MSYS2_PATH_TYPE: inherit
   WLB_BASE_FOLDER: "d:/WLB"
+  WLB_BUILD_TRACE: ${{ github.runner.debug && 1 || 0 }}  
   MSYSTEM: UCRT64
   BLD_CONFIG_LOG_COPY_LOGS_TO_INFODIR: 1 #copy logs to the info dir in final build, only happens for debug builds
   MSYS_PATH: d:/msys64
@@ -143,10 +144,14 @@ jobs:
         with:
           msystem: ucrt64
           location: d:\
-          install: pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex patch
+          install: pkg-config make gperf rsync autoconf wget gettext-devel automake autogen texinfo git bison python autoconf-archive libtool flex patch unzip
 
       - name: Save ENV
         run: "Get-ChildItem env: | Select-Object -Property Name, Value | ConvertTo-Json | Out-File -FilePath d:/env.json -Encoding ASCII"
+
+      - name: Trace Print ENV
+        if:  ${{ env.WLB_BUILD_TRACE }}
+        run: "Get-ChildItem env: | Select-Object -Property Name, Value"
 
       - name: Unpack / Move Artifacts
         id: artifact_unpack
@@ -180,11 +185,11 @@ jobs:
         run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}"
 
       - name: Debug Session
-        if: ${{ failure() && (vars.DEBUG_FAIL == '1') && (runner.debug) }}
+        if: ${{ failure() && (vars.DEBUG_FAIL == '1') && (env.WLB_BUILD_TRACE) }}
         run: ${{env.WLB_SCRIPT_FOLDER}}/.github/debug_ssh_start.ps1
 
       - name: Failure Artifact Upload
-        if: ${{ failure() && (runner.debug) }}
+        if: ${{ failure() && (env.WLB_BUILD_TRACE) }}
         uses: actions/upload-artifact@v4
         with:
           name: FAILURE-${{env.BUILD_PKG}}${{matrix.Configuration=='Debug' && '-Debug' || ''}}

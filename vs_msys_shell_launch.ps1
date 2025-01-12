@@ -31,12 +31,18 @@ if (! $env:VS_ENV_INITIALIZED) {
             }
     }
 
-        $pathAdd="${env:SystemRoot};${env:SystemRoot}/system32;${env:SystemRoot}/Wbem;${env:SystemRoot}/WindowsPowerShell/v1.0${pwshPath}"
+        $pathAdd="${env:SystemRoot};${env:SystemRoot}/system32;${env:SystemRoot}/Wbem;${env:SystemRoot}/system32/WindowsPowerShell/v1.0${pwshPath}"
         if ( $env:WLB_PATH_ADD ){
             $pathAdd="$env:WLB_PATH_ADD;$pathAdd"
         }
-        $path_after=$path_after.replace($path_before,$pathAdd)
+        $path_after=$path_after.replace($path_before,$pathAdd).replace(";;",";").Trim(';').replace("//","/").replace("\\","\")
         $env:PATH=$path_after
+        if ( $env:WLB_BUILD_TRACE ) {
+            Write-Host "Stripped path to:"
+        $env:PATH.Split(";") | ForEach-Object { Write-Host "`t$_" }
+        }
+        
+        
     }
 }
 . "$($env:WLB_SCRIPT_FOLDER)/msys_shell.ps1" "$StartScript"
