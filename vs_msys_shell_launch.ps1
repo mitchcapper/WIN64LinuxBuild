@@ -31,7 +31,7 @@ if (! $env:VS_ENV_INITIALIZED) {
             }
     }
 
-        $pathAdd="${env:SystemRoot};${env:SystemRoot}/system32;${env:SystemRoot}/Wbem;${env:SystemRoot}/system32/WindowsPowerShell/v1.0${pwshPath}"
+        $pathAdd="${env:SystemRoot};${env:SystemRoot}/system32;${env:SystemRoot}/Wbem;${env:SystemRoot}/system32/WindowsPowerShell/v1.0;${env:USERPROFILE}/.dotnet/tools${pwshPath}"
         if ( $env:WLB_PATH_ADD ){
             $pathAdd="$env:WLB_PATH_ADD;$pathAdd"
         }
