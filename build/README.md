@@ -475,20 +475,18 @@ after switch to master and patch line (but in that block) add:
 
 ## make
 ### Template Script Args
-`--BUILD_NAME make --GitRepo https://git.savannah.gnu.org/git/make.git  --GNU_LIBS_BOOTSTRAP_EXTRAS_ADD "--symlink --without-tests" --BUILD_ADDL_CFLAGS -D_WIN32 -D_CRT_SECURE_NO_WARNINGS /wd4668 --GNU_LIBS_ADDL "opendir" "flexmember" "waitpid" "fnmatch-gnu" "glob" "strcasestr" --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --CONFIG_CMD_ADDL="ac_cv_func_waitpid=yes" "--enable-case-insensitive-file-system"`
+`--BUILD_NAME make --GitRepo https://git.savannah.gnu.org/git/make.git  --GNU_LIBS_BOOTSTRAP_EXTRAS_ADD "--symlink --without-tests" --BUILD_ADDL_CFLAGS -D_WIN32 -D_CRT_SECURE_NO_WARNINGS /wd4668 --GNU_LIBS_ADDL "opendir" "flexmember" "waitpid" "fnmatch-gnu" "glob" "strcasestr" --GNU_LIBS_ADD_TO_REPO=1 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --CONFIG_CMD_ADDL="ac_cv_func_waitpid=yes" "--enable-case-insensitive-file-system"`
 
 ### Modifications
 make ships with a bunch of gnulib baked in but doesn't use gnulib proper we change that to get our latest benefits and remove their compat items.  After our clone add section:
 ```bash
-	export GNULIB_SRCDIR="$BLD_CONFIG_SRC_FOLDER/gnulib"
+	export GNULIB_SRCDIR="$(convert_to_msys_path "${BLD_CONFIG_SRC_FOLDER}")/gnulib"
 	export ACLOCAL_FLAGS="-I gl/m4"
-	if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib_add" ]]; then
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib_strip" ]]; then
 		rm src/w32/include/dirent.h src/w32/compat/dirent.c
 		rm gl/lib/*
 		rm gl/modules/*
-		rm build-aux/{compile,ar-lib}
 		sed -i -E "s#(make-glob|make-macros)##g" bootstrap.conf
-		git clone --recurse-submodules https://github.com/coreutils/gnulib.git
 		SKIP_STEP=""
 	fi
 ```

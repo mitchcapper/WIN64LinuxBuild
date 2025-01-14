@@ -8,7 +8,7 @@ BLD_CONFIG_BUILD_ADDL_CFLAGS=( "-D_WIN32" "-D_CRT_SECURE_NO_WARNINGS" "/wd4668" 
 BLD_CONFIG_GNU_LIBS_ADDL=( "opendir" "flexmember" "waitpid" "fnmatch-gnu" "glob" "strcasestr" )
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 BLD_CONFIG_CONFIG_CMD_ADDL=( "ac_cv_func_waitpid=yes" "--enable-case-insensitive-file-system" )
-
+BLD_CONFIG_GNU_LIBS_ADD_TO_REPO=1
 # BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
 # BLD_CONFIG_BUILD_DEBUG=1
 
@@ -21,14 +21,13 @@ fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
 		git_clone_and_add_ignore https://git.savannah.gnu.org/git/make.git .
 	fi
-	#export GNULIB_SRCDIR="$BLD_CONFIG_SRC_FOLDER/gnulib"
+	export GNULIB_SRCDIR="$(convert_to_msys_path "${BLD_CONFIG_SRC_FOLDER}")/gnulib"
 	export ACLOCAL_FLAGS="-I gl/m4"
-	if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib_add" ]]; then
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib_strip" ]]; then
 		rm src/w32/include/dirent.h src/w32/compat/dirent.c
 		rm gl/lib/*
 		rm gl/modules/*
 		sed -i -E "s#(make-glob|make-macros)##g" bootstrap.conf
-		git clone --recurse-submodules https://github.com/coreutils/gnulib.git
 		SKIP_STEP=""
 	fi
 
