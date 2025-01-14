@@ -651,7 +651,7 @@ index 36dd5e9a20..f2a73a6ced 100644
        errno = ENOTDIR;
        return -1;
 diff --git a/lib/fts.c b/lib/fts.c
-index d31443902b..9ac69259bb 100644
+index b611e997d4..b3b326f5a0 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -67,7 +67,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
@@ -922,7 +922,7 @@ index 74cb9afa41..ce02570a9b 100644
      }
  # endif
 diff --git a/lib/link.c b/lib/link.c
-index b2f2132f5e..122ddb8c6e 100644
+index b2f2132f5e..edbdd81429 100644
 --- a/lib/link.c
 +++ b/lib/link.c
 @@ -23,6 +23,7 @@
@@ -949,7 +949,7 @@ index b2f2132f5e..122ddb8c6e 100644
      struct stat st;
      char *p = strchr (dir, '\0');
 -    while (dir < p && (*--p != '/' && *p != '\\'));
-+    while (dir < p && (--p) && ISSLASH(*p));
++    while (dir < p && (--p) && !ISSLASH(*p));
      *p = '\0';
      if (p != dir && stat (dir, &st) != 0 && errno != EOVERFLOW)
        {
@@ -1204,7 +1204,7 @@ index f6dce43ba7..0e70c14260 100644
            struct stat statbuf;
  
 diff --git a/lib/progname.c b/lib/progname.c
-index ee62489285..8bd9a76ea6 100644
+index 4a45ca3490..2a83904c0e 100644
 --- a/lib/progname.c
 +++ b/lib/progname.c
 @@ -21,7 +21,7 @@

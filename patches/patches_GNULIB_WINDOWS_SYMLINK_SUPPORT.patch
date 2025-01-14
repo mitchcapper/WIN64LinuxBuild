@@ -19,7 +19,7 @@ index e8e9f5ac4d..276d9eaaaa 100644
       of S_ISNAM, and we want the more-specialized interpretation.  */
  
 diff --git a/lib/dirent.in.h b/lib/dirent.in.h
-index 9d3bffa97f..70840c1582 100644
+index 9d3bffa97f..6ba9ee6982 100644
 --- a/lib/dirent.in.h
 +++ b/lib/dirent.in.h
 @@ -47,6 +47,7 @@ struct dirent
@@ -30,6 +30,28 @@ index 9d3bffa97f..70840c1582 100644
  # endif
  #endif
  
+@@ -118,8 +119,8 @@ static_assert (DT_UNKNOWN != DT_FIFO && DT_UNKNOWN != DT_CHR
+ /* Conversion from a 'stat' mode to a DT_* value.  */
+ #ifndef IFTODT
+ # define IFTODT(mode) \
+-   (S_ISREG (mode) ? DT_REG : S_ISDIR (mode) ? DT_DIR \
+-    : S_ISLNK (mode) ? DT_LNK : S_ISBLK (mode) ? DT_BLK \
++   (S_ISREG (mode) ? DT_REG : S_ISLNK (mode) ? DT_LNK \
++    : S_ISDIR (mode) ? DT_DIR : S_ISBLK (mode) ? DT_BLK \
+     : S_ISCHR (mode) ? DT_CHR : S_ISFIFO (mode) ? DT_FIFO \
+     : S_ISSOCK (mode) ? DT_SOCK \
+     : _GL_DIRENT_S_ISWHT (mode) ? DT_WHT : DT_UNKNOWN)
+@@ -127,8 +128,8 @@ static_assert (DT_UNKNOWN != DT_FIFO && DT_UNKNOWN != DT_CHR
+ /* Conversion from a DT_* value to a 'stat' mode.  */
+ #ifndef DTTOIF
+ # define DTTOIF(dirtype) \
+-   ((dirtype) == DT_REG ? S_IFREG : (dirtype) == DT_DIR ? S_IFDIR \
+-    : (dirtype) == DT_LNK ? S_IFLNK : (dirtype) == DT_BLK ? S_IFBLK \
++   ((dirtype) == DT_REG ? S_IFREG : (dirtype) == DT_LNK ? S_IFLNK \
++    : (dirtype) == DT_DIR ? S_IFDIR : (dirtype) == DT_BLK ? S_IFBLK \
+     : (dirtype) == DT_CHR ? S_IFCHR :  dirtype == DT_FIFO ? S_IFIFO \
+     : (dirtype) == DT_SOCK ? S_IFSOCK \
+     : (dirtype) == DT_WHT ? _GL_DIRENT_S_IFWHT \
 diff --git a/lib/filemode.c b/lib/filemode.c
 index 2fb1cb2639..64ff577ffd 100644
 --- a/lib/filemode.c
@@ -66,7 +88,7 @@ index 36dd5e9a20..6214d26989 100644
  
  /* Likewise, if there is no native 'lstat', then the gnulib
 diff --git a/lib/fts.c b/lib/fts.c
-index d31443902b..fde08abe29 100644
+index b611e997d4..fbba286ce7 100644
 --- a/lib/fts.c
 +++ b/lib/fts.c
 @@ -117,9 +117,7 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
@@ -80,7 +102,7 @@ index d31443902b..fde08abe29 100644
  #ifndef S_IFSOCK
  # define S_IFSOCK 0
  #endif
-@@ -1820,6 +1818,8 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
+@@ -1827,6 +1825,8 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
              return FTS_NS;
            }
  
@@ -89,7 +111,7 @@ index d31443902b..fde08abe29 100644
          if (S_ISDIR(sbp->st_mode)) {
                  if (ISDOT(p->fts_name)) {
                          /* Command-line "." and ".." are real directories. */
-@@ -1828,8 +1828,7 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
+@@ -1835,8 +1835,7 @@ fts_stat(FTS *sp, register FTSENT *p, bool follow)
  
                  return (FTS_D);
          }
@@ -100,7 +122,7 @@ index d31443902b..fde08abe29 100644
                  return (FTS_F);
          return (FTS_DEFAULT);
 diff --git a/lib/readdir.c b/lib/readdir.c
-index 78225ec486..086f07c3a8 100644
+index 78225ec486..5fd2459e25 100644
 --- a/lib/readdir.c
 +++ b/lib/readdir.c
 @@ -77,10 +77,11 @@ readdir (DIR *dirp)
@@ -111,7 +133,7 @@ index 78225ec486..086f07c3a8 100644
 -    type = DT_DIR;
 -  else if (dirp->entry.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
 +
-+  if (dirp->entry.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) //linux shows sym l inked directories as symlinks not as directories
++  if (dirp->entry.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) //linux shows sym linked directories as symlinks not as directories
      type = DT_LNK;
 +  else if (dirp->entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 +	  type = DT_DIR;

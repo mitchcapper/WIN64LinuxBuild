@@ -555,7 +555,7 @@ index 76ffc49c0..c4b24420f 100644
                            || same_nameat (AT_FDCWD, source,
                                            destdir_fd, dest_base)))
 diff --git a/src/ls.c b/src/ls.c
-index 50937071b..8a7e52e4c 100644
+index 50937071b..5180baf34 100644
 --- a/src/ls.c
 +++ b/src/ls.c
 @@ -52,7 +52,9 @@
@@ -646,7 +646,19 @@ index 50937071b..8a7e52e4c 100644
  #endif
        if (linelen < 0)
          {
-@@ -4892,12 +4915,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
+@@ -3693,7 +3716,11 @@ get_link_name (char const *filename, struct fileinfo *f, bool command_line_arg)
+ {
+   f->linkname = areadlink_with_size (filename, f->stat.st_size);
+   if (f->linkname == nullptr)
++#ifdef _WIN32
++      file_failure(command_line_arg, _("cannot read symbolic link %s or symbolic link points to a volume id (\\??\\Volume*)"),
++#else
+     file_failure (command_line_arg, _("cannot read symbolic link %s"),
++#endif // _WIN32
+                   filename);
+ }
+ 
+@@ -4892,12 +4919,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
      }
    else
      {
@@ -662,7 +674,7 @@ index 50937071b..8a7e52e4c 100644
        else if (stat_ok ? S_ISFIFO (mode) : type == fifo)
          c = '|';
        else if (stat_ok ? S_ISSOCK (mode) : type == sock)
-@@ -4993,6 +5016,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+@@ -4993,6 +5020,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
            else if ((1 < f->stat.st_nlink) && is_colored (C_MULTIHARDLINK))
              type = C_MULTIHARDLINK;
          }
@@ -671,7 +683,7 @@ index 50937071b..8a7e52e4c 100644
        else if (S_ISDIR (mode))
          {
            type = C_DIR;
-@@ -5005,8 +5030,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+@@ -5005,8 +5034,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
            else if ((mode & S_ISVTX) != 0 && is_colored (C_STICKY))
              type = C_STICKY;
          }
@@ -1404,7 +1416,7 @@ index 10fddf4fe..b5eb512e2 100644
      {
        /* TRANSLATORS: Replace LANG_CODE in this URL with your language code
 diff --git a/src/tail.c b/src/tail.c
-index 30207e288..cf576d1d8 100644
+index 1ed1c4fab..69430d3f2 100644
 --- a/src/tail.c
 +++ b/src/tail.c
 @@ -49,6 +49,9 @@
@@ -1486,18 +1498,16 @@ index 30207e288..cf576d1d8 100644
  /* Display the last N_UNITS units of the file described by F.
     Return true if successful.  */
  
-@@ -2020,8 +2043,8 @@ tail_file (struct File_spec *f, uintmax_t n_files, uintmax_t n_units)
+@@ -2020,7 +2043,7 @@ tail_file (struct File_spec *f, uintmax_t n_files, uintmax_t n_units)
        xset_binary_mode (STDIN_FILENO, O_BINARY);
      }
    else
--    fd = open (f->name, O_RDONLY | O_BINARY
--               | nonblocking ? O_NONBLOCK : 0);
-+	  fd = open_file(f->name, O_RDONLY | O_BINARY
-+		  | nonblocking ? O_NONBLOCK : 0);
+-    fd = open (f->name, O_RDONLY | O_BINARY | (nonblocking ? O_NONBLOCK : 0));
++    fd = open_file (f->name, O_RDONLY | O_BINARY | (nonblocking ? O_NONBLOCK : 0));
  
    f->tailable = !(reopen_inaccessible_files && fd == -1);
  
-@@ -2321,7 +2344,11 @@ parse_options (int argc, char **argv,
+@@ -2320,7 +2343,11 @@ parse_options (int argc, char **argv,
    if (nbpids && !forever)
      error (0, 0,
             _("warning: PID ignored; --pid=PID is useful only when following"));
