@@ -168,9 +168,9 @@ apply_our_repo_patch () {
 	SKIP_STEP=""
 }
 
-osfixes_set_locations_dbg_add_to_libs(){
+osfixes_set_locations_dbg_add_to_libs(){ #the defines to control how it operates are set when it is compiled in osfixes_bare_compile
 	osfixes_set_locations "$@"
-	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
+	if [[ $BLD_CONFIG_BUILD_DEBUG -ne 1 ]]; then
 		return;
 	fi
 	LDFLAGS+=" -Xlinker $OSFIXES_LIB"
@@ -178,7 +178,14 @@ osfixes_set_locations_dbg_add_to_libs(){
 osfixes_bare_compile(){
 	pushd $OSFIXES_SRC_DST_FLDR
 	osfixes_link_in_if_dbg_and_stg
-	ex cl.exe -D_DEBUG -DDEBUG /nologo /c /ZI /MTd -DWLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH "$OSFIXES_SRC_DST"
+	local defines_add=""
+	
+	for def in "${OUR_OS_FIXES_DEFINES[@]}"; do
+		defines_add+=" -D${def}"
+	done
+
+
+	ex cl.exe -D_DEBUG -DDEBUG /nologo /c /ZI /MTd $defines_add "$OSFIXES_SRC_DST"
 	#ex lib.exe /nologo "${OSFIXES_SRC_DST::-1}obj" want to do obj to make sure it is always incldued
 	popd
 }

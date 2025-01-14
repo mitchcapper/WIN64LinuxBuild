@@ -48,8 +48,7 @@ class ConfigRead {
 			if (val.StartsWith("(")){
 				isArrayItem= true;
 				val = val.Substring(1, val.Length - 2).Trim();
-			}
-			if (val.StartsWith("\"") && val.EndsWith("\""))
+			} else if (val.StartsWith("\"") && val.EndsWith("\"")) //dont dequote array items by default
 				val = val.Substring(1, val.Length - 2).Trim();
 			var name = arr[0].Trim();
 			
@@ -70,5 +69,29 @@ class ConfigRead {
 	public bool IsNumeric(String name) => TryGetVar(name)?.isNumeric ?? false;
 	public string GetRealName(String name) => TryGetVar(name)?.name;
 	public string GetVal(String name) => TryGetVar(name)?.value;
+
+	/// <summary>
+	/// doesn't do great at handling escaped quotes beware
+	/// </summary>
+	/// <param name="name"></param>
+	/// <returns></returns>
+	public string[] GetArrParse(String name) {
+		var val = GetVal(name);
+		if (String.IsNullOrWhiteSpace(val))
+			return new string[0];
+
+		var matches = Regex.Matches(val, @"""(?:[^""\\]|\\.)*""|[^\s""]+");
+
+		var ret = new List<string>();
+		foreach (Match match in matches) {
+			var value = match.Value;
+			if (value.StartsWith("\"")) {
+				value = value.Trim('"');
+				value = Regex.Replace(value, @"\\([""])", "$1");//deslash the quote itself if has escaped inside quote
+			}
+			ret.Add(value);
+		}
+		return ret.ToArray();
+	}
 	public string GetComment(String name) => TryGetVar(name)?.comments;
 }
