@@ -97,6 +97,20 @@ While there are many things we could template for the most part we want to only 
 # Template Calls for Each Lib/App
 Below are the template calls and modifications to the produced build script for each build we offer.  I try to make sure any changes made to the build scripts gets ported back here.
 
+## stressapptest
+`--BUILD_NAME stressapptest --HaveOurPatch=0 --GitRepo https://github.com/stressapptest/stressapptest --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS 1 --GNU_LIBS_ADD_TO_REPO=1 --GNU_LIBS_ADDL "netinet_in" "arpa_inet"`
+
+
+### Modifications
+After clone step add
+```bash
+	cp gnulib/build-aux/bootstrap .
+	cp gnulib/build-aux/bootstrap.conf .
+	#it doesn't use extras so we can just ad ours, they use paxutils to gnulib everyhting
+	echo "gnulib_tool_option_extras=\" --without-tests --symlink\"" >> bootstrap.conf
+```
+
+
 ## grep
 ### Template Script Args
 `--BUILD_NAME grep --HaveOurPatch=0 --GitRepo https://git.savannah.gnu.org/git/grep.git --CONFIG_CMD_ADDL "ac_cv_prog_cc_g=no" "--enable-perl-regexp" --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS 1 --ADD_WIN_ARGV_LIB 1 --GNU_LIBS_ADDL "alloca" "alloca-opt" --OUR_LIB_DEPS pcre2`
@@ -154,36 +168,18 @@ before cmake make add:
 
 ## libhsts
 ### Template Script Args
-`--BUILD_NAME libhsts --GitRepo https://gitlab.com/rockdaboot/libhsts --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --GNU_LIBS_USED=0 --BUILD_ADDL_CFLAGS_STATIC -DHSTS_STATIC`
-
-### Modifications
-Add autoconf section before configure:
-```bash
-	if [[ -z $SKIP_STEP || $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
-		gnulib_ensure_buildaux_scripts_copied
-		autoreconf --symlink --verbose --install
-		libtool_fixes
-		autoreconf --verbose #update for libtool fixes
-		SKIP_STEP=""
-	fi
-```
+`--BUILD_NAME libhsts --GitRepo https://gitlab.com/rockdaboot/libhsts --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --GNU_LIBS_USED=0 --BUILD_ADDL_CFLAGS_STATIC -DHSTS_STATIC --NoGnuLibButAutoconf=1`
 
 ## wolfcrypt
 ### Template Script Args
-`--BUILD_NAME wolfcrypt --HaveOurPatch=0 --GitRepo https://github.com/wolfSSL/wolfssl.git --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS 1 --GNU_LIBS_USED=0 --CONFIG_CMD_ADDL --disable-makeclean --enable-sessionexport --enable-opensslextra --enable-curl --enable-webclient --enable-curve25519 --enable-ed25519 --enable-dtls --enable-dtls13 --enable-pkcs7 --disable-crypttests --enable-alpn --enable-sni --enable-cryptocb --enable-64bit --enable-ocsp --enable-certgen --enable-keygen --enable-sessioncerts --BUILD_ADDL_CFLAGS -DWOLFSSL_CRYPT_TESTS=no -DSESSION_CERTS -DKEEP_OUR_CERT -DOPENSSL_EXTRA -DSESSION_CERTS -DWOLFSSL_OPENSSLEXTRA -DWOLFSSL_ALT_CERT_CHAINS -DWOLFSSL_DES_ECB -DWOLFSSL_CUSTOM_OID -DHAVE_OID_ENCODING -DWOLFSSL_CERT_GEN -DWOLFSSL_ASN_TEMPLATE -DWOLFSSL_KEY_GEN -DHAVE_PKCS7 -DHAVE_AES_KEYWRAP -DWOLFSSL_AES_DIRECT -DHAVE_X963_KDF --CONFIG_CMD_ADDL_DEBUG --enable-debug --BUILD_ADDL_CFLAGS_DEBUG -DWOLFSSL_DEBUG=yes`
+`--BUILD_NAME wolfcrypt --HaveOurPatch=0 --GitRepo https://github.com/wolfSSL/wolfssl.git --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS 1 --NoGnuLibButAutoconf=1 --CONFIG_CMD_ADDL --disable-makeclean --enable-sessionexport --enable-opensslextra --enable-curl --enable-webclient --enable-curve25519 --enable-ed25519 --enable-dtls --enable-dtls13 --enable-pkcs7 --disable-crypttests --enable-alpn --enable-sni --enable-cryptocb --enable-64bit --enable-ocsp --enable-certgen --enable-keygen --enable-sessioncerts --BUILD_ADDL_CFLAGS -DWOLFSSL_CRYPT_TESTS=no -DSESSION_CERTS -DKEEP_OUR_CERT -DOPENSSL_EXTRA -DSESSION_CERTS -DWOLFSSL_OPENSSLEXTRA -DWOLFSSL_ALT_CERT_CHAINS -DWOLFSSL_DES_ECB -DWOLFSSL_CUSTOM_OID -DHAVE_OID_ENCODING -DWOLFSSL_CERT_GEN -DWOLFSSL_ASN_TEMPLATE -DWOLFSSL_KEY_GEN -DHAVE_PKCS7 -DHAVE_AES_KEYWRAP -DWOLFSSL_AES_DIRECT -DHAVE_X963_KDF --CONFIG_CMD_ADDL_DEBUG --enable-debug --BUILD_ADDL_CFLAGS_DEBUG -DWOLFSSL_DEBUG=yes`
 
 ### Modifications
-Add autogen/reconf step before configure of:
+In the autoconf step replace the first autoreconf call with:
 ```bash
-if [[ -z $SKIP_STEP ||  $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
 		sed -i -E 's#(ESTS\],\[test .x)#\1ZZZ#g' configure.ac #disable unit tests that will fail
 		sed -i -E 's#autoreconf --install --force#autoreconf --install#g' autogen.sh
-		gnulib_ensure_buildaux_scripts_copied;
 		./autogen.sh
-		libtool_fixes
-		autoreconf
-		SKIP_STEP=""
-	fi
 ```
 
 ## wget2
@@ -272,18 +268,10 @@ for make add (no normal make):
 
 ## which
 ### Template Script Args
-`--BUILD_NAME which --HaveOurPatch=0 --GitRepo https://github.com/mitchcapper/which.git --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --GNU_LIBS_USED=0 --CONFIG_CMD_ADDL="--enable-maintainer-mode"`
+`--BUILD_NAME which --HaveOurPatch=0 --GitRepo https://github.com/mitchcapper/which.git --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --NoGnuLibButAutoconf=1 --CONFIG_CMD_ADDL="--enable-maintainer-mode"`
 
 ### Modifications
-add an autoconf step of:
-```bash
-	if [[ -z $SKIP_STEP ||  $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
-		gnulib_ensure_buildaux_scripts_copied;
-		echo "" > ChangeLog
-		autoreconf --symlink --verbose --install
-		SKIP_STEP=""
-	fi
-```	
+add in the autoconf step start: `echo "" > ChangeLog`
 
 ## sed
 ### Template Script Args
@@ -554,19 +542,7 @@ After switch_to_master_and_patch add:
 ## p11-kit
 
 ### Template Script Args
-`--BUILD_NAME p11-kit --GitRepo https://github.com/p11-glue/p11-kit --HaveOurPatch=0  --GNU_LIBS_USED=0`
-
-### modifications
-Before configure add:
-```bash
-	if [[ -z $SKIP_STEP || $SKIP_STEP == "autoconf" ]]; then #not empty allowed as if we bootstrapped above we dont need to run nautoconf
-		gnulib_ensure_buildaux_scripts_copied
-		autoreconf --symlink --verbose --install
-		libtool_fixes
-		autoreconf --verbose #update for libtool fixes
-		SKIP_STEP=""
-	fi
-```
+`--BUILD_NAME p11-kit --GitRepo https://github.com/p11-glue/p11-kit --HaveOurPatch=0  --NoGnuLibButAutoconf=1`
 
 ## gzip
 ### Template Script Args

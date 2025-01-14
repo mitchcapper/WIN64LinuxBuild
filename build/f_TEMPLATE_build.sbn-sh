@@ -36,6 +36,14 @@ fi
 		autoreconf --symlink --verbose --install
 		SKIP_STEP=""
 	fi
+{{ else if ours.enabled NoGnuLibButAutoconf }}
+	if [[ -z $SKIP_STEP || $SKIP_STEP == "autoconf" ]]; then
+		gnulib_ensure_buildaux_scripts_copied
+		autoreconf --symlink --verbose --install
+		libtool_fixes
+		autoreconf --verbose #update for libtool fixes
+		SKIP_STEP=""
+	fi
 {{- end }}
 {{if ours.enabled VCPKG_DEPS}}
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "vcpkg" ]]; then

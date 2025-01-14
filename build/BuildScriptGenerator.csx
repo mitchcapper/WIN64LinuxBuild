@@ -14,6 +14,8 @@ using System.Runtime.CompilerServices;
 
 // https://globalcdn.nuget.org/packages/scriban.5.12.0.nupkg?packageVersion=5.12.0  lib/netstandard2.0/Scriban.dll
 void Main() {
+	if (Opts.allCLIArgs.Count > 0 && Opts.allCLIArgs[0].EndsWith(".dll"))
+		Opts.allCLIArgs.RemoveAt(0);
 	//Console.WriteLine(String.Join("\n",Environment.GetCommandLineArgs()));Environment.Exit(0);
 	var baseScript = Environment.GetEnvironmentVariable("WLB_SCRIPT_FOLDER");
 	if (! string.IsNullOrWhiteSpace(baseScript))
@@ -22,6 +24,8 @@ void Main() {
 	config.ReadConfig();
 	var opts = new Opts(config);
 	var bsgOpts = new BSGOpts(config);
+	if (bsgOpts.GetVal(opts,BSG_OPT.NoGnuLibButAutoconf) == "1" && Opts.allCLIArgs.Any(a=>a.Contains("GNU_LIBS_USED", StringComparison.CurrentCultureIgnoreCase) == false))
+		Opts.allCLIArgs.Insert(0,"--GNU_LIBS_USED=0");
 	var showUsage = false;
 	try {
 		opts.CheckAllOpts();
@@ -106,7 +110,7 @@ Main();
 public class OurScribanHelpers {
 	public static bool enabled(String val) => ! String.IsNullOrWhiteSpace(val) && val != "0";
 }
-enum BSG_OPT { GitRepo, HaveOurPatch }
+enum BSG_OPT { GitRepo, HaveOurPatch, NoGnuLibButAutoconf }
 class BSGOpts {
 	public static bool IsValidOptName(string name, out BSG_OPT realName) => Enum.TryParse(name.Replace("_","").Replace("-",""),true, out realName);
 	public static string GetRealOptNameStr(String name) => IsValidOptName(name, out var realName) ? realName.ToString() : null;
@@ -117,6 +121,8 @@ class BSGOpts {
 	static BSGOpts() {
 		AddOtherOpt(BSG_OPT.GitRepo, "Primary git repository for cloning", "https://github.com/mitchcapper/BUILD_APP_NAME.git");
 		AddOtherOpt(BSG_OPT.HaveOurPatch, "Do we do our normal patch apply for this repo (needs repo patch file in patches dir)", 1);
+		AddOtherOpt(BSG_OPT.NoGnuLibButAutoconf, "Project does not use GNULib but does need an autoconf block, automatically sets  GNU_LIBS_USED=0", 0);
+		
 	}
 	public string UsageStr() {
 		StringBuilder ret = new();
@@ -178,6 +184,7 @@ class Opts {
 	public void CheckAllOpts() {
 		GetArrVal("fullcheck"); // we will iterate everything and throw if any are invalid
 	}
+	public static List<string> allCLIArgs = new(Environment.GetCommandLineArgs());
 	public List<string> AllPassedConfigOpts=new();
 	private readonly string[] OPTS_ALLOWED_TO_HAVE_UNESCAPED_DOUBLE_DASH_START = new []{"CONFIG_CMD_ADDL","CONFIG_CMD_ADDL_DEBUG","CONFIG_CMD_ADDL_STATIC","CONFIG_CMD_ADDL_SHARED","CONFIG_CMD_DEFAULT","CONFIG_CMD_GNULIB_ADDL", "GNU_LIBS_BOOTSTRAP_EXTRAS_ADD" };
 	public List<string> GetArrVal(String name) {
@@ -189,7 +196,7 @@ class Opts {
 		if (String.IsNullOrWhiteSpace(RequestedOptRealName) && ! isFullCheck)
 			throw new Exception($"Internal error requesting a manual option of: {name} doesn't seem valid");
 		string curOptName = null;
-		foreach (var arg in Environment.GetCommandLineArgs()) {
+		foreach (var arg in allCLIArgs) {
 			if (arg.StartsWith("--")) {
 				var val = arg.Substring(2);
 				var equalPos = val.IndexOf('=');
