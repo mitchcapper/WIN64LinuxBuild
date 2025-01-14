@@ -134,6 +134,7 @@ function git_clone(){
 	local GNULIB_DIR_NAME="gnulib" #name for gnulib under repos
 	local USE_REF_SRC_DIR_ON_INITIAL_CLONE=0 #only done when cloning gnulib itself
 	local DO_RECURSIVE_SUBMODULE_INIT=0 #we set this to true when we would normally do a recursive clone but as we are using a reference src repo we can't so after we finish we do initilize and update all modules recursively
+	local ONLY_DO_STEP="" # can be set to initial to just do the initial clone, or skip_initial to skip the initial clone.  Can be useful for things that need the gnulib help but need to make modifications after the first clone.
 	if [[ "$BLD_CONFIG_GIT_NO_RECURSE" -eq 1 ]]; then
 		ADD_RECURSE=0
 	fi
@@ -159,6 +160,12 @@ function git_clone(){
 			;;
 			"--use-ref-src")
 				USE_REF_SRC_DIR_ON_INITIAL_CLONE=1
+			;;
+			"--only-initial-clone")
+				ONLY_DO_STEP="initial"
+			;;
+			"--skip-initial-clone")
+				ONLY_DO_STEP="skip_initial"
 			;;
 			[hH][tT][tT][pP]*://*)
 				GIT_URL="$VAL"
@@ -201,10 +208,15 @@ function git_clone(){
 			FINAL_ARR+=("${GIT_REF_ARGS[@]}")
 		fi
 	fi
-
+	if [[ "$ONLY_DO_STEP" != "skip_initial" ]]; then
 	ex git clone "${FINAL_ARR[@]}"
+	fi
 	if [[ "$BLD_CONFIG_GIT_PRINT_LAST_COMMIT_ON_CLONE" -eq 1 ]]; then
 		git log --decorate=full -n 1
+	fi
+	if [[ "$ONLY_DO_STEP" == "initial" ]]; then
+		SKIP_STEP="";CUR_STEP="";
+		return
 	fi
 	if [[ "$USE_REF_SRC_DIR" -eq 1 && -d "${GNULIB_DIR_NAME}" ]]; then
 		if [[ "$BLD_CONFIG_GNU_LIB_REFERENCE_MASTER_SHORTCUT" -eq 1 && "$BLD_CONFIG_GNU_LIBS_BRANCH" != "" ]]; then

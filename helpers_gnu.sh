@@ -16,7 +16,8 @@ function gnulib_add_submodule_to_proj() {
 		git_submodule_sha="$BLD_CONFIG_GNU_LIBS_BRANCH"
 		submodule_branch="master"
 	fi
-	ex git submodule add "${GIT_REF_ARGS[@]}" -b "$submodule_branch" git://git.savannah.gnu.org/gnulib.git "${GNULIB_DIR_NAME}"
+	# need --force incase it is on the ignore list
+	ex git submodule add --force "${GIT_REF_ARGS[@]}" -b "$submodule_branch" git://git.savannah.gnu.org/gnulib.git "${GNULIB_DIR_NAME}"
 	if [[ "$git_submodule_sha" != "" ]]; then
 		ex git -C "${GNULIB_DIR_NAME}" checkout --quiet "$git_submodule_sha"
 	fi
