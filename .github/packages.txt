@@ -11,7 +11,7 @@ highlight
 libhsts
 libpsl
 libtasn1
-make
+make: -NoDebug
 openssl
 patch
 pcre2
