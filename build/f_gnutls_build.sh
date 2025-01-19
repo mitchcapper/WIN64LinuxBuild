@@ -12,6 +12,8 @@ BLD_CONFIG_BUILD_ADDL_CFLAGS_STATIC=("-DASN1_STATIC")
 BLD_CONFIG_OUR_LIB_DEPS=("libtasn1" "p11-kit" "zlib")
 BLD_CONFIG_OUR_LIB_BINS_PATH=("libtasn1")
 BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS=( "4068" "4061" "4820" "5045" "4668" "4996" )
+BLD_CONFIG_BUILD_ADDL_CFLAGS=("-std:c++latest")
+# /std:c++latest
 
 # BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
 # BLD_CONFIG_BUILD_DEBUG=1
