@@ -168,30 +168,32 @@ apply_our_repo_patch () {
 	SKIP_STEP=""
 }
 
-osfixes_set_locations_dbg_add_to_libs(){ #the defines to control how it operates are set when it is compiled in osfixes_bare_compile
-	osfixes_set_locations "$@"
-	if [[ $BLD_CONFIG_BUILD_DEBUG -ne 1 ]]; then
-		return;
-	fi
-	LDFLAGS+=" -Xlinker $OSFIXES_LIB"
+function osfixes_get_defines(){
+	local defs=""
+	for def in "${OUR_OS_FIXES_DEFINES[@]}"; do
+		if [[ $BLD_CONFIG_BUILD_DEBUG -ne 1 ]]; then
+			if [[ $def == "WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH" || $def == "WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_EXIT" ]]; then
+				continue
+			fi
+		fi
+		defs+=" /D${def}"
+	done
+	echo $defs
 }
+
 osfixes_bare_compile(){
 	pushd $OSFIXES_SRC_DST_FLDR
-	osfixes_link_in_if_dbg_and_stg
-	local defines_add=""
-	
-	for def in "${OUR_OS_FIXES_DEFINES[@]}"; do
-		defines_add+=" -D${def}"
-	done
+	osfixes_link_in_and_stage_if_needed
 
 
-	ex cl.exe -D_DEBUG -DDEBUG /nologo /c /ZI /MTd $defines_add "$OSFIXES_SRC_DST"
+	#can't include config.h on compile as this is done before the configure is run
+	ex ${CL} /c ${CFLAGS/WLB_INCLUDE_CONFIG_H/WLB_INTENTIONAL_INVALID_SUB_H} "$OSFIXES_SRC_DST"
 	#ex lib.exe /nologo "${OSFIXES_SRC_DST::-1}obj" want to do obj to make sure it is always incldued
 	popd
 }
 osfixes_set_locations(){
-	declare -g OSFIXES_HEADER_DST="$BLD_CONFIG_SRC_FOLDER"
-	declare -g OSFIXES_SRC_DST_FLDR="$BLD_CONFIG_SRC_FOLDER"
+	declare -g OSFIXES_HEADER_DST="$BLD_CONFIG_OUR_OS_FIXES_H_DIR"
+	declare -g OSFIXES_SRC_DST_FLDR="$BLD_CONFIG_OUR_OS_FIXES_C_DIR"
 	if [[ "$#" -gt 0 ]]; then
 		OSFIXES_HEADER_DST="$1"
 		if [[ "$#" -gt 1 ]]; then
@@ -205,21 +207,20 @@ osfixes_set_locations(){
 
 }
 
-osfixes_link_in_if_dbg_and_stg() {
-	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
-		return;
-	fi
-	osfixes_link_in_if_needed;
-	git_staging_add "$OSFIXES_SRC_DST" "$OSFIXES_HEADER_DST"
-}
 # first arg is header folder, second arg is c file folder
-osfixes_link_in_if_needed()  {
-	
+osfixes_link_in_and_stage_if_needed()  {
+	local LINK_IN=0
 	if [[ ! -e "${OSFIXES_SRC_DST}" ]]; then
 		ln -s "${WLB_SCRIPT_FOLDER}/osfixes.c" "${OSFIXES_SRC_DST}"
+		LINK_IN=1
 	fi
 	if [[ ! -e "${OSFIXES_HEADER_DST}" ]]; then
 		ln -s "${WLB_SCRIPT_FOLDER}/osfixes.h" "${OSFIXES_HEADER_DST}"
+		LINK_IN=1
+	fi
+
+	if [[ $LINK_IN -eq 1 ]]; then
+		git_staging_add "$OSFIXES_SRC_DST" "$OSFIXES_HEADER_DST"
 	fi
 }
 
@@ -348,10 +349,10 @@ function run_logged_make(){
 }
 
 function configure_run(){
+	setup_build_env "$@";
 	if [[ $BLD_CONFIG_OUR_OS_FIXES_COMPILE -eq 1 || $BLD_CONFIG_OUR_OS_FIXES_APPLY_TO_DBG -eq 1 ]]; then
 		osfixes_bare_compile;
-	fi
-	setup_build_env "$@";
+	fi	
 	#gl_cv_host_operating_system="MSYS2" ac_cv_host="x86_64-w64-msys2" ac_cv_build="x86_64-w64-msys2"
 	ex ./configure "${FULL_CONFIG_CMD_ARR[@]}"  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
@@ -493,7 +494,15 @@ function setup_build_env(){
 	for warn in "${BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS[@]}"; do
 		ADL_C_FLAGS+=" /wd${warn}"
 	done
-	
+
+	osfixes_set_locations;
+	if [[ $BLD_CONFIG_OUR_OS_FIXES_APPLY_TO_DBG -eq 1 && $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+		ADL_LIB_FLAGS+=" -Xlinker $OSFIXES_LIB"
+	fi
+	if [[ $BLD_CONFIG_OUR_OS_FIXES_COMPILE -eq 1 ]]; then
+		ADL_C_FLAGS+=" $(osfixes_get_defines)"
+	fi
+
 	#not sure how to call two functions with the env vars set without using export
 	local STATIC_ADD=" -nologo"
 	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 && $USING_GNU_COMPILE_WRAPPER -eq 1 ]]; then #if not using compile script this isnt needed as it is just for lib finding assist
@@ -510,7 +519,7 @@ function setup_build_env(){
 		STATIC_ADD="${STATIC_ADD}"
 	fi
 	declare -a LIB_ARR=("${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS[@]}" "${BLD_CONFIG_CONFIG_ADDL_LIBS[@]}")
-	export CXX="${CL}" AR="$AR" CC="${CL}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" LIBS="${LIB_ARR[*]}" LD="${LINK_PATH}";
+	export CXX="${CL}" AR="$AR" CC="${CL}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CPPFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" CFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" LIBS="${LIB_ARR[*]}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
 }
 
@@ -647,9 +656,7 @@ function startcommon(){
 	add_lib_bin_to_path "${BLD_CONFIG_OUR_LIB_BINS_PATH[@]}";
 	add_vcpkg_pkg_config "${BLD_CONFIG_VCPKG_DEPS[@]}";
 	setup_gnulibtool_py_autoconfwrapper;
-	if [[ $BLD_CONFIG_OUR_OS_FIXES_APPLY_TO_DBG -eq 1 ]]; then
-		osfixes_set_locations_dbg_add_to_libs
-	fi
+	
 	if [[ $BLD_CONFIG_LOG_DEBUG_WRAPPERS -eq 1 ]]; then
 		export GNU_BUILD_WRAPPER_DEBUG=1
 	fi

@@ -1,5 +1,5 @@
 #include "osfixes.h"
-#define _CRTIMP
+//#define _CRTIMP
 #define WIN32_LEAN_AND_MEAN
 #define _GL_CTYPE_H
 #define _GL_CONFIG_H_INCLUDED 1
@@ -68,7 +68,30 @@ CONSTRUCTOR(wlb_at_startup) {
 }
 
 #endif
+#ifdef WLB_ALIGNED_ALLOC
+//memalign replacement note must use wlb_aligned_free to free
+void *wlb_aligned_alloc(size_t size, size_t alignment) {
+#ifndef _MSC_VER	
+#ifdef HAVE_POSIX_MEMALIGN
+	void *ptr=0;
+    int result = posix_memalign(&ptr, alignment, size);
+	return ptr;
+#else
+    return memalign(alignment, size);
+#endif
+#else
+	return _aligned_malloc(size, alignment);
+#endif
+}
+void wlb_aligned_free(void* ptr) {
+	#if defined(_MSC_VER)
+		_aligned_free(ptr);
+	#else
+		free(ptr);
+	#endif
+}
 
+#endif
 #ifdef WLB_EXEC_ADVANCED
 #define ENV_ALLOC_CNT 1024
 #define FAKE_EXIT_STATUS_UNDEFINED 2424242 //exit codes should be 1 byte only

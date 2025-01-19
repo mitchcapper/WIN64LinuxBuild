@@ -14,6 +14,7 @@
 #define WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_EXIT
 #define WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH
 #define WLB_CONSTRUCTOR_SUPPORT
+#define WLB_ALIGNED_ALLOC
 */
 int clearenv(void);
 extern void DisableDebugAssertAtExit();
@@ -331,4 +332,9 @@ int kill(pid_t pid, int sig);
 #endif
 
 
+#endif
+
+#ifdef WLB_ALIGNED_ALLOC
+void *wlb_aligned_alloc(size_t size, size_t alignment);
+void wlb_aligned_free(void* ptr);
 #endif
