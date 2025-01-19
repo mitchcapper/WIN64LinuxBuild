@@ -11,7 +11,7 @@ index fcea3310a..67747751a 100644
  wget       -
  "
 diff --git a/lib/accelerated/x86/x86-common.c b/lib/accelerated/x86/x86-common.c
-index 3b779865e..e9db405f5 100644
+index 3b779865e..e296f46c4 100644
 --- a/lib/accelerated/x86/x86-common.c
 +++ b/lib/accelerated/x86/x86-common.c
 @@ -44,7 +44,18 @@
@@ -44,9 +44,9 @@ index 3b779865e..e9db405f5 100644
 +	int regs_array[4];
 +	__cpuidex(regs_array, 7, 0);
 +	*eax = regs_array[0];
-+	*ebx = regs_array[0];
-+	*ecx = regs_array[0];
-+	*edx = regs_array[0];
++	*ebx = regs_array[1];
++	*ecx = regs_array[2];
++	*edx = regs_array[3];
 +#endif
  	return;
  }

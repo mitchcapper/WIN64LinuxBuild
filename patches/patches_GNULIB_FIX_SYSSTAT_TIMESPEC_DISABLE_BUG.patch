@@ -14,3 +14,19 @@ index 8bde5a7d63..0e272b1431 100644
  
  /* Other possible values of st_mode.  */
  # if 0
+diff --git a/lib/timespec.h b/lib/timespec.h
+index 138467eca6..f87618822f 100644
+--- a/lib/timespec.h
++++ b/lib/timespec.h
+@@ -55,7 +55,10 @@ enum { LOG10_TIMESPEC_RESOLUTION = LOG10_TIMESPEC_HZ };
+ _GL_TIMESPEC_INLINE struct timespec
+ make_timespec (time_t s, long int ns)
+ {
+-  return (struct timespec) { .tv_sec = s, .tv_nsec = ns };
++  struct timespec ts;
++  ts.tv_sec = s;
++  ts.tv_nsec = ns;
++  return ts;
+ }
+ 
+ /* Return negative, zero, positive if A < B, A == B, A > B, respectively.  */

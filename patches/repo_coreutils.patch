@@ -20,36 +20,6 @@ index dcf537bc9..1f1290c42 100644
            if (exhausting)
              {
                error (0, 0, _("%s: input file is output file"), quotef (infile));
-diff --git a/src/cksum.c b/src/cksum.c
-index 570d6f0a8..6218716ad 100644
---- a/src/cksum.c
-+++ b/src/cksum.c
-@@ -291,15 +291,23 @@ crc_sum_stream (FILE *stream, void *resstream, uintmax_t *length)
-   static bool (*cksum_fp) (FILE *, uint_fast32_t *, uintmax_t *);
-   if (! cksum_fp)
-     {
-+#if USE_AVX512_CRC32      
-       if (avx512_supported ())
-         cksum_fp = cksum_avx512;
--      else if (avx2_supported ())
-+      else
-+#endif      
-+#if USE_AVX2_CRC32
-+      if (avx2_supported ())
-         cksum_fp = cksum_avx2;
--      else if (pclmul_supported ())
-+      else 
-+#endif
-+#if USE_PCLMUL_CRC32
-+      if (pclmul_supported ())
-         cksum_fp = cksum_pclmul;
-       else if (vmull_supported ())
-         cksum_fp = cksum_vmull;
-       else
-+#endif      
-         cksum_fp = cksum_slice8;
-     }
- 
 diff --git a/src/copy.c b/src/copy.c
 index 7ffb998f6..57f805617 100644
 --- a/src/copy.c
@@ -555,7 +525,7 @@ index 76ffc49c0..c4b24420f 100644
                            || same_nameat (AT_FDCWD, source,
                                            destdir_fd, dest_base)))
 diff --git a/src/ls.c b/src/ls.c
-index 50937071b..5180baf34 100644
+index f67167f16..0c4f0651b 100644
 --- a/src/ls.c
 +++ b/src/ls.c
 @@ -52,7 +52,9 @@
@@ -568,7 +538,7 @@ index 50937071b..5180baf34 100644
  #include <getopt.h>
  #include <signal.h>
  #include <uchar.h>
-@@ -1572,12 +1574,14 @@ process_signals (void)
+@@ -1575,12 +1577,14 @@ process_signals (void)
        /* SIGTSTP is special, since the application can receive that signal
           more than once.  In this case, don't set the signal handler to the
           default.  Instead, just raise the uncatchable SIGSTOP.  */
@@ -583,7 +553,7 @@ index 50937071b..5180baf34 100644
          signal (sig, SIG_DFL);
  
        /* Exit or suspend the program.  */
-@@ -1598,11 +1602,15 @@ signal_setup (bool init)
+@@ -1601,11 +1605,15 @@ signal_setup (bool init)
    /* The signals that are trapped, and the number of such signals.  */
    static int const sig[] =
      {
@@ -599,7 +569,7 @@ index 50937071b..5180baf34 100644
  #ifdef SIGPOLL
        SIGPOLL,
  #endif
-@@ -1655,7 +1663,11 @@ signal_setup (bool init)
+@@ -1658,7 +1666,11 @@ signal_setup (bool init)
            caught_sig[j] = (signal (sig[j], SIG_IGN) != SIG_IGN);
            if (caught_sig[j])
              {
@@ -611,7 +581,7 @@ index 50937071b..5180baf34 100644
                siginterrupt (sig[j], 0);
              }
          }
-@@ -1881,8 +1893,10 @@ main (int argc, char **argv)
+@@ -1884,8 +1896,10 @@ main (int argc, char **argv)
           This can process signals out of order, but there doesn't seem to
           be an easy way to do them in order, and the order isn't that
           important anyway.  */
@@ -622,7 +592,7 @@ index 50937071b..5180baf34 100644
        j = interrupt_signal;
        if (j)
          raise (j);
-@@ -2265,7 +2279,9 @@ decode_switches (int argc, char **argv)
+@@ -2268,7 +2282,9 @@ decode_switches (int argc, char **argv)
            break;
  
          case 'Z':
@@ -632,7 +602,7 @@ index 50937071b..5180baf34 100644
            break;
  
          case ZERO_OPTION:
-@@ -2324,6 +2340,13 @@ decode_switches (int argc, char **argv)
+@@ -2327,6 +2343,13 @@ decode_switches (int argc, char **argv)
                && 0 < ws.ws_col)
              linelen = ws.ws_col <= MIN (PTRDIFF_MAX, SIZE_MAX) ? ws.ws_col : 0;
          }
@@ -646,7 +616,7 @@ index 50937071b..5180baf34 100644
  #endif
        if (linelen < 0)
          {
-@@ -3693,7 +3716,11 @@ get_link_name (char const *filename, struct fileinfo *f, bool command_line_arg)
+@@ -3700,7 +3723,11 @@ get_link_name (char const *filename, struct fileinfo *f, bool command_line_arg)
  {
    f->linkname = areadlink_with_size (filename, f->stat.st_size);
    if (f->linkname == nullptr)
@@ -658,7 +628,7 @@ index 50937071b..5180baf34 100644
                    filename);
  }
  
-@@ -4892,12 +4919,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
+@@ -4899,12 +4926,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
      }
    else
      {
@@ -674,7 +644,7 @@ index 50937071b..5180baf34 100644
        else if (stat_ok ? S_ISFIFO (mode) : type == fifo)
          c = '|';
        else if (stat_ok ? S_ISSOCK (mode) : type == sock)
-@@ -4993,6 +5020,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+@@ -5000,6 +5027,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
            else if ((1 < f->stat.st_nlink) && is_colored (C_MULTIHARDLINK))
              type = C_MULTIHARDLINK;
          }
@@ -683,7 +653,7 @@ index 50937071b..5180baf34 100644
        else if (S_ISDIR (mode))
          {
            type = C_DIR;
-@@ -5005,8 +5034,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+@@ -5012,8 +5041,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
            else if ((mode & S_ISVTX) != 0 && is_colored (C_STICKY))
              type = C_STICKY;
          }
@@ -1043,7 +1013,7 @@ index 03a260243..3949ff0b2 100644
  }
  
 diff --git a/src/sort.c b/src/sort.c
-index 997566240..9dd0e784f 100644
+index 0928fd57c..11d8e83d7 100644
 --- a/src/sort.c
 +++ b/src/sort.c
 @@ -715,7 +715,11 @@ static pid_t
@@ -1058,7 +1028,7 @@ index 997566240..9dd0e784f 100644
  
    if (cpid < 0)
      error (SORT_FAILURE, errno, _("waiting for %s [-d]"),
-@@ -4391,7 +4395,11 @@ main (int argc, char **argv)
+@@ -4395,7 +4399,11 @@ main (int argc, char **argv)
      static int const sig[] =
        {
          /* The usual suspects.  */
@@ -1070,7 +1040,7 @@ index 997566240..9dd0e784f 100644
  #ifdef SIGPOLL
          SIGPOLL,
  #endif
-@@ -4437,8 +4445,9 @@ main (int argc, char **argv)
+@@ -4441,8 +4449,9 @@ main (int argc, char **argv)
          }
  #endif
    }
