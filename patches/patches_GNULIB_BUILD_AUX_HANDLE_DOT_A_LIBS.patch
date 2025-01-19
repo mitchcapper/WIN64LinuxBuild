@@ -121,7 +121,7 @@ index 7d62dea998..9599275f4e 100644
 +  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
  fi
 diff --git a/build-aux/compile b/build-aux/compile
-index 14aec56218..9259c80636 100644
+index 14aec56218..6cb86ee758 100644
 --- a/build-aux/compile
 +++ b/build-aux/compile
 @@ -1,5 +1,10 @@
@@ -352,7 +352,7 @@ index 14aec56218..9259c80636 100644
  	  shift
  	  ;;
  	*)
-@@ -225,8 +316,31 @@ func_cl_wrapper ()
+@@ -225,8 +316,33 @@ func_cl_wrapper ()
    if test -n "$linker_opts"; then
      linker_opts="-link$linker_opts"
    fi
@@ -368,6 +368,8 @@ index 14aec56218..9259c80636 100644
 +				\/*) #strip slash commands
 +				;;
 +				-D*) #any defines
++				;;
++				-std*) #no std lib specs
 +				;;
 +				*)
 +					FINAL_ARR+=($VAL)
