@@ -170,7 +170,7 @@ apply_our_repo_patch () {
 
 function osfixes_get_defines(){
 	local defs=""
-	for def in "${OUR_OS_FIXES_DEFINES[@]}"; do
+	for def in "${BLD_CONFIG_OUR_OS_FIXES_DEFINES[@]}"; do
 		if [[ $BLD_CONFIG_BUILD_DEBUG -ne 1 ]]; then
 			if [[ $def == "WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH" || $def == "WLB_DISABLE_DEBUG_ASSERT_POPUP_AT_EXIT" ]]; then
 				continue
@@ -519,7 +519,7 @@ function setup_build_env(){
 		STATIC_ADD="${STATIC_ADD}"
 	fi
 	declare -a LIB_ARR=("${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS[@]}" "${BLD_CONFIG_CONFIG_ADDL_LIBS[@]}")
-	#CPPFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" 
+	export CPPFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" 
 	export CXX="${CL}" AR="$AR" CC="${CL}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" LIBS="${LIB_ARR[*]}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
 }
