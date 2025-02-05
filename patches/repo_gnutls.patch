@@ -79,6 +79,55 @@ index 53a142cf5..d12bb4cf9 100644
  
  	_gnutls_debug_log("Vector: length: %d\n\t%s%s\n", (int)a_size, prefix,
  			  _gnutls_bin2hex(a, a_size, buf_hex, sizeof(buf_hex),
+diff --git a/lib/errors.h b/lib/errors.h
+index 891c5dfd1..9b7b59ab5 100644
+--- a/lib/errors.h
++++ b/lib/errors.h
+@@ -139,6 +139,7 @@ void _gnutls_mpi_log(const char *prefix, bigint_t a);
+ 		}                                                              \
+ 	} while (0)
+ 
++#ifndef _WIN32
+ #ifdef C99_MACROS
+ #define LEVEL(l, ...)                                 \
+ 	do {                                          \
+@@ -175,6 +176,27 @@ void _gnutls_mpi_log(const char *prefix, bigint_t a);
+ void _gnutls_null_log(void *, ...);
+ 
+ #endif /* C99_MACROS */
++#else
++#define LEVEL(l, str, ...) \
++	do { \
++		if (unlikely(_gnutls_log_level >= l)) \
++			_gnutls_log(l, str, __VA_ARGS__); \
++	} while (0)
++#define _gnutls_debug_log(str, ...) LEVEL(2, str, ##__VA_ARGS__)
++#define _gnutls_assert_log(str, ...) LEVEL(3, str, ##__VA_ARGS__)
++#define _gnutls_handshake_log(str, ...) LEVEL(4, str, ##__VA_ARGS__)
++#define _gnutls_record_log(str, ...) LEVEL(5, str, ##__VA_ARGS__)
++#define _gnutls_dtls_log(str, ...) LEVEL(6, str, ##__VA_ARGS__)
++
++#define _gnutls_hard_log(str, ...) LEVEL(9, str, ##__VA_ARGS__)
++
++#define _gnutls_read_log(str, ...) LEVEL(10, str, ##__VA_ARGS__)
++#define _gnutls_write_log(str, ...) LEVEL(11, str, ##__VA_ARGS__)
++#define _gnutls_io_log(str, ...) LEVEL(12, str, ##__VA_ARGS__)
++#define _gnutls_buffers_log(str, ...) LEVEL(13, str, ##__VA_ARGS__)
++#define _gnutls_no_log(str, ...) LEVEL(INT_MAX, str, ##__VA_ARGS__)	
++void _gnutls_null_log(void *, ...);
++#endif
+ 
+ /* GCC won't inline this by itself and results in a "fatal warning"
+    otherwise. Making this a macro has been tried, but it interacts
+@@ -186,7 +208,7 @@ static inline
+ #endif
+ 	int
+ 	gnutls_assert_val_int(int val, const char *file, const char *func,
+-			      int line)
++			 	     int line)
+ {
+ 	_gnutls_assert_log("ASSERT: %s[%s]:%d\n", file, func, line);
+ 	return val;
 diff --git a/lib/x509/verify-high2.c b/lib/x509/verify-high2.c
 index dc975baeb..208b89d47 100644
 --- a/lib/x509/verify-high2.c

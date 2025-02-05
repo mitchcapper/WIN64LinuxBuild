@@ -107,7 +107,7 @@ index 18c33fcf0e..70e083f956 100644
 +  #endif
  }
 diff --git a/lib/savewd.c b/lib/savewd.c
-index 7105cfe822..e4851298a6 100644
+index 7230f3d99b..f015131a12 100644
 --- a/lib/savewd.c
 +++ b/lib/savewd.c
 @@ -87,7 +87,11 @@ savewd_save (struct savewd *wd)

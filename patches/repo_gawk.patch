@@ -167,7 +167,7 @@ index cfe250c3..050ed4fe 100644
      return 0;
  }
 diff --git a/builtin.c b/builtin.c
-index 382922db..6d243c2f 100644
+index 11b4c356..3028b6ff 100644
 --- a/builtin.c
 +++ b/builtin.c
 @@ -23,13 +23,24 @@
@@ -212,7 +212,7 @@ index 382922db..6d243c2f 100644
  
  extern NODE **args_array;
  extern int max_args;
-@@ -3314,7 +3325,7 @@ do_mkbool(int nargs)
+@@ -3330,7 +3341,7 @@ do_mkbool(int nargs)
  int
  gawk_system(const char *command)
  {
@@ -411,10 +411,10 @@ index 221250b3..69a23217 100644
 +#endif
 \ No newline at end of file
 diff --git a/doc/gawk.texi b/doc/gawk.texi
-index 0506e9d8..5ac1c7e4 100644
+index c53ab99c..64d3d8d2 100644
 --- a/doc/gawk.texi
 +++ b/doc/gawk.texi
-@@ -24165,7 +24165,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
+@@ -24166,7 +24166,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
  @end ignore
  @c file eg/lib/pwcat.c
  #include <stdio.h>
@@ -424,7 +424,7 @@ index 0506e9d8..5ac1c7e4 100644
  
  @c endfile
  @ignore
-@@ -24181,7 +24183,7 @@ int
+@@ -24182,7 +24184,7 @@ int
  main(int argc, char **argv)
  @{
      struct passwd *p;
@@ -433,7 +433,7 @@ index 0506e9d8..5ac1c7e4 100644
      while ((p = getpwent()) != NULL)
  @c endfile
  @ignore
-@@ -24206,6 +24208,7 @@ main(int argc, char **argv)
+@@ -24207,6 +24209,7 @@ main(int argc, char **argv)
  @c file eg/lib/pwcat.c
  
      endpwent();

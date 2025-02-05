@@ -1,5 +1,5 @@
 diff --git a/gnulib-tool.sh b/gnulib-tool.sh
-index e1188eeb20..d78ecc4a2f 100644
+index 0fbd805ebe..6cc86fa2d2 100644
 --- a/gnulib-tool.sh
 +++ b/gnulib-tool.sh
 @@ -1826,7 +1826,7 @@ func_lookup_file ()
