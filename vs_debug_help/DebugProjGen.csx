@@ -12,10 +12,12 @@ using System.Linq;
 void Main() {
 
 	var opts = new Opts();
+	var config = new ConfigRead("proj_config.ini");
+	var exportCmd = config.GenerateSuggestedExportCmd();
 	var usage = @"
 	csi DebugProjGen.csx --exe ln --include_paths './'
 
-		You can run it from the root project folder (probably easiest) or script folder as long as proj_config.ini is in the same folder.  You need a proj_config.ini to generate run '/script/f_coreutils_build.sh export_config' to generate this.
+		You can run it from the root project folder (probably easiest) or script folder as long as proj_config.ini is in the same folder.  You need a proj_config.ini to generate ie: '/script/f_coreutils_build.sh export_config' to generate this: {exportCmd}.
 		The paths and project files will be generated relative to the project root.  for include/compile files if they don't exist relative to the root dir but do in one of the include paths it will use that path.
 		
 		
@@ -39,7 +41,7 @@ void Main() {
 		Console.Error.WriteLine(usage);
 		Environment.Exit(1);
 	}
-	var config = new ConfigRead("proj_config.ini");
+	
 	config.ReadConfig();
 	var VS_DEBUG_FOLDER = Path.Combine(config.GetVal("SCRIPT_FOLDER"), "vs_debug_help");
 	var TEMPLATE_DICT = BuildTemplateDict(config, opts);

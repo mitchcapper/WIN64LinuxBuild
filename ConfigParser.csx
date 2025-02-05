@@ -24,9 +24,21 @@ class ConfigRead {
 		return name.ToLower().Replace("-", "").Replace("_", "");
 	}
 	private string PROJ_file;
+	public string GenerateSuggestedExportCmd(){
+		var scriptName = Path.GetFileName(Directory.GetCurrentDirectory());
+		var scriptDir = Environment.GetEnvironmentVariable("WLB_SCRIPT_FOLDER");
+		if (string.IsNullOrWhiteSpace(scriptDir))
+			scriptDir ="/script";
+		var finalPath = Path.Combine(scriptDir,"build",$"f_{scriptName}_build.sh");
+		Console.WriteLine($"Trying: {finalPath}");
+		if (! File.Exists(finalPath))
+			finalPath = Path.Combine(scriptDir,"build",$"f_SCRIPT_NAME_build.sh");
+		finalPath = finalPath.Replace("\\","/");
+		return $"{finalPath} export_config";
+	}
 	public void ReadConfig() {
 		if (!File.Exists(PROJ_file))
-			throw new Exception($"Unable to find {PROJ_file} in current directory run /script/f_SCRIPTNAME_build.sh export_config to generate");
+			throw new Exception($"Unable to find {PROJ_file} in current directory run the build script with the arg export_config to generate, IE: " + GenerateSuggestedExportCmd());
 		var lines = File.ReadAllLines(PROJ_file);
 		ConfigVar lastVar = null;
 		foreach (var _line in lines) {
