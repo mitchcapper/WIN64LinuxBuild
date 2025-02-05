@@ -168,6 +168,28 @@ apply_our_repo_patch () {
 	SKIP_STEP=""
 }
 
+function meson_run(){
+	declare -a RUN_ARGS=( "$@" )
+	local cl_path=`which cl.exe`
+	local msvc_dir=`dirname "$cl_path"`
+	local meson="${BLD_CONFIG_MESON_DIR}/meson.exe"
+	PATH="$msvc_dir:$PATH" MSYSTEM="" "$meson" "${RUN_ARGS[@]}"
+
+}
+function meson_ensure_installed(){
+	if [[ -f "${BLD_CONFIG_MESON_DIR}" ]]; then
+    	return
+	fi
+	mkdir -p "${BLD_CONFIG_MESON_DIR}"
+	pushd "${BLD_CONFIG_MESON_DIR}"
+	wget https://github.com/mesonbuild/meson/releases/download/1.6.1/meson-1.6.1-64.msi -O meson.msi
+	mkdir -p meson_bin
+	local MDIR=`cygpath.exe -aw meson_bin`
+	msiexec /a meson.msi /qb "TARGETDIR=$MDIR"
+	mv meson_bin/PFiles64/Meson/* .
+	popd
+}
+
 function osfixes_get_defines(){
 	local defs=""
 	for def in "${BLD_CONFIG_OUR_OS_FIXES_DEFINES[@]}"; do
