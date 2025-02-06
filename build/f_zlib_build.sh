@@ -11,8 +11,8 @@ BLD_CONFIG_CMAKE_CONFIG_CMD_ADDL=( "-DINSTALL_PKGCONFIG_DIR:PATH=[INSTALL_FOLDER
 
 
 
-# ninja, nmake, nmake-launchers, vs  all work msys(general default) does not
-BLD_CONFIG_CMAKE_STYLE="nmake"
+# ninja, nmake (manifest issue?), nmake-launchers, vs  all work msys(general default) does not
+BLD_CONFIG_CMAKE_STYLE="vs"
 
 # BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
 # BLD_CONFIG_BUILD_DEBUG=1

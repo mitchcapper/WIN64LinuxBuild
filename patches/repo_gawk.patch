@@ -1,5 +1,5 @@
 diff --git a/Makefile.am b/Makefile.am
-index 4891313f..8cc7aa77 100644
+index 4891313f7..8cc7aa770 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -26,9 +26,11 @@
@@ -99,7 +99,7 @@ index 4891313f..8cc7aa77 100644
  # This is for my development & testing.
  efence: gawk
 diff --git a/awk.h b/awk.h
-index 2c2af80d..e3539735 100644
+index 73531d0a1..7b11d5c74 100644
 --- a/awk.h
 +++ b/awk.h
 @@ -54,7 +54,7 @@
@@ -111,7 +111,7 @@ index 2c2af80d..e3539735 100644
  #endif
  #endif
  
-@@ -1543,9 +1543,11 @@ extern void set_CONVFMT(void);
+@@ -1552,9 +1552,11 @@ extern void set_CONVFMT(void);
  extern void set_BINMODE(void);
  extern void set_LINT(void);
  extern void set_TEXTDOMAIN(void);
@@ -123,7 +123,7 @@ index 2c2af80d..e3539735 100644
  extern void update_NR(void);
  extern void update_NF(void);
  extern void update_FNR(void);
-@@ -1639,9 +1641,11 @@ extern int isdirpunct(int c);
+@@ -1649,9 +1651,11 @@ extern int isdirpunct(int c);
  extern void init_sockets(void);
  extern void init_io(void);
  extern void init_csv_records(void);
@@ -136,7 +136,7 @@ index 2c2af80d..e3539735 100644
  extern void set_NR(void);
  
 diff --git a/awklib/eg/lib/pwcat.c b/awklib/eg/lib/pwcat.c
-index cfe250c3..050ed4fe 100644
+index cfe250c36..050ed4fed 100644
 --- a/awklib/eg/lib/pwcat.c
 +++ b/awklib/eg/lib/pwcat.c
 @@ -14,8 +14,9 @@
@@ -167,7 +167,7 @@ index cfe250c3..050ed4fe 100644
      return 0;
  }
 diff --git a/builtin.c b/builtin.c
-index 11b4c356..3028b6ff 100644
+index c8218e932..1105ae4f1 100644
 --- a/builtin.c
 +++ b/builtin.c
 @@ -23,13 +23,24 @@
@@ -212,7 +212,7 @@ index 11b4c356..3028b6ff 100644
  
  extern NODE **args_array;
  extern int max_args;
-@@ -3330,7 +3341,7 @@ do_mkbool(int nargs)
+@@ -3342,7 +3353,7 @@ do_mkbool(int nargs)
  int
  gawk_system(const char *command)
  {
@@ -222,7 +222,7 @@ index 11b4c356..3028b6ff 100644
  #else /* ! (defined(VMS) || defined(__MINGW32__)) */
  	pid_t childpid;
 diff --git a/configure.ac b/configure.ac
-index ae95b69a..f53295e6 100644
+index 9611f1f0f..8999f7d55 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -107,6 +107,8 @@ AC_PROG_EGREP
@@ -364,23 +364,25 @@ index ae95b69a..f53295e6 100644
  	doc/Makefile
  	extras/Makefile
  	po/Makefile.in
-@@ -509,9 +513,9 @@ w
+@@ -509,11 +513,11 @@ w
  EOF
  		done
  	fi
--	for i in . support
+-	for i in . support extension
 -	do
 -		sed -e '/-O2/s///' -e '/^CFLAGS = /s//&${DEBUG} /' $i/Makefile > foo
 -		mv foo $i/Makefile
 -	done
-+#	for i in . support
++#	for i in . support extension
 +#	do
 +#		sed -e '/-O2/s///' -e '/^CFLAGS = /s//&${DEBUG} /' $i/Makefile > foo
 +#		mv foo $i/Makefile
 +#	done
- fi
+ elif test "$GCC" = yes
+ then
+ 	for i in . support extension
 diff --git a/custom.h b/custom.h
-index 221250b3..69a23217 100644
+index 221250b3b..69a23217d 100644
 --- a/custom.h
 +++ b/custom.h
 @@ -110,6 +110,7 @@ typedef unsigned long long uint_fast64_t;
@@ -411,10 +413,10 @@ index 221250b3..69a23217 100644
 +#endif
 \ No newline at end of file
 diff --git a/doc/gawk.texi b/doc/gawk.texi
-index c53ab99c..64d3d8d2 100644
+index b5e1d66a6..de5a8f7e8 100644
 --- a/doc/gawk.texi
 +++ b/doc/gawk.texi
-@@ -24166,7 +24166,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
+@@ -24177,7 +24177,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
  @end ignore
  @c file eg/lib/pwcat.c
  #include <stdio.h>
@@ -424,7 +426,7 @@ index c53ab99c..64d3d8d2 100644
  
  @c endfile
  @ignore
-@@ -24182,7 +24184,7 @@ int
+@@ -24193,7 +24195,7 @@ int
  main(int argc, char **argv)
  @{
      struct passwd *p;
@@ -433,7 +435,7 @@ index c53ab99c..64d3d8d2 100644
      while ((p = getpwent()) != NULL)
  @c endfile
  @ignore
-@@ -24207,6 +24209,7 @@ main(int argc, char **argv)
+@@ -24218,6 +24220,7 @@ main(int argc, char **argv)
  @c file eg/lib/pwcat.c
  
      endpwent();
@@ -442,7 +444,7 @@ index c53ab99c..64d3d8d2 100644
  @}
  @c endfile
 diff --git a/ext.c b/ext.c
-index 26894bf1..cc0cd420 100644
+index 9e962e433..30520e7d0 100644
 --- a/ext.c
 +++ b/ext.c
 @@ -27,7 +27,8 @@
@@ -456,7 +458,7 @@ index 26894bf1..cc0cd420 100644
  extern SRCFILE *srcfiles;
  
 diff --git a/extension/Makefile.am b/extension/Makefile.am
-index 0427d2da..55ce0085 100644
+index 0427d2da2..55ce0085c 100644
 --- a/extension/Makefile.am
 +++ b/extension/Makefile.am
 @@ -24,8 +24,7 @@
@@ -487,7 +489,7 @@ index 0427d2da..55ce0085 100644
  filefuncs_la_LIBADD   = $(MY_LIBS)
  
 diff --git a/extension/configure.ac b/extension/configure.ac
-index 5967d00a..4753e33e 100644
+index 5967d00ae..4753e33ea 100644
 --- a/extension/configure.ac
 +++ b/extension/configure.ac
 @@ -120,12 +120,12 @@ AC_CHECK_FUNCS(fdopendir fmod fnmatch getdtablesize \
@@ -507,7 +509,7 @@ index 5967d00a..4753e33e 100644
  AH_BOTTOM([#include "ext_custom.h"])
  
 diff --git a/extension/filefuncs.c b/extension/filefuncs.c
-index e81a07bd..7e3b2415 100644
+index e81a07bda..7e3b24159 100644
 --- a/extension/filefuncs.c
 +++ b/extension/filefuncs.c
 @@ -63,7 +63,9 @@
@@ -577,7 +579,7 @@ index e81a07bd..7e3b2415 100644
  	array_set_numeric(array, "blksize", sbuf->st_blksize);
  #elif defined(__MINGW32__)
 diff --git a/extension/fnmatch.c b/extension/fnmatch.c
-index bf7d124f..01668259 100644
+index bf7d124fe..01668259c 100644
 --- a/extension/fnmatch.c
 +++ b/extension/fnmatch.c
 @@ -56,6 +56,8 @@
@@ -590,7 +592,7 @@ index bf7d124f..01668259 100644
  #define _GNU_SOURCE	1	/* use GNU extensions if they're there */
  #ifdef HAVE_FNMATCH_H
 diff --git a/extension/fork.c b/extension/fork.c
-index 6fa6f0fa..62980793 100644
+index 6fa6f0fa1..629807935 100644
 --- a/extension/fork.c
 +++ b/extension/fork.c
 @@ -92,7 +92,9 @@ do_fork(int nargs, awk_value_t *result, struct awk_ext_func *unused)
@@ -641,7 +643,7 @@ index 6fa6f0fa..62980793 100644
  
  /* define the dl_load function using the boilerplate macro */
 diff --git a/extension/inplace.c b/extension/inplace.c
-index dea65f61..0ab8a6d0 100644
+index dea65f611..0ab8a6d0b 100644
 --- a/extension/inplace.c
 +++ b/extension/inplace.c
 @@ -68,7 +68,9 @@ mkstemp (char *template)
@@ -665,7 +667,7 @@ index dea65f61..0ab8a6d0 100644
  #endif
  
 diff --git a/extension/readdir.c b/extension/readdir.c
-index 788e1d1e..f0af9a1c 100644
+index 788e1d1e4..f0af9a1c0 100644
 --- a/extension/readdir.c
 +++ b/extension/readdir.c
 @@ -51,13 +51,13 @@
@@ -740,7 +742,7 @@ index 788e1d1e..f0af9a1c 100644
  	iobuf->opaque = the_dir;
  	iobuf->get_record = dir_get_record;
 diff --git a/extension/rwarray.c b/extension/rwarray.c
-index ab8dc86f..1d96067e 100644
+index ab8dc86fe..1d96067ef 100644
 --- a/extension/rwarray.c
 +++ b/extension/rwarray.c
 @@ -43,7 +43,7 @@
@@ -753,7 +755,7 @@ index ab8dc86f..1d96067e 100644
  #include <stdint.h>
  #else
 diff --git a/extension/stack.c b/extension/stack.c
-index 637378e2..2d1955ed 100644
+index 637378e22..2d1955edf 100644
 --- a/extension/stack.c
 +++ b/extension/stack.c
 @@ -22,7 +22,7 @@
@@ -766,7 +768,7 @@ index 637378e2..2d1955ed 100644
  
  #include "stack.h"
 diff --git a/extension/testext.c b/extension/testext.c
-index 24fe9338..c440cde8 100644
+index 24fe93389..c440cde84 100644
 --- a/extension/testext.c
 +++ b/extension/testext.c
 @@ -45,6 +45,10 @@
@@ -790,7 +792,7 @@ index 24fe9338..c440cde8 100644
  getuid (void)
  {
 diff --git a/extension/time.c b/extension/time.c
-index e9b9348f..86f9f8d5 100644
+index e9b9348f4..86f9f8d59 100644
 --- a/extension/time.c
 +++ b/extension/time.c
 @@ -23,7 +23,9 @@
@@ -817,7 +819,7 @@ index e9b9348f..86f9f8d5 100644
  #include <sys/stat.h>
  
 diff --git a/gawkapi.h b/gawkapi.h
-index fcf13532..9e4079cb 100644
+index fcf135327..9e4079cba 100644
 --- a/gawkapi.h
 +++ b/gawkapi.h
 @@ -1224,4 +1224,14 @@ int dl_load(const gawk_api_t *const api_p, awk_ext_id_t id)  \
@@ -836,7 +838,7 @@ index fcf13532..9e4079cb 100644
 +
  #endif /* _GAWK_API_H */
 diff --git a/gawkmisc.c b/gawkmisc.c
-index 447210cb..da94b02e 100644
+index 447210cbe..da94b02e2 100644
 --- a/gawkmisc.c
 +++ b/gawkmisc.c
 @@ -23,6 +23,10 @@
@@ -851,7 +853,7 @@ index 447210cb..da94b02e 100644
  #include "awk.h"
  
 diff --git a/io.c b/io.c
-index 1235c711..de60d379 100644
+index 1235c7113..de60d379e 100644
 --- a/io.c
 +++ b/io.c
 @@ -23,6 +23,12 @@
@@ -1037,7 +1039,7 @@ index 1235c711..de60d379 100644
 +
 +#endif //  _WIN32
 diff --git a/main.c b/main.c
-index 884650dc..2f07afa7 100644
+index 884650dc3..2f07afa73 100644
 --- a/main.c
 +++ b/main.c
 @@ -33,6 +33,7 @@
@@ -1119,7 +1121,7 @@ index 884650dc..2f07afa7 100644
  #if defined (HAVE_GETGROUPS) && defined(NGROUPS_MAX) && NGROUPS_MAX > 0
 diff --git a/osfixes.c b/osfixes.c
 new file mode 100644
-index 00000000..f3b4fbcf
+index 000000000..f3b4fbcff
 --- /dev/null
 +++ b/osfixes.c
 @@ -0,0 +1,276 @@
@@ -1401,7 +1403,7 @@ index 00000000..f3b4fbcf
 +#endif
 diff --git a/osfixes.h b/osfixes.h
 new file mode 100644
-index 00000000..08108b21
+index 000000000..08108b215
 --- /dev/null
 +++ b/osfixes.h
 @@ -0,0 +1,257 @@
@@ -1663,7 +1665,7 @@ index 00000000..08108b21
 +
 +#endif
 diff --git a/posix/gawkmisc.c b/posix/gawkmisc.c
-index 0b30d746..60d75638 100644
+index 0b30d7465..60d756385 100644
 --- a/posix/gawkmisc.c
 +++ b/posix/gawkmisc.c
 @@ -25,6 +25,12 @@
@@ -1740,7 +1742,7 @@ index 0b30d746..60d75638 100644
  
  /* os_setbinmode --- set binary mode on file */
 diff --git a/replace.c b/replace.c
-index 2ff76a37..6ffdb941 100644
+index 2ff76a376..6ffdb9412 100644
 --- a/replace.c
 +++ b/replace.c
 @@ -29,7 +29,7 @@

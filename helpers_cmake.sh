@@ -52,13 +52,15 @@ function cmake_settings_setup(){
 		#return
 	#fi
 #	SETUP_CMAKE_SETTINGS_RUN=1
+	export LD="${CC}"
+
 	CMAKE_TARGET="${BLD_CONFIG_CMAKE_VS_VERSION}"
 	CMAKE_CONFIG_BINARY="cmake"
 	CMAKE_MAKE_BINARY="cmake"
 	CMAKE_MAKE_ADDL="--build ${BLD_CONFIG_CMAKE_BUILD_DIR} --verbose"
 	CMAKE_INSTALL_ADDL=" --install ${BLD_CONFIG_CMAKE_BUILD_DIR}"
 	CMAKE_PREFIX_DIR="$BLD_CONFIG_INSTALL_FOLDER"
-	CMAKE_ADDL_FLAGS=""
+	declare -a -G CMAKE_ADDL_FLAGS=()
 	CMAKE_CONFIG_CLI_CFLAGS="${CFLAGS}"
 	
 
@@ -90,7 +92,7 @@ function cmake_settings_setup(){
 		CMAKE_MAKE_ADDL=""
 		CMAKE_MAKE_BINARY="make"
 		CMAKE_INSTALL_ADDL="install"
-		CMAKE_ADDL_FLAGS="-DCMAKE_MAKE_PROGRAM=/usr/bin/make -DCMAKE_IGNORE_PATH=/usr/bin -DCMAKE_LINKER=${LD}  -DCMAKE_C_LINK_EXECUTABLE=\"${LD}\" -DCMAKE_CXX_LINK_EXECUTABLE=\"${LD}\" " #ignore is to fix link.exe chosen wrong issue
+		CMAKE_ADDL_FLAGS=( "-DCMAKE_MAKE_PROGRAM=/usr/bin/make" "-DCMAKE_IGNORE_PATH=/usr/bin" "-DCMAKE_LINKER=${LD}"  "-DCMAKE_C_LINK_EXECUTABLE=${LD}" "-DCMAKE_CXX_LINK_EXECUTABLE=${LD}" ) #ignore is to fix link.exe chosen wrong issue
 		;;
 	msys)
 		CMAKE_TARGET="MSYS Makefiles"
@@ -112,9 +114,11 @@ function cmake_settings_setup(){
 #		AR=`cygpath -u "$AR"`
 		
 		#this is to fix the fact some cmake configs will not like AR being set with a space after the command
-		echo "#!/bin/sh" > /tmp/ar.sh
-		echo "$AR \"\$@\"" >> /tmp/ar.sh
-		AR=/tmp/ar.sh
+		
+		# we need to condition on which cmakes need this and /tmp/ar needs to be checked to make sure we don't loop ourselves
+		#echo "#!/bin/sh" > /tmp/ar.sh
+		#echo "$AR \"\$@\"" >> /tmp/ar.sh
+		#AR=/tmp/ar.sh
 
 
 		#unset CC AR
@@ -124,7 +128,7 @@ function cmake_settings_setup(){
 		#  -DCMAKE_C_COMPILER_ID:STRING=GNU
 		#  -DCMAKE_C_COMPILER_ID:STRING=MSVC -DCMAKE_C_COMPILER_VERSION:STRING=19.43.34604 
 		# --trace  --debug-find
-		CMAKE_ADDL_FLAGS="-DCMAKE_LINKER=${MSYS_LD} -DCMAKE_DEBUG_DETECT_COMPILER:BOOL=ON -DCMAKE_AR=${AR} -DCMAKE_C_COMPILER_ID:STRING=INVALID"
+		CMAKE_ADDL_FLAGS=("-DCMAKE_LINKER=${MSYS_LD}" "-DCMAKE_DEBUG_DETECT_COMPILER:BOOL=ON" "-DCMAKE_C_COMPILER_ID:STRING=INVALID")
 		#CMAKE_ADDL_FLAGS=""
 		;;
 	unix-msys)
@@ -156,7 +160,7 @@ function cmake_settings_setup(){
 		unset CC CXX
 		export GNU_BUILD_WRAPPER_DEBUG=1
 		LAUNCHER="${WIN_SCRIPT_FOLDER}/windows_command_wrapper.bat"
-		CMAKE_ADDL_FLAGS="-DCMAKE_CXX_LINKER_LAUNCHER=${LAUNCHER} -DCMAKE_C_LINKER_LAUNCHER=${LAUNCHER} -DCMAKE_C_COMPILER_LAUNCHER=${LAUNCHER} -DCMAKE_CXX_COMPILER_LAUNCHER=${LAUNCHER}"
+		CMAKE_ADDL_FLAGS=( "-DCMAKE_CXX_LINKER_LAUNCHER=${LAUNCHER}" "-DCMAKE_C_LINKER_LAUNCHER=${LAUNCHER}" "-DCMAKE_C_COMPILER_LAUNCHER=${LAUNCHER}" "-DCMAKE_CXX_COMPILER_LAUNCHER=${LAUNCHER}")
 		CMAKE_TARGET="NMake Makefiles"
 		CMAKE_MAKE_ADDL=""
 		CMAKE_INSTALL_ADDL="install"
@@ -173,6 +177,8 @@ function cmake_config_run(){
 	#these almost certainly wont work   normally the static and release are prefixed by something
 	# We do upper case them though so PROJNAME_BUILD_DEBUG etc work properly
 
+	
+	
 	declare -g -a CMAKE_FULL_CONFIG_CMD_ARR=("${BLD_CONFIG_CMAKE_CONFIG_CMD_DEFAULT[@]}")
 	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq "1" ]]; then
 		CMAKE_FULL_CONFIG_CMD_ARR+=( "${BLD_CONFIG_CMAKE_CONFIG_CMD_ADDL_STATIC[@]^^}" )
@@ -184,6 +190,12 @@ function cmake_config_run(){
 		CMAKE_FULL_CONFIG_CMD_ARR+=( "${BLD_CONFIG_CMAKE_CONFIG_CMD_ADDL_DEBUG[@]}" )
 	fi
 	CMAKE_FULL_CONFIG_CMD_ARR+=("${BLD_CONFIG_CMAKE_CONFIG_CMD_ADDL[@]^^}")
+	CMAKE_FULL_CONFIG_CMD_ARR+=("${CMAKE_ADDL_FLAGS[@]}")
+	# CMAKE_FULL_CONFIG_CMD_ARR+=("-DCMAKE_C_LINK_EXECUTABLE=${LD}" "-DCMAKE_CXX_LINK_EXECUTABLE=${LD}" ) #this breaks all linking commands for some reason
+	CMAKE_FULL_CONFIG_CMD_ARR+=( "-DCMAKE_AR=${AR}" )
+
+	CMAKE_FULL_CONFIG_CMD_ARR+=("-DCMAKE_MSVC_RUNTIME_LIBRARY_DEFAULT=123") #this is to prevent it from adding the wrong flags to the compiler string by default in terms of libs
+	
 
 	#  -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" -DCMAKE_AR="${AR}" -DCMAKE_LINKER="${LD}"
 	# well it will call these but its calling from win so bash scripts wont work would need them as PS
@@ -194,10 +206,13 @@ function cmake_config_run(){
 #MSYS Makefiles
 
 	cmake_settings_setup;
-
-	DEBUG_FLAGS="--debug-trycompile --trace --debug-output"
-	DEBUG_FLAGS="--debug-output --trace"
-
+	
+	#debug flags
+	#CMAKE_FULL_CONFIG_CMD_ARR+=( "--debug-trycompile" )
+	#CMAKE_FULL_CONFIG_CMD_ARR+=( "--debug-output" )
+	#CMAKE_FULL_CONFIG_CMD_ARR+=( "--trace" )
+	
+	
 	EXPORT_CMDS=" -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=1" #only works for makefiles and ninja generators for nmake it does get you real names but no linker command, may not work with unix ones
 	#export -p > "/tmp/test.sh"
 	# -DCMAKE_AR="${AR}"
@@ -209,7 +224,7 @@ function cmake_config_run(){
 	
 	# IF you find you are getting -MD or -MDd added to the flags it is because CMAKE_MSVC_RUNTIME_LIBRARY_DEFAULT is not set which cauess it to happen something like set(CMAKE_MSVC_RUNTIME_LIBRARY_DEFAULT "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 	
-	_cmake $CMAKE_CONFIG_BINARY -G "$CMAKE_TARGET" --fresh --install-prefix "$CMAKE_PREFIX_DIR" $CMAKE_ADDL_FLAGS $EXPORT_CMDS -DCMAKE_C_FLAGS_DEBUG:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_C_FLAGS_RELEASE:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="${CMAKE_CONFIG_CLI_CFLAGS}"  -DCMAKE_LINKER=${LD} -DCMAKE_MSVC_RUNTIME_LIBRARY_DEFAULT=123 -DCMAKE_C_LINK_EXECUTABLE=\"${LD}\" -DCMAKE_CXX_LINK_EXECUTABLE=\"${LD}\" -DCMAKE_C_FLAGS_MINSIZEREL:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" "${CMAKE_FULL_CONFIG_CMD_ARR[@]}" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+	_cmake $CMAKE_CONFIG_BINARY -G "$CMAKE_TARGET" --fresh --install-prefix "$CMAKE_PREFIX_DIR" $EXPORT_CMDS -DCMAKE_C_FLAGS_DEBUG:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_C_FLAGS_RELEASE:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="${CMAKE_CONFIG_CLI_CFLAGS}"  -DCMAKE_LINKER=${LD} -DCMAKE_C_FLAGS_MINSIZEREL:STRING="${CMAKE_CONFIG_CLI_CFLAGS}" "${CMAKE_FULL_CONFIG_CMD_ARR[@]}" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 	SKIP_STEP="";CUR_STEP="";
 }
 function cmake_make(){
