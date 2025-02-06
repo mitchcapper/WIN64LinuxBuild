@@ -1,5 +1,9 @@
 #pragma once
 //shared polyfill library
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef _WIN32
 /*
 #define WLB_OS_BASIC_TERM
@@ -337,4 +341,8 @@ int kill(pid_t pid, int sig);
 #ifdef WLB_ALIGNED_ALLOC
 void *wlb_aligned_alloc(size_t size, size_t alignment);
 void wlb_aligned_free(void* ptr);
+#endif
+
+#ifdef __cplusplus
+}
 #endif

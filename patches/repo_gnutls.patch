@@ -128,6 +128,89 @@ index 891c5dfd1..9b7b59ab5 100644
  {
  	_gnutls_assert_log("ASSERT: %s[%s]:%d\n", file, func, line);
  	return val;
+diff --git a/lib/global.c b/lib/global.c
+index 42d90ee9d..d9290ca69 100644
+--- a/lib/global.c
++++ b/lib/global.c
+@@ -49,11 +49,12 @@
+ #ifdef __sun
+ #pragma fini(lib_deinit)
+ #pragma init(lib_init)
+-#define _CONSTRUCTOR
+-#define _DESTRUCTOR
++#define CONSTRUCTOR(f) \
++        static void f(void)
+ #else
+-#define _CONSTRUCTOR __attribute__((constructor))
+-#define _DESTRUCTOR __attribute__((destructor))
++// this will work for windows or non windows systems
++#define WLB_CONSTRUCTOR_SUPPORT
++#include "../osfixes.h"
+ #endif
+ 
+ #ifndef _WIN32
+@@ -501,7 +502,12 @@ const char *gnutls_check_version(const char *req_version)
+ 	return NULL;
+ }
+ 
+-static void _CONSTRUCTOR lib_init(void)
++
++
++
++
++
++static void lib_deinit(void)
+ {
+ 	int ret;
+ 	const char *e;
+@@ -525,29 +531,21 @@ static void _CONSTRUCTOR lib_init(void)
+ 			return;
+ 	}
+ 
+-	ret = _gnutls_global_init(1);
+-	if (ret < 0) {
+-		fprintf(stderr, "Error in GnuTLS initialization: %s\n",
+-			gnutls_strerror(ret));
+-		_gnutls_switch_lib_state(LIB_STATE_ERROR);
+-	}
++	_gnutls_global_deinit(1);
+ }
+-
+-static void _DESTRUCTOR lib_deinit(void)
++CONSTRUCTOR(lib_init)
+ {
+ 	int ret;
+ 	const char *e;
+-
+ 	if (_gnutls_global_init_skip() != 0)
+ 		return;
+-
++	atexit(lib_deinit);
+ 	e = secure_getenv("GNUTLS_NO_IMPLICIT_INIT");
+ 	if (e != NULL) {
+ 		ret = atoi(e);
+ 		if (ret == 1)
+ 			return;
+ 	}
+-
+ 	e = secure_getenv("GNUTLS_NO_EXPLICIT_INIT");
+ 	if (e != NULL) {
+ 		_gnutls_debug_log(
+@@ -556,8 +554,12 @@ static void _DESTRUCTOR lib_deinit(void)
+ 		if (ret == 1)
+ 			return;
+ 	}
+-
+-	_gnutls_global_deinit(1);
++	ret = _gnutls_global_init(1);
++	if (ret < 0) {
++		fprintf(stderr, "Error in GnuTLS initialization: %s\n",
++			gnutls_strerror(ret));
++		_gnutls_switch_lib_state(LIB_STATE_ERROR);
++	}
+ }
+ 
+ static const struct gnutls_library_config_st _gnutls_library_config[] = {
 diff --git a/lib/x509/verify-high2.c b/lib/x509/verify-high2.c
 index dc975baeb..208b89d47 100644
 --- a/lib/x509/verify-high2.c

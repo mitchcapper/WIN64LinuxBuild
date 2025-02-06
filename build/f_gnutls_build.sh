@@ -3,7 +3,7 @@ set -e
 . "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
 BLD_CONFIG_BUILD_NAME="gnutls"
-BLD_CONFIG_GNU_LIBS_ADDL=( "dirent" "getopt-gnu" "opendir" "closedir" "readdir" )
+BLD_CONFIG_GNU_LIBS_ADDL=( "dirent" "getopt-gnu" "opendir" "closedir" "readdir" "atexit" )
 BLD_CONFIG_CONFIG_CMD_ADDL=( "--with-included-unistring" )
 BLD_CONFIG_VCPKG_DEPS=( "gmp" "nettle" "brotli" "zstd" )
 BLD_CONFIG_PKG_CONFIG_MANUAL_ADD=( "gmp" )
@@ -11,7 +11,10 @@ BLD_CONFIG_BUILD_ADDL_CFLAGS=( "-I../gl/" "-std:c++14" )
 BLD_CONFIG_BUILD_ADDL_CFLAGS_STATIC=("-DASN1_STATIC")
 BLD_CONFIG_OUR_LIB_DEPS=("libtasn1" "p11-kit" "zlib")
 BLD_CONFIG_OUR_LIB_BINS_PATH=("libtasn1")
+BLD_CONFIG_OUR_OS_FIXES_DEFINES=()
 BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS=( "4068" "4061" "4820" "5045" "4668" "4996" )
+BLD_CONFIG_OUR_OS_FIXES_COMPILE=1
+
 
 # BLD_CONFIG_BUILD_FOLDER_NAME="myapp2"; #if you want it compiling in a diff folder
 # BLD_CONFIG_BUILD_DEBUG=1
