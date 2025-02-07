@@ -99,7 +99,7 @@ index 4891313f7..8cc7aa770 100644
  # This is for my development & testing.
  efence: gawk
 diff --git a/awk.h b/awk.h
-index 73531d0a1..7b11d5c74 100644
+index fc3bac0ab..83b0f6ba7 100644
 --- a/awk.h
 +++ b/awk.h
 @@ -54,7 +54,7 @@
@@ -123,7 +123,7 @@ index 73531d0a1..7b11d5c74 100644
  extern void update_NR(void);
  extern void update_NF(void);
  extern void update_FNR(void);
-@@ -1649,9 +1651,11 @@ extern int isdirpunct(int c);
+@@ -1650,9 +1652,11 @@ extern int isdirpunct(int c);
  extern void init_sockets(void);
  extern void init_io(void);
  extern void init_csv_records(void);
@@ -222,7 +222,7 @@ index c8218e932..1105ae4f1 100644
  #else /* ! (defined(VMS) || defined(__MINGW32__)) */
  	pid_t childpid;
 diff --git a/configure.ac b/configure.ac
-index 9611f1f0f..8999f7d55 100644
+index 9048c2245..3ec3175c2 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -107,6 +107,8 @@ AC_PROG_EGREP
@@ -254,7 +254,7 @@ index 9611f1f0f..8999f7d55 100644
  AM_LANGINFO_CODESET
  gt_LC_MESSAGES
  
-@@ -246,50 +248,50 @@ dnl types for the argument to getsockopt, getpeername, etc.  So we
+@@ -247,50 +249,50 @@ dnl types for the argument to getsockopt, getpeername, etc.  So we
  dnl have to test to find something that will work.
  
  dnl This is no good, because passing the wrong pointer on C compilers is
@@ -349,7 +349,7 @@ index 9611f1f0f..8999f7d55 100644
  
  dnl Check for C11 _Noreturn
  GAWK_AC_NORETURN
-@@ -478,10 +480,12 @@ dylib)	GAWKLIBEXT=so ;;	# MacOS uses .dylib for shared libraries, but libtool us
+@@ -480,10 +482,12 @@ dylib)	GAWKLIBEXT=so ;;	# MacOS uses .dylib for shared libraries, but libtool us
  *) GAWKLIBEXT=$acl_shlibext ;;
  esac
  AC_SUBST(GAWKLIBEXT)
@@ -364,7 +364,7 @@ index 9611f1f0f..8999f7d55 100644
  	doc/Makefile
  	extras/Makefile
  	po/Makefile.in
-@@ -509,11 +513,11 @@ w
+@@ -511,11 +515,11 @@ w
  EOF
  		done
  	fi
@@ -413,7 +413,7 @@ index 221250b3b..69a23217d 100644
 +#endif
 \ No newline at end of file
 diff --git a/doc/gawk.texi b/doc/gawk.texi
-index b5e1d66a6..de5a8f7e8 100644
+index dae97fa0c..95351a127 100644
 --- a/doc/gawk.texi
 +++ b/doc/gawk.texi
 @@ -24177,7 +24177,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
@@ -1039,7 +1039,7 @@ index 1235c7113..de60d379e 100644
 +
 +#endif //  _WIN32
 diff --git a/main.c b/main.c
-index 884650dc3..2f07afa73 100644
+index 35546fb35..931806413 100644
 --- a/main.c
 +++ b/main.c
 @@ -33,6 +33,7 @@
@@ -1050,7 +1050,7 @@ index 884650dc3..2f07afa73 100644
  
  #define DEFAULT_PROFILE		"awkprof.out"	/* where to put profile */
  #define DEFAULT_VARFILE		"awkvars.out"	/* where to put vars */
-@@ -895,7 +896,26 @@ init_vars()
+@@ -881,7 +882,26 @@ init_vars()
  		load_procinfo();
  	load_environ();
  }
@@ -1078,7 +1078,7 @@ index 884650dc3..2f07afa73 100644
  /* path_environ --- put path variable into environment if not already there */
  
  static void
-@@ -918,6 +938,9 @@ path_environ(const char *pname, const char *dflt)
+@@ -904,6 +924,9 @@ path_environ(const char *pname, const char *dflt)
  	 * If original value was the empty string, set it to
  	 * the default value.
  	 */
@@ -1088,7 +1088,7 @@ index 884650dc3..2f07afa73 100644
  	if ((*aptr)->stlen == 0) {
  		unref(*aptr);
  		*aptr = make_string(val, strlen(val));
-@@ -1058,10 +1081,10 @@ load_procinfo()
+@@ -1044,10 +1067,10 @@ load_procinfo()
  #else
  #define getpgrp_arg() getpid()
  #endif
@@ -1101,7 +1101,7 @@ index 884650dc3..2f07afa73 100644
  	/*
  	 * Could put a lot of this into a table, but then there's
  	 * portability problems declaring all the functions. So just
-@@ -1070,7 +1093,7 @@ load_procinfo()
+@@ -1056,7 +1079,7 @@ load_procinfo()
  
  	value = getpid();
  	update_PROCINFO_num("pid", value);
@@ -1110,7 +1110,7 @@ index 884650dc3..2f07afa73 100644
  	value = getppid();
  	update_PROCINFO_num("ppid", value);
  
-@@ -1085,7 +1108,7 @@ load_procinfo()
+@@ -1071,7 +1094,7 @@ load_procinfo()
  
  	value = getegid();
  	update_PROCINFO_num("egid", value);
@@ -1665,10 +1665,10 @@ index 000000000..08108b215
 +
 +#endif
 diff --git a/posix/gawkmisc.c b/posix/gawkmisc.c
-index 0b30d7465..60d756385 100644
+index 1656ae96b..4513072cf 100644
 --- a/posix/gawkmisc.c
 +++ b/posix/gawkmisc.c
-@@ -25,6 +25,12 @@
+@@ -26,6 +26,12 @@
  #endif
  #include <io.h>		/* for declaration of setmode(). */
  #endif
@@ -1679,9 +1679,9 @@ index 0b30d7465..60d756385 100644
 +#endif // _WIN32
 +#include "filename.h"
  
- const char quote = '\'';
- const char *defpath = DEFPATH;
-@@ -44,7 +50,7 @@ gawk_name(const char *filespec)
+ #ifdef HAVE_SYS_PERSONALITY_H	// for linux
+ #include <sys/personality.h>
+@@ -53,7 +59,7 @@ gawk_name(const char *filespec)
  	const char *p;
  
  	/* "path/name" -> "name" */
@@ -1690,7 +1690,7 @@ index 0b30d7465..60d756385 100644
  	return (p == NULL ? (char *) filespec : p + 1);
  }
  
-@@ -149,7 +155,7 @@ optimal_bufsize(int fd, struct stat *stb)
+@@ -158,7 +164,7 @@ optimal_bufsize(int fd, struct stat *stb)
  int
  ispath(const char *file)
  {
@@ -1699,7 +1699,7 @@ index 0b30d7465..60d756385 100644
  }
  
  /* isdirpunct --- return true if char is a directory separator */
-@@ -157,7 +163,7 @@ ispath(const char *file)
+@@ -166,7 +172,7 @@ ispath(const char *file)
  int
  isdirpunct(int c)
  {
@@ -1708,7 +1708,7 @@ index 0b30d7465..60d756385 100644
  }
  
  /* os_close_on_exec --- set close on exec flag, print warning if fails */
-@@ -169,7 +175,7 @@ os_close_on_exec(int fd, const char *name, const char *what, const char *dir)
+@@ -178,7 +184,7 @@ os_close_on_exec(int fd, const char *name, const char *what, const char *dir)
  
  	if (fd <= 2)	/* sanity */
  		return;
@@ -1717,7 +1717,7 @@ index 0b30d7465..60d756385 100644
  	/*
  	 * Per POSIX, use Read/Modify/Write - get the flags,
  	 * add FD_CLOEXEC, set the flags back.
-@@ -190,6 +196,7 @@ os_close_on_exec(int fd, const char *name, const char *what, const char *dir)
+@@ -199,6 +205,7 @@ os_close_on_exec(int fd, const char *name, const char *what, const char *dir)
  	if (fcntl(fd, F_SETFD, curflags) < 0)
  		warning(_("%s %s `%s': could not set close-on-exec: (fcntl F_SETFD: %s)"),
  			what, dir, name, strerror(errno));
@@ -1725,7 +1725,7 @@ index 0b30d7465..60d756385 100644
  }
  
  /* os_isdir --- is this an fd on a directory? */
-@@ -240,11 +247,14 @@ int
+@@ -249,11 +256,14 @@ int
  os_is_setuid()
  {
  	long uid, euid;
