@@ -559,3 +559,7 @@ after clone
 	#it doesn't use extras so we can just ad ours, they use paxutils to gnulib everyhting
 	echo "gnulib_tool_option_extras=\" --without-tests --symlink\"" >> bootstrap.conf
 ```
+
+## gnulib tests
+### Template Script Args
+``--BUILD_NAME gnulib_test --HaveOurPatch=0 --GitRepo https://github.com/mitchcapper/__empty --GNU_LIBS_ADD_TO_REPO 1 --CONFIG_NO_TESTS=0`
