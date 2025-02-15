@@ -1,27 +1,27 @@
 diff --git a/src/cat.c b/src/cat.c
-index dcf537bc9..1f1290c42 100644
+index c02210301..cbdfae75f 100644
 --- a/src/cat.c
 +++ b/src/cat.c
-@@ -708,6 +708,7 @@ main (int argc, char **argv)
- 
-       if (stat_buf.st_dev == out_dev && stat_buf.st_ino == out_ino)
+@@ -717,6 +717,7 @@ main (int argc, char **argv)
+           && have_out_dev
+           && stat_buf.st_dev == out_dev && stat_buf.st_ino == out_ino)
          {
 +#ifndef _WIN32
-           if (out_flags < -1)
-             out_flags = fcntl (STDOUT_FILENO, F_GETFL);
-           bool exhausting = 0 <= out_flags && out_flags & O_APPEND;
-@@ -717,6 +718,9 @@ main (int argc, char **argv)
-               if (0 <= in_pos)
-                 exhausting = in_pos < lseek (STDOUT_FILENO, 0, SEEK_CUR);
-             }
-+#else
-+          bool exhausting = out_isreg && (lseek (input_desc, 0, SEEK_CUR) < stat_buf.st_size);
-+#endif          
-           if (exhausting)
+           off_t in_pos = lseek (input_desc, 0, SEEK_CUR);
+           if (0 <= in_pos)
              {
-               error (0, 0, _("%s: input file is output file"), quotef (infile));
+@@ -725,6 +726,9 @@ main (int argc, char **argv)
+               int whence = (0 <= out_flags && out_flags & O_APPEND
+                             ? SEEK_END : SEEK_CUR);
+               if (in_pos < lseek (STDOUT_FILENO, 0, whence))
++#else
++              if (out_isreg && (lseek (input_desc, 0, SEEK_CUR) < stat_buf.st_size)
++#endif
+                 {
+                   error (0, 0, _("%s: input file is output file"),
+                          quotef (infile));
 diff --git a/src/copy.c b/src/copy.c
-index 7ffb998f6..57f805617 100644
+index 22d9830ba..106d6bd59 100644
 --- a/src/copy.c
 +++ b/src/copy.c
 @@ -22,6 +22,10 @@
@@ -35,7 +35,7 @@ index 7ffb998f6..57f805617 100644
  #if HAVE_HURD_H
  # include <hurd.h>
  #endif
-@@ -920,6 +924,9 @@ set_owner (const struct cp_options *x, char const *dst_name,
+@@ -928,6 +932,9 @@ set_owner (const struct cp_options *x, char const *dst_name,
             struct stat const *src_sb, bool new_dst,
             struct stat const *dst_sb)
  {
@@ -45,7 +45,7 @@ index 7ffb998f6..57f805617 100644
    uid_t uid = src_sb->st_uid;
    gid_t gid = src_sb->st_gid;
  
-@@ -1263,7 +1270,7 @@ copy_reg (char const *src_name, char const *dst_name,
+@@ -1271,7 +1278,7 @@ copy_reg (char const *src_name, char const *dst_name,
  
    /* Compare the source dev/ino from the open file to the incoming,
       saved ones obtained via a previous call to stat.  */
@@ -54,7 +54,7 @@ index 7ffb998f6..57f805617 100644
      {
        error (0, 0,
               _("skipping file %s, as it was replaced while being copied"),
-@@ -1741,7 +1748,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+@@ -1749,7 +1756,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
    struct stat tmp_src_sb;
  
    bool same_link;
@@ -63,7 +63,7 @@ index 7ffb998f6..57f805617 100644
  
    *return_now = false;
  
-@@ -1802,7 +1809,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+@@ -1810,7 +1817,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
        src_sb_link = &tmp_src_sb;
        dst_sb_link = &tmp_dst_sb;
  
@@ -72,7 +72,7 @@ index 7ffb998f6..57f805617 100644
  
        /* If both are symlinks, then it's ok, but only if the destination
           will be unlinked before being opened.  This is like the test
-@@ -1890,7 +1897,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+@@ -1898,7 +1905,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
       hard links to the same file.  */
    if (!S_ISLNK (src_sb_link->st_mode) && !S_ISLNK (dst_sb_link->st_mode))
      {
@@ -81,7 +81,7 @@ index 7ffb998f6..57f805617 100644
          return true;
  
        /* If they are the same file, it's ok if we're making hard links.  */
-@@ -1951,7 +1958,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
+@@ -1959,7 +1966,7 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
        else if (fstatat (dst_dirfd, dst_relname, &tmp_dst_sb, 0) != 0)
          return true;
  
@@ -90,7 +90,7 @@ index 7ffb998f6..57f805617 100644
          return true;
  
        if (x->hard_link)
-@@ -2171,7 +2178,7 @@ source_is_dst_backup (char const *srcbase, struct stat const *src_st,
+@@ -2179,7 +2186,7 @@ source_is_dst_backup (char const *srcbase, struct stat const *src_st,
    struct stat dst_back_sb;
    int dst_back_status = fstatat (dst_dirfd, dst_back, &dst_back_sb, 0);
    free (dst_back);
@@ -99,7 +99,7 @@ index 7ffb998f6..57f805617 100644
  }
  
  /* Copy the file SRC_NAME to the file DST_NAME aka DST_DIRFD+DST_RELNAME.
-@@ -2246,7 +2253,7 @@ copy_internal (char const *src_name, char const *dst_name,
+@@ -2254,7 +2261,7 @@ copy_internal (char const *src_name, char const *dst_name,
  
        src_mode = src_sb.st_mode;
  
@@ -108,7 +108,7 @@ index 7ffb998f6..57f805617 100644
          {
            error (0, 0, ! x->install_mode /* cp */
                   ? _("-r not specified; omitting directory %s")
-@@ -2269,7 +2276,7 @@ copy_internal (char const *src_name, char const *dst_name,
+@@ -2277,7 +2284,7 @@ copy_internal (char const *src_name, char const *dst_name,
       This check is enabled only if x->src_info is non-null.  */
    if (command_line_arg && x->src_info)
      {
@@ -117,7 +117,7 @@ index 7ffb998f6..57f805617 100644
             && x->backup_type == no_backups
             && seen_file (x->src_info, src_name, &src_sb))
          {
-@@ -2352,7 +2359,7 @@ copy_internal (char const *src_name, char const *dst_name,
+@@ -2360,7 +2367,7 @@ copy_internal (char const *src_name, char const *dst_name,
                return false;
              }
  
@@ -126,7 +126,7 @@ index 7ffb998f6..57f805617 100644
              {
                /* When preserving timestamps (but not moving within a file
                   system), don't worry if the destination timestamp is
-@@ -2875,7 +2882,7 @@ skip:
+@@ -2883,7 +2890,7 @@ skip:
    if (! set_process_security_ctx (src_name, dst_name, src_mode, new_dst, x))
      return false;
  
@@ -135,7 +135,7 @@ index 7ffb998f6..57f805617 100644
      {
        struct dir_list *dir;
  
-@@ -2898,7 +2905,7 @@ skip:
+@@ -2906,7 +2913,7 @@ skip:
        dir->ino = src_sb.st_ino;
        dir->dev = src_sb.st_dev;
  
@@ -144,7 +144,7 @@ index 7ffb998f6..57f805617 100644
          {
            /* POSIX says mkdir's behavior is implementation-defined when
               (src_mode & ~S_IRWXUGO) != 0.  However, common practice is
-@@ -3007,7 +3014,7 @@ skip:
+@@ -3015,7 +3022,7 @@ skip:
                              || stat (".", &dot_sb) != 0
                              || (fstatat (dst_dirfd, dst_parent, &dst_parent_sb,
                                           0) != 0)
@@ -306,10 +306,10 @@ index 4e914336b..6083c20c3 100644
  
  /* The main loop.  */
 diff --git a/src/df.c b/src/df.c
-index 5c7efd81f..3c4008958 100644
+index a969c5c9b..f82a0b58f 100644
 --- a/src/df.c
 +++ b/src/df.c
-@@ -744,6 +744,9 @@ filter_mount_list (bool devices_only)
+@@ -745,6 +745,9 @@ filter_mount_list (bool devices_only)
        else
          {
            /* If we've already seen this device...  */
@@ -319,7 +319,7 @@ index 5c7efd81f..3c4008958 100644
            struct devlist *seen_dev = devlist_for_dev (buf.st_dev);
  
            if (seen_dev)
-@@ -1074,7 +1077,10 @@ get_dev (char const *device, char const *mount_point, char const *file,
+@@ -1075,7 +1078,10 @@ get_dev (char const *device, char const *mount_point, char const *file,
              }
          }
      }
@@ -332,7 +332,7 @@ index 5c7efd81f..3c4008958 100644
      return;
  
 diff --git a/src/digest.c b/src/digest.c
-index d9810c10b..be6f81f12 100644
+index 1f65c73b4..0dcaefdd7 100644
 --- a/src/digest.c
 +++ b/src/digest.c
 @@ -1367,7 +1367,11 @@ main (int argc, char **argv)
@@ -348,7 +348,7 @@ index d9810c10b..be6f81f12 100644
  #if HASH_ALGO_SUM
    char const *short_opts = "rs";
 diff --git a/src/du.c b/src/du.c
-index d87800aa6..0ad10c601 100644
+index 0e5d860a9..bcc0b3629 100644
 --- a/src/du.c
 +++ b/src/du.c
 @@ -412,6 +412,7 @@ print_size (const struct duinfo *pdui, char const *string)
@@ -368,7 +368,7 @@ index d87800aa6..0ad10c601 100644
  
  /* This function checks whether any of the directories in the cycle that
 diff --git a/src/env.c b/src/env.c
-index 17254c303..2ed7329a8 100644
+index 17254c303..8a1f9b615 100644
 --- a/src/env.c
 +++ b/src/env.c
 @@ -53,7 +53,9 @@ enum SIGNAL_MODE {
@@ -397,6 +397,50 @@ index 17254c303..2ed7329a8 100644
        return;
      }
  
+@@ -755,7 +765,29 @@ initialize_signals (void)
+ 
+   return;
+ }
+-
++#ifdef _WIN32
++int clearenv(void)
++{
++	char* envp, * s;
++	char name[MAX_LONG_PATH];
++
++	while (environ && (envp = *environ)) {
++		if ((s = strchr(envp, '=')) != NULL) {
++			strncpy(name, envp, s - envp + 1);
++			strncpy_s(name, sizeof(name), envp, s - envp+1);
++			name[s - envp + 1+1] = 0;
++
++			if (_putenv(name) == -1) {
++				return -1;
++			}
++		}
++		else {
++			return -1;
++		}
++	}
++	return 0;
++}
++#endif
+ int
+ main (int argc, char **argv)
+ {
+@@ -839,8 +871,12 @@ main (int argc, char **argv)
+   if (ignore_environment)
+     {
+       devmsg ("cleaning environ\n");
++#ifndef _WIN32
+       static char *dummy_environ[] = { nullptr };
+       environ = dummy_environ;
++#else
++      clearenv();
++#endif
+     }
+   else
+     unset_envvars ();
 diff --git a/src/expr.c b/src/expr.c
 index cd87763df..82634ee65 100644
 --- a/src/expr.c
@@ -525,7 +569,7 @@ index 76ffc49c0..c4b24420f 100644
                            || same_nameat (AT_FDCWD, source,
                                            destdir_fd, dest_base)))
 diff --git a/src/ls.c b/src/ls.c
-index f67167f16..0c4f0651b 100644
+index 23309b812..19418351b 100644
 --- a/src/ls.c
 +++ b/src/ls.c
 @@ -52,7 +52,9 @@
@@ -592,7 +636,7 @@ index f67167f16..0c4f0651b 100644
        j = interrupt_signal;
        if (j)
          raise (j);
-@@ -2268,7 +2282,9 @@ decode_switches (int argc, char **argv)
+@@ -2273,7 +2287,9 @@ decode_switches (int argc, char **argv)
            break;
  
          case 'Z':
@@ -602,7 +646,7 @@ index f67167f16..0c4f0651b 100644
            break;
  
          case ZERO_OPTION:
-@@ -2327,6 +2343,13 @@ decode_switches (int argc, char **argv)
+@@ -2332,6 +2348,13 @@ decode_switches (int argc, char **argv)
                && 0 < ws.ws_col)
              linelen = ws.ws_col <= MIN (PTRDIFF_MAX, SIZE_MAX) ? ws.ws_col : 0;
          }
@@ -616,7 +660,7 @@ index f67167f16..0c4f0651b 100644
  #endif
        if (linelen < 0)
          {
-@@ -3700,7 +3723,11 @@ get_link_name (char const *filename, struct fileinfo *f, bool command_line_arg)
+@@ -3708,7 +3731,11 @@ get_link_name (char const *filename, struct fileinfo *f, bool command_line_arg)
  {
    f->linkname = areadlink_with_size (filename, f->stat.st_size);
    if (f->linkname == nullptr)
@@ -628,7 +672,7 @@ index f67167f16..0c4f0651b 100644
                    filename);
  }
  
-@@ -4899,12 +4926,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
+@@ -4907,12 +4934,12 @@ get_type_indicator (bool stat_ok, mode_t mode, enum filetype type)
      }
    else
      {
@@ -644,7 +688,7 @@ index f67167f16..0c4f0651b 100644
        else if (stat_ok ? S_ISFIFO (mode) : type == fifo)
          c = '|';
        else if (stat_ok ? S_ISSOCK (mode) : type == sock)
-@@ -5000,6 +5027,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+@@ -5008,6 +5035,8 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
            else if ((1 < f->stat.st_nlink) && is_colored (C_MULTIHARDLINK))
              type = C_MULTIHARDLINK;
          }
@@ -653,7 +697,7 @@ index f67167f16..0c4f0651b 100644
        else if (S_ISDIR (mode))
          {
            type = C_DIR;
-@@ -5012,8 +5041,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
+@@ -5020,8 +5049,6 @@ get_color_indicator (const struct fileinfo *f, bool symlink_target)
            else if ((mode & S_ISVTX) != 0 && is_colored (C_STICKY))
              type = C_STICKY;
          }
@@ -1013,7 +1057,7 @@ index 03a260243..3949ff0b2 100644
  }
  
 diff --git a/src/sort.c b/src/sort.c
-index 0928fd57c..11d8e83d7 100644
+index 4473987ef..aa63952cd 100644
 --- a/src/sort.c
 +++ b/src/sort.c
 @@ -715,7 +715,11 @@ static pid_t
@@ -1028,7 +1072,7 @@ index 0928fd57c..11d8e83d7 100644
  
    if (cpid < 0)
      error (SORT_FAILURE, errno, _("waiting for %s [-d]"),
-@@ -4395,7 +4399,11 @@ main (int argc, char **argv)
+@@ -4394,7 +4398,11 @@ main (int argc, char **argv)
      static int const sig[] =
        {
          /* The usual suspects.  */
@@ -1040,7 +1084,7 @@ index 0928fd57c..11d8e83d7 100644
  #ifdef SIGPOLL
          SIGPOLL,
  #endif
-@@ -4441,8 +4449,9 @@ main (int argc, char **argv)
+@@ -4440,8 +4448,9 @@ main (int argc, char **argv)
          }
  #endif
    }
@@ -1347,7 +1391,7 @@ index 3ea7da7f5..733ff4b07 100644
      case 'm':
        fail |= out_mount_point (filename, pformat, prefix_len, statbuf);
 diff --git a/src/sync.c b/src/sync.c
-index 26ebbc806..58dc62559 100644
+index 7c518b5fa..e4a4fb0d7 100644
 --- a/src/sync.c
 +++ b/src/sync.c
 @@ -116,6 +116,7 @@ sync_arg (enum sync_mode mode, char const *file)
@@ -1368,10 +1412,10 @@ index 26ebbc806..58dc62559 100644
      {
        int sync_status = -1;
 diff --git a/src/system.h b/src/system.h
-index 10fddf4fe..b5eb512e2 100644
+index 4a47e15ca..a0aeadcfb 100644
 --- a/src/system.h
 +++ b/src/system.h
-@@ -655,7 +655,12 @@ emit_ancillary_info (char const *program)
+@@ -662,7 +662,12 @@ emit_ancillary_info (char const *program)
  
    /* Don't output this redundant message for English locales.
       Note we still output for 'C' so that it gets included in the man page.  */
@@ -1490,7 +1534,7 @@ index 1ed1c4fab..69430d3f2 100644
        error (0, 0, _("warning: --pid=PID is not supported on this system"));
        nbpids = 0;
 diff --git a/src/wc.c b/src/wc.c
-index 7f2e0c047..6fe0a10d8 100644
+index ed4ad62c4..e19de55c1 100644
 --- a/src/wc.c
 +++ b/src/wc.c
 @@ -739,7 +739,11 @@ main (int argc, char **argv)

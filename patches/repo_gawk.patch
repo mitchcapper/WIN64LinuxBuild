@@ -413,10 +413,10 @@ index 221250b3b..69a23217d 100644
 +#endif
 \ No newline at end of file
 diff --git a/doc/gawk.texi b/doc/gawk.texi
-index dae97fa0c..95351a127 100644
+index 90485f778..65ee606f6 100644
 --- a/doc/gawk.texi
 +++ b/doc/gawk.texi
-@@ -24177,7 +24177,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
+@@ -24179,7 +24179,9 @@ Following is @command{pwcat}, a C program that ``cats'' the password database:
  @end ignore
  @c file eg/lib/pwcat.c
  #include <stdio.h>
@@ -426,7 +426,7 @@ index dae97fa0c..95351a127 100644
  
  @c endfile
  @ignore
-@@ -24193,7 +24195,7 @@ int
+@@ -24195,7 +24197,7 @@ int
  main(int argc, char **argv)
  @{
      struct passwd *p;
@@ -435,7 +435,7 @@ index dae97fa0c..95351a127 100644
      while ((p = getpwent()) != NULL)
  @c endfile
  @ignore
-@@ -24218,6 +24220,7 @@ main(int argc, char **argv)
+@@ -24220,6 +24222,7 @@ main(int argc, char **argv)
  @c file eg/lib/pwcat.c
  
      endpwent();
