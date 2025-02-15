@@ -21,7 +21,7 @@ if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
 fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
-		git_clone_and_add_ignore https://git.savannah.gnu.org/git/gawk.git .
+		git_clone_and_add_ignore https://github.com/sailfishos-mirror/gawk . # https://git.savannah.gnu.org/git/gawk.git
 		cp gnulib/build-aux/bootstrap .
 		cp gnulib/build-aux/bootstrap.conf .
 		echo "gnulib_tool_option_extras=\" --without-tests --symlink --m4-base=m4 --lib=libgawk --source-base=lib --cache-modules\"" >> bootstrap.conf
@@ -36,7 +36,7 @@ fi
 		echo "EXTRA_DIST = " > m4/Makefile.am
 		add_items_to_gitignore;
 		git_staging_add bootstrap bootstrap.conf
-		git_staging_commit #need to commit it up so that the bootstrap files are avail for our gnulib patching by default all local changes are stashed	
+		git_staging_commit #need to commit it up so that the bootstrap files are avail for our gnulib patching by default all local changes are stashed
 	fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		apply_our_repo_patch; # Applies from patches folder repo_BUILD_NAME.patch to the sources
@@ -67,7 +67,7 @@ fi
 	gnulib_ensure_buildaux_scripts_copied --forced
 	export BLD_CONFIG_GNU_LIBS_AUTORECONF_DISABLE_FORCE=1
 	setup_gnulibtool_py_autoconfwrapper
-	
+
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
 		configure_apply_fixes_and_run;

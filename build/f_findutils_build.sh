@@ -18,7 +18,7 @@ if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
 fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
-		git_clone_and_add_ignore https://git.savannah.gnu.org/git/findutils.git .
+		git_clone_and_add_ignore https://github.com/sailfishos-mirror/findutils . # https://git.savannah.gnu.org/git/findutils.git
 	fi
 
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then

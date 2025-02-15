@@ -19,7 +19,7 @@ if test 5 -gt 100; then
 		echo "Just move the fi down as you want to skip steps, or pass the step to skip to (per below) as the first arg"
 fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "checkout" ]]; then
-		git_clone_and_add_ignore https://git.savannah.gnu.org/git/grep.git .
+		git_clone_and_add_ignore https://github.com/sailfishos-mirror/grep . # https://git.savannah.gnu.org/git/grep.git
 	fi
 
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then

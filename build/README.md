@@ -143,7 +143,7 @@ After clone step add:
 ### Template Script Args
 `--BUILD_NAME libpsl --GitRepo https://github.com/rockdaboot/libpsl --GNU_LIBS_USED=0 --BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1 --BUILD_ADDL_CFLAGS_STATIC -DPSL_STATIC -DU_STATIC_IMPLEMENTATION -DU_IMPORT`
 
-### Modifications	
+### Modifications
 just doing --enable-static is not enough and -D U_IMPORT is required to override the default dll import as it doesn't check static
 
 ## zlib
@@ -197,7 +197,7 @@ before gnulib block:
 	fi
 	export PATH="$PATH:./"
 ```
-	
+
 Right before configure:
 	`touch ABOUT-NLS`
 
@@ -224,7 +224,7 @@ In the clone step add
 		echo "EXTRA_DIST = " > m4/Makefile.am
 		add_items_to_gitignore;
 		git_staging_add bootstrap bootstrap.conf
-		git_staging_commit #need to commit it up so that the bootstrap files are avail for our gnulib patching by default all local changes are stashed		
+		git_staging_commit #need to commit it up so that the bootstrap files are avail for our gnulib patching by default all local changes are stashed
 ```
 
 Before our patch block add
@@ -335,7 +335,7 @@ replace the configure block with:
 		# sed -i -E 's#return (\$path ne [^;]+;)#my $ret = \1\n\t$ret =~ s/\\/\//g;\n\treturn $ret;#' perl/lib/File/Spec/Win32.pm
 	fi
 	NASM_PATH=$(convert_to_msys_path "${BLD_CONFIG_SRC_FOLDER}/nasm")
-	export PATH="${NASM_PATH}:$PATH"	
+	export PATH="${NASM_PATH}:$PATH"
 	ensure_perl_installed_set_exports
 	setup_build_env;
 
@@ -391,7 +391,7 @@ after make install add:
 
 ### Modifications
 At top before main func add:
-```bash	
+```bash
 	function lua_pkg_config_gen() {
 		LUA_VERSION=5.4
 		PKG_CFG=`cat "${SCRIPT_FOLDER}/patches/lua.pc.template"`
@@ -417,7 +417,7 @@ Remove configure block and add:
 		#change to windows extensions
 		sed -i -E 's/[.]o\b/.obj/g' Makefile src/Makefile
 		sed -i -E 's/[.]a\b/.lib/g' Makefile src/Makefile
-		
+
 		sed -i -E 's/^AR=(ar.*)/AR?=\1/g' Makefile src/Makefile #allow manually specifing AR
 		sed -i -E 's/\$\{CXX\} \$\{LDFLAGS\}/${CXX} ${CFLAGS}/g' src/Makefile #this only happens once, and its for linking the main executable, while LD is more on track we need the other translations that compile does so we will use the compiler.  We need to use this over CXX_COMPILE as it has the -c command which forces compile only
 		sed -i -E "s#PREFIX = .+#PREFIX = $BLD_CONFIG_INSTALL_FOLDER#" Makefile
@@ -431,7 +431,7 @@ Remove configure block and add:
 ```
 
 after make install add:
-```bash	
+```bash
 	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
 		mkdir -p "${BLD_CONFIG_INSTALL_FOLDER}/lib/"
 		cp src/libhighlight.lib "${BLD_CONFIG_INSTALL_FOLDER}/lib/"
@@ -451,7 +451,7 @@ fix our vars at the top for changing it to: `BLD_CONFIG_BUILD_ADDL_CFLAGS_DEBUG=
 
 ### Modifications
 after switch to master and patch line (but in that block) add:
-```bash	
+```bash
 	if [[ -f "gl/modules/rename-tests.diff" ]]; then
 					git rm gl/modules/link-tests.diff gl/modules/rename-tests.diff
 			fi
