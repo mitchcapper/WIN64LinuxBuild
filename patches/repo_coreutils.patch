@@ -1,5 +1,5 @@
 diff --git a/src/cat.c b/src/cat.c
-index c02210301..cbdfae75f 100644
+index c02210301..2d34b2321 100644
 --- a/src/cat.c
 +++ b/src/cat.c
 @@ -717,6 +717,7 @@ main (int argc, char **argv)
@@ -15,7 +15,7 @@ index c02210301..cbdfae75f 100644
                              ? SEEK_END : SEEK_CUR);
                if (in_pos < lseek (STDOUT_FILENO, 0, whence))
 +#else
-+              if (out_isreg && (lseek (input_desc, 0, SEEK_CUR) < stat_buf.st_size)
++              if (out_isreg && (lseek (input_desc, 0, SEEK_CUR) < stat_buf.st_size)) { // extra to account for bracket above in non _WIN32
 +#endif
                  {
                    error (0, 0, _("%s: input file is output file"),
