@@ -21,25 +21,23 @@
 #define TRUE 1
 #endif // !FALSE
 
-int clearenv(void)
-{
-	char* envp, * s;
-	char name[MAX_LONG_PATH];
 
+int clearenv(void) {
+	char* envp, * s;
+	char name[_MAX_ENV];
+	int name_len;
 
 	while (environ && (envp = *environ)) {
 		if ((s = strchr(envp, '=')) != NULL) {
-			strncpy(name, envp, s - envp + 1);
-			strncpy_s(name, sizeof(name), envp, s - envp+1);
-			name[s - envp + 1+1] = 0;
+			name_len = s - envp;
+			strncpy_s(name, sizeof(name), envp, name_len);
+			name[name_len + 1] = 0;
 
-			if (_putenv(name) == -1) {
+			if (_putenv_s(name, "") == -1)
 				return -1;
-			}
 		}
-		else {
+		else
 			return -1;
-		}
 	}
 	return 0;
 }
@@ -71,7 +69,7 @@ CONSTRUCTOR(wlb_at_startup) {
 #ifdef WLB_ALIGNED_ALLOC
 //memalign replacement note must use wlb_aligned_free to free
 void *wlb_aligned_alloc(size_t size, size_t alignment) {
-#ifndef _MSC_VER	
+#ifndef _MSC_VER
 #ifdef HAVE_POSIX_MEMALIGN
 	void *ptr=0;
     int result = posix_memalign(&ptr, alignment, size);
